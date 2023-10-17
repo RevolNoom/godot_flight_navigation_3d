@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://dgo7fj4tmihlq"]
+
+[ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://navigation_space_3d.tscn" id="1_6of4y"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_u7qyq"]
+
+[node name="Main" type="Node3D"]
+
+[node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.01231, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_u7qyq")
