@@ -3,10 +3,10 @@
 [ext_resource type="Script" path="res://navigation_space_3d.gd" id="1_3yis1"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_nou3d"]
+size = Vector3(4, 4, 4)
 
 [node name="NavigationSpace3D" type="Area3D"]
 collision_layer = 0
-monitorable = false
 script = ExtResource("1_3yis1")
 
 [node name="Extent" type="CollisionShape3D" parent="."]
