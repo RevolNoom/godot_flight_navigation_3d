@@ -6,6 +6,7 @@ class_name NavigationSpace3D
 
 
 func _ready():
+	calculate_every_layer_cube_size()
 	pass
 
 # TODO:
@@ -129,8 +130,8 @@ func _surface_voxelise(layer: int, triangles: PackedVector3Array) -> Dictionary:
 
 
 func _voxelise_triangle(layer: int, triangle: PackedVector3Array) -> Dictionary:
-	var tbt = TriangleBoxTest.new(triangle, _node_cube_size[layer])
-	var vox_range = _voxels_overlapped_by_aabb(layer, tbt.aabb)
+	#var tbt = TriangleBoxTest.new(triangle, _node_cube_size[layer])
+	#var vox_range = _voxels_overlapped_by_aabb(layer, tbt.aabb)
 	# TODO: TEST TRIANGLE/VOXEL OVERLAP
 	return {}
 

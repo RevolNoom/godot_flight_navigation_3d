@@ -8,9 +8,11 @@
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.129041, 0, 0)
+visible = false
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
+visible = false
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
