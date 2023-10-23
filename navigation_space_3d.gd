@@ -9,6 +9,7 @@ func _ready():
 	calculate_every_layer_cube_size()
 	pass
 
+
 # TODO:
 # Process the shapes based on their types
 # Prioritize Box shape voxelization first
@@ -50,13 +51,14 @@ func _ready():
 
 
 
-# TODO: This is assuming that objects are BoxShape3D
+# TODO: Support more shapes than just BoxShape3D
 # Expensive operation
 # Should call only once when all CollisionShapes are
 # registered
 func voxelise():
-	var act_node1 = _determine_active_level1_nodes()
-	_construct_layers(act_node1)
+	var act1nodes = _determine_active_level1_nodes()
+	#print(act1nodes)
+	_construct_layers(act1nodes)
 	_voxelise_leaf_layer()
 	_fill_solid()
 
@@ -76,8 +78,9 @@ func _on_body_shape_entered(
 			shape_find_owner(body_shape_index))
 		
 		_entered_shapes.append(col_shape)
-		
+		#print("Something got in: %s" % str(body))
 		voxelise()
+		
 
 func _get_box_triangles(col_shape: CollisionShape3D) -> PackedVector3Array:
 	var box = BoxMesh.new()
@@ -88,8 +91,8 @@ func _get_box_triangles(col_shape: CollisionShape3D) -> PackedVector3Array:
 	
 	# Convert triangles to local NavigationSpaceTransform
 	var mesh_to_navspace: \
-		Transform3D = global_transform \
-					* col_shape.global_transform.inverse()
+		Transform3D = global_transform.inverse() \
+					* col_shape.global_transform
 	
 	var triangles = arr_mesh.get_faces()
 	#print("Triangle before: " + str(triangles))
@@ -116,24 +119,43 @@ func _determine_active_level1_nodes() -> PackedInt64Array:
 	var act1nodes: Dictionary = {}
 	for col_shape in _entered_shapes:
 		if col_shape.shape is BoxShape3D:
-			act1nodes.merge(_surface_voxelise(1, _get_box_triangles(col_shape)))
+			#print("Is BoxShape")
+			act1nodes.merge(_get_boxshape_act1nodes(1, col_shape))
 	return act1nodes.keys()
 
 
 ## @triangles are assumed to have length divisible by 3
 ## Every 3 elements make up a triangle
-func _surface_voxelise(layer: int, triangles: PackedVector3Array) -> Dictionary:
+func _get_boxshape_act1nodes(layer: int, col_shape: CollisionShape3D) -> Dictionary:
 	var result = {}
+	var triangles: PackedVector3Array =_get_box_triangles(col_shape)
+	#print("triangles: %s" % triangles)
 	for i in range(0, triangles.size()/3):
-		result.merge(_voxelise_triangle(layer, triangles.slice(i*3, (i+1)*3)))
+		result.merge(_get_triangle_act1nodes(layer, triangles.slice(i*3, (i+1)*3)))
+	
+	#print("boxshape act1nodes: %s" % result)
 	return result
 
 
-func _voxelise_triangle(layer: int, triangle: PackedVector3Array) -> Dictionary:
-	#var tbt = TriangleBoxTest.new(triangle, _node_cube_size[layer])
-	#var vox_range = _voxels_overlapped_by_aabb(layer, tbt.aabb)
-	# TODO: TEST TRIANGLE/VOXEL OVERLAP
-	return {}
+## Return a dictionary with keys are Morton codes of active nodes
+func _get_triangle_act1nodes(layer: int, triangle: PackedVector3Array) -> Dictionary:
+	var result = {}
+	#print("Triangle: %s" % str(triangle))
+	var vox_offset = _extent_offset / _node_cube_size[layer]
+	var tbt = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_cube_size[layer])
+	var vox_range = _voxels_overlapped_by_aabb(layer, tbt.aabb)
+	#print("vox_range: %s" % str(vox_range))
+	for x in range(vox_range[0].x, vox_range[1].x):
+		for y in range(vox_range[0].y, vox_range[1].y):
+			for z in range(vox_range[0].z, vox_range[1].z):
+				#print("test %v: " % (Vector3(x, y, z) * _node_cube_size[layer]))
+				if tbt.overlap_voxel((Vector3(x, y, z)) * _node_cube_size[layer]):
+					#print("Overlap")
+					result[Morton3.encode64(
+						x - vox_offset.x, 
+						y - vox_offset.y, 
+						z - vox_offset.z)] = true
+	return result
 
 
 ## TODO: 
@@ -155,14 +177,19 @@ func _noob_tri_vox_overlap_test(
 
 ## @layer: The tree layer we're trying to get voxels from
 ## @t_aabb: Triangle's AABB
-## @return: [begin, end]
+## @return: [begin, end) (end is exclusive)
 ##	(end - begin) is non-negative
 ##	begin and end are inside Navigation Space  
 ##	Includes also voxels meerly touched by t_aabb
 func _voxels_overlapped_by_aabb(layer: int, t_aabb: AABB) -> Array[Vector3i]:
+	#print()
+	#print("aabb: %s" % str(t_aabb))
 	# Begin & End
 	var b = t_aabb.position/_node_cube_size[layer]
 	var e = t_aabb.end/_node_cube_size[layer]
+	
+	#print("b: %s" % str(b))
+	#print("e: %s" % str(e))
 	
 	# Include voxels meerly touched by t_aabb
 	b.x = b.x - (1 if b.x == round(b.x) else 0)
@@ -173,16 +200,22 @@ func _voxels_overlapped_by_aabb(layer: int, t_aabb: AABB) -> Array[Vector3i]:
 	e.y = e.y + (1 if e.y == round(e.y) else 0)
 	e.z = e.z + (1 if e.z == round(e.z) else 0)
 	
-	# Clamp to fit inside Navigation Space
-	b = b.clamp(Vector3(), $Extent.shape.size)
-	e = e.clamp(Vector3(), $Extent.shape.size)
+	var vox_bound = $Extent.shape.size/2 / _node_cube_size[layer] # - Vector3(1,1,1)
 	
+	#print("vox_bound: %s" % str(vox_bound))
+	# Clamp to fit inside Navigation Space
+	b = b.clamp(-vox_bound, vox_bound)
+	e = e.clamp(-vox_bound, vox_bound)
+	
+	#print("Final b: %s" % str(b))
+	#print("Final e: %s" % str(e))
 	return [b.round(), e.round()]
 	
 
 
-func _construct_layers(active_level1_nodes: PackedInt64Array):
-	pass
+func _construct_layers(act1nodes: PackedInt64Array):
+	_svo = SparseVoxelOctree.new(max_depth, omitted_top_layers, act1nodes)
+	
 	
 func _voxelise(layer: int, faces: PackedVector3Array):
 	pass
@@ -213,6 +246,7 @@ func _on_property_list_changed():
 
 ##############
 
+
 var _entered_shapes: Array[CollisionShape3D] = []
 
 var _node_cube_size: PackedFloat32Array = []
@@ -232,3 +266,9 @@ enum TreeAttribute{
 	DANGEROUS_MAX_DEPTH = 11,
 	MAX_DEPTH = 18,
 }
+
+var _svo: SparseVoxelOctree
+
+@onready var _extent_offset: Vector3 = - $Extent.shape.size/2
+func _on_extent_property_list_changed():
+	_extent_offset = - $Extent.shape.size/2

@@ -1,19 +1,26 @@
-[gd_scene load_steps=3 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=5 format=3 uid="uid://dgo7fj4tmihlq"]
 
 [ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://navigation_space_3d.tscn" id="1_6of4y"]
+[ext_resource type="Script" path="res://main.gd" id="1_54eij"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_u7qyq"]
 
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_7m2if"]
+points = PackedVector3Array(0.5, 0.5, 0.5, 1.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5)
+
 [node name="Main" type="Node3D"]
+script = ExtResource("1_54eij")
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.129041, 0, 0)
-visible = false
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
-visible = false
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
 shape = SubResource("BoxShape3D_u7qyq")
+
+[node name="Node3D" type="Node3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D"]
+shape = SubResource("ConvexPolygonShape3D_7m2if")

@@ -15,3 +15,4 @@ shape = SubResource("BoxShape3D_nou3d")
 [connection signal="body_shape_entered" from="." to="." method="_on_body_shape_entered"]
 [connection signal="body_shape_exited" from="." to="." method="_on_body_shape_exited"]
 [connection signal="property_list_changed" from="." to="." method="_on_property_list_changed"]
+[connection signal="property_list_changed" from="Extent" to="." method="_on_extent_property_list_changed"]

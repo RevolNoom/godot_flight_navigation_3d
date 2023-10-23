@@ -16,10 +16,17 @@ func _init(v: PackedVector3Array, dp: Vector3):
 	aabb = aabb.expand(v[2])
 	#print("AABB: " + str(aabb))
 	
+	## Edge equations ##
+	## ei = v[(i+1)%3] - v[i]
+	var e: PackedVector3Array = [null, null, null]
+	for i in range(0, 3):
+		e[i] = v[(i+1)%3] - v[i]
+	#print("edges: %s" % str(e))
+	
 	#print("v: %s" % v)
 	## Normal
 	## NOTE: This order of vector is important. Copied from cuda_voxelizer
-	n = (v[1]-v[0]).cross(v[2]-v[1]).normalized()
+	n = (e[0]).cross(e[1])#.normalized()
 	#print("n: " + str(n))
 	
 	## Critical point
@@ -35,12 +42,6 @@ func _init(v: PackedVector3Array, dp: Vector3):
 	
 	#print("_d1: %f\n_d2: %f" % [_d1, _d2])
 	
-	## Edge equations ##
-	## ei = v[(i+1)%3] - v[i]
-	var e: PackedVector3Array = [null, null, null]
-	for i in range(0, 3):
-		e[i] = v[(i+1)%3] - v[i]
-	#print("edges: %s" % str(e))
 	
 	## Edges Normals/Distances' Projections
 	for i in range(0, 3):
@@ -62,7 +63,7 @@ func _init(v: PackedVector3Array, dp: Vector3):
 					+ maxf(0.0, dp.x*_ne_zx[i].x)\
 					+ maxf(0.0, dp.z*_ne_zx[i].y)
 					
-	#	print("_de_xz[%d] = %f + %f + %f" % [i, - _ne_zx[i].dot(Vector2(v[i].z, v[i].x)), maxf(0, dp.x*_ne_zx[i].x), maxf(0, dp.z*_ne_zx[i].y)])
+		#print("_de_xz[%d] = %f + %f + %f" % [i, - _ne_zx[i].dot(Vector2(v[i].z, v[i].x)), maxf(0, dp.x*_ne_zx[i].x), maxf(0, dp.z*_ne_zx[i].y)])
 
 	#print("_ne_xy: %s" % str(_ne_xy))
 	#print("_ne_yz: %s" % str(_ne_yz))
@@ -93,9 +94,9 @@ func _plane_overlaps(p: Vector3) -> bool:
 func _projection_2d_overlaps(p: Vector3) -> bool:
 	var p_xy = Vector2(p.x, p.y)
 	var p_yz = Vector2(p.y, p.z)
-	var p_xz = Vector2(p.x, p.z)
+	var p_zx = Vector2(p.z, p.x)
 	#print("p: %v" % p)
-	#print("p_xz: %v" % p_xz)
+	#print("p_zx: %v" % p_zx)
 	
 	#print( (_ne_xy[0].dot(p_xy) + _de_xy[0]))
 	#print( (_ne_xy[1].dot(p_xy) + _de_xy[1]))
@@ -105,9 +106,9 @@ func _projection_2d_overlaps(p: Vector3) -> bool:
 	#print( (_ne_yz[1].dot(p_yz) + _de_yz[1]))
 	#print( (_ne_yz[2].dot(p_yz) + _de_yz[2]))
 	
-	#print( (_ne_zx[0].dot(p_xz) + _de_xz[0]))
-	#print( (_ne_zx[1].dot(p_xz) + _de_xz[1]))
-	#print( (_ne_zx[2].dot(p_xz) + _de_xz[2]))
+	#print( (_ne_zx[0].dot(p_zx) + _de_xz[0]))
+	#print( (_ne_zx[1].dot(p_zx) + _de_xz[1]))
+	#print( (_ne_zx[2].dot(p_zx) + _de_xz[2]))
 		
 	return  (_ne_xy[0].dot(p_xy) + _de_xy[0]) >= 0\
 		and (_ne_xy[1].dot(p_xy) + _de_xy[1]) >= 0\
@@ -117,9 +118,9 @@ func _projection_2d_overlaps(p: Vector3) -> bool:
 		and (_ne_yz[1].dot(p_yz) + _de_yz[1]) >= 0\
 		and (_ne_yz[2].dot(p_yz) + _de_yz[2]) >= 0\
 
-		and (_ne_zx[0].dot(p_xz) + _de_xz[0]) >= 0\
-		and (_ne_zx[1].dot(p_xz) + _de_xz[1]) >= 0\
-		and (_ne_zx[2].dot(p_xz) + _de_xz[2]) >= 0
+		and (_ne_zx[0].dot(p_zx) + _de_xz[0]) >= 0\
+		and (_ne_zx[1].dot(p_zx) + _de_xz[1]) >= 0\
+		and (_ne_zx[2].dot(p_zx) + _de_xz[2]) >= 0
 
 
 ## Distance Factor from each 
@@ -146,74 +147,99 @@ var _de_xz: PackedFloat64Array = [null, null, null]
 
 
 static func _automated_test():
-	# Triangle on YZ plane
-	_auto_test_triangle([Vector3(1,0,0), Vector3(1,2,1), Vector3(1,0,2)])
-	
-	# Triangle on XZ plane
-	_auto_test_triangle([Vector3(0,1,0), Vector3(1,1,2), Vector3(2,1,0)])
-	
-	# Triangle on XY plane
-	_auto_test_triangle([Vector3(0,0,1), Vector3(1,2,1), Vector3(2,0,1)])
+	#var tbt = TriangleBoxTest.new([Vector3(0.5, 0.5, 0.5), Vector3(1.5, 0.5, 0.5), Vector3(0.5, -0.5, 0.5)], Vector3(0.5, 0.5, 0.5))
+	#tbt.overlap_voxel(Vector3(1, 0, 0))
+	#return
+	print("Test triangle on YZ")
+	_auto_test_triangle_extended(
+		[Vector3(1,0,0), Vector3(1,2,1), Vector3(1,0,2)], 
+		range(0, 2), 
+		[Vector3(0,0,0), Vector3(0,0,1), Vector3(0,1,0), Vector3(0,1,1),
+		Vector3(1,0,0), Vector3(1,0,1), Vector3(1,1,0), Vector3(1,1,1)]
+		)
+	print()
+	print("Test triangle on XZ")
+	_auto_test_triangle_extended(
+		[Vector3(0,1,0), Vector3(1,1,2), Vector3(2,1,0)], 
+		range(0, 2), 
+		[Vector3(0,0,0), Vector3(0,0,1), Vector3(0,1,0), Vector3(0,1,1),
+		Vector3(1,0,0), Vector3(1,0,1), Vector3(1,1,0), Vector3(1,1,1)]
+		)
+	print()
+	print("Test triangle on XY")
+	_auto_test_triangle_extended(
+		[Vector3(0,0,1), Vector3(1,2,1), Vector3(2,0,1)], 
+		range(0, 2), 
+		[Vector3(0,0,0), Vector3(0,0,1), Vector3(0,1,0), Vector3(0,1,1),
+		Vector3(1,0,0), Vector3(1,0,1), Vector3(1,1,0), Vector3(1,1,1)]
+		)
+	print()
 	
 	var solid_voxels = []
 	for y in range(0, 2):
 		solid_voxels.append_array([
 			Vector3(-1,y,-1),
 			Vector3(-1,y,0),
-			Vector3(-1,y,1),
-			Vector3(-1,y,2),
+			Vector3(-1,y,0),
+			Vector3(-1,y,0),
 			Vector3(0,y,-1),
 			Vector3(0,y,0),
 			Vector3(0,y,1),
 			Vector3(0,y,2),
+			Vector3(1,y,-1),
 			Vector3(1,y,0),
 			Vector3(1,y,1),
+			Vector3(1,y,2),
+			Vector3(2,y,-1),
 			Vector3(2,y,0),
-			Vector3(2,y,1),
 		])
+	print()
+	print("Test triangle in XZ with bigger bound")
 	_auto_test_triangle_extended(
 		[Vector3(0,1,0), Vector3(1,1,2), Vector3(2,1,0)], 
 		range(-1, 3),
 		solid_voxels
 		)
 	
-static func _auto_test_triangle(v: PackedVector3Array):
-	var test = TriangleBoxTest.new(v, Vector3(1, 1, 1))
+	solid_voxels = []
+	
+	for z_idx in range(0, 2):
+		var z = z_idx*0.5
+		solid_voxels.append_array([
+			Vector3(0, -1, z),
+			Vector3(0, -0.5, z),
+			Vector3(0, 0, z),
+			Vector3(0, 0.5, z),
+			
+			Vector3(0.5, -1, z),
+			Vector3(0.5, -0.5, z),
+			Vector3(0.5, 0, z),
+			Vector3(0.5, 0.5, z),
+			
+			Vector3(1, -0.5, z),
+			Vector3(1, 0, z),
+			Vector3(1, 0.5, z),
+			
+			Vector3(1.5, 0, z),
+			Vector3(1.5, 0.5, z),
+		])
+	print()
+	print("Isolated test from tree voxelization")
+	_auto_test_triangle_extended(
+		[Vector3(0.5, 0.5, 0.5), Vector3(1.5, 0.5, 0.5), Vector3(0.5, -0.5, 0.5)],
+		range(-2,4),
+		solid_voxels,
+		Vector3(0.5, 0.5, 0.5))
+	
+	
+static func _auto_test_triangle_extended(v: PackedVector3Array, box_range: PackedInt64Array, solid_voxels: PackedVector3Array, box_size:= Vector3(1,1,1)):
+	var test = TriangleBoxTest.new(v, box_size)
 	var test_result = {}
 	
-	var box_range = range(0, 2)
 	for x in box_range:
 		for y in box_range:
 			for z in box_range:
-				test_result[Vector3(x, y, z)] = test.overlap_voxel(Vector3(x, y, z))
-				
-	var expected_result = {}
-	for key in test_result.keys():
-		expected_result[key] = false
-	
-	for x in range(0, 2):
-		for y in range(0, 2):
-			for z in range(0, 2):
-				expected_result[Vector3(x, y, z)] = true
-
-	print("Triangle-Box Overlapping automated test")
-	var errors = 0
-	for key in test_result.keys():
-		if test_result[key] != expected_result[key]:
-			errors += 1
-			printerr("Test result for %s is %s, expected %s" % [key, test_result[key], expected_result[key]])
-	print("Completed with %d error%s" % [errors, "" if errors < 2 else "s"])
-	
-
-
-static func _auto_test_triangle_extended(v: PackedVector3Array, box_range: PackedInt64Array, solid_voxels: PackedVector3Array):
-	var test = TriangleBoxTest.new(v, Vector3(1, 1, 1))
-	var test_result = {}
-	
-	for x in box_range:
-		for y in box_range:
-			for z in box_range:
-				test_result[Vector3(x, y, z)] = test.overlap_voxel(Vector3(x, y, z))
+				test_result[Vector3(x, y, z) * box_size] = test.overlap_voxel(Vector3(x, y, z) * box_size)
 				
 	var expected_result = {}
 	for key in test_result.keys():
@@ -227,6 +253,6 @@ static func _auto_test_triangle_extended(v: PackedVector3Array, box_range: Packe
 	for key in test_result.keys():
 		if test_result[key] != expected_result[key]:
 			errors += 1
-			printerr("Test result for %s is %s, expected %s" % [key, test_result[key], expected_result[key]])
+			printerr("Got %s, expected %s for %s" % [test_result[key], expected_result[key], key])
 	print("Completed with %d error%s" % [errors, "" if errors < 2 else "s"])
 	
