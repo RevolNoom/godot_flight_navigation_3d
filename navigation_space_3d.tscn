@@ -8,6 +8,8 @@ size = Vector3(4, 4, 4)
 [node name="NavigationSpace3D" type="Area3D"]
 collision_layer = 0
 script = ExtResource("1_3yis1")
+max_depth = 5
+leaf_cube_size = 0.25
 
 [node name="Extent" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_nou3d")

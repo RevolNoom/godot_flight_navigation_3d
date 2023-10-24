@@ -7,6 +7,7 @@ class_name NavigationSpace3D
 
 func _ready():
 	calculate_every_layer_cube_size()
+	#print("Readied")
 	pass
 
 
@@ -22,32 +23,21 @@ func _ready():
 ## times more memory consumption. Only supports 
 ## upto TreeAttribute.MAX_DEPTH layers. I reckon your computer
 ## can't handle more than that.
-@export_range(1 + TreeAttribute.MIN_ACTIVE_LAYER, TreeAttribute.MAX_DEPTH) var max_depth: int = 7:
-	set(value):
-		max_depth = clampi(value, 1 + TreeAttribute.MIN_ACTIVE_LAYER, TreeAttribute.MAX_DEPTH)
-		calculate_every_layer_cube_size()
-		notify_property_list_changed()
+@export_range(TreeAttribute.MIN_DEPTH, TreeAttribute.MAX_DEPTH)\
+		var max_depth: int = TreeAttribute.MIN_DEPTH:
+				set(value):
+						max_depth = clampi(value, 
+									TreeAttribute.MIN_DEPTH, 
+									TreeAttribute.MAX_DEPTH)
+						if get_child_count() > 0: 
+							calculate_every_layer_cube_size()
+						notify_property_list_changed()
 
-## Omits a few top layers when building the octree
-## 1 omits the root node.
-## 2 omits the root node and first layer,
-## and so on... 
-## Note: The tree must have at least 4 active layers
-@export_range(1, TreeAttribute.MAX_DEPTH - TreeAttribute.MIN_ACTIVE_LAYER) var omitted_top_layers: int = 2:
-	set(value):
-		omitted_top_layers = clampi(value, 1, TreeAttribute.MAX_DEPTH - TreeAttribute.MIN_ACTIVE_LAYER)
-		notify_property_list_changed()
-
-## The tree will try to voxelise the deepest layer
-## into cubes of size not greater than this
-@export var maxLeafCubeSize: float = 0.01:
-	set(value):
-		maxLeafCubeSize = value
-		var s = ($Extent.shape as BoxShape3D).size
-		var longestSize = maxf(maxf(s.x, s.y), s.z)
-		max_depth = ceili(log(longestSize/value)/log(2))
-		
-		notify_property_list_changed()
+## This value serves as indication to how small a leaf
+## cube is gonna be. Changing it doesn't affect anything
+@export var leaf_cube_size: float = 0:
+	get:
+		return _leaf_cube_size 
 
 
 
@@ -56,7 +46,7 @@ func _ready():
 # Should call only once when all CollisionShapes are
 # registered
 func voxelise():
-	var act1nodes = _determine_active_level1_nodes()
+	var act1nodes = _determine_act1nodes()
 	#print(act1nodes)
 	_construct_layers(act1nodes)
 	_voxelise_leaf_layer()
@@ -115,12 +105,13 @@ func _on_body_shape_exited(
 
 ############## PRIVATE METHODS ###############
 
-func _determine_active_level1_nodes() -> PackedInt64Array:
+func _determine_act1nodes() -> PackedInt64Array:
 	var act1nodes: Dictionary = {}
 	for col_shape in _entered_shapes:
 		if col_shape.shape is BoxShape3D:
 			#print("Is BoxShape")
 			act1nodes.merge(_get_boxshape_act1nodes(1, col_shape))
+	#print("Active level1 nodes: %s" % str(act1nodes.keys()))
 	return act1nodes.keys()
 
 
@@ -200,7 +191,7 @@ func _voxels_overlapped_by_aabb(layer: int, t_aabb: AABB) -> Array[Vector3i]:
 	e.y = e.y + (1 if e.y == round(e.y) else 0)
 	e.z = e.z + (1 if e.z == round(e.z) else 0)
 	
-	var vox_bound = $Extent.shape.size/2 / _node_cube_size[layer] # - Vector3(1,1,1)
+	var vox_bound = - _extent_offset / _node_cube_size[layer] # - Vector3(1,1,1)
 	
 	#print("vox_bound: %s" % str(vox_bound))
 	# Clamp to fit inside Navigation Space
@@ -209,12 +200,12 @@ func _voxels_overlapped_by_aabb(layer: int, t_aabb: AABB) -> Array[Vector3i]:
 	
 	#print("Final b: %s" % str(b))
 	#print("Final e: %s" % str(e))
-	return [b.round(), e.round()]
+	return [b.floor(), e.ceil()]
 	
 
 
 func _construct_layers(act1nodes: PackedInt64Array):
-	_svo = SparseVoxelOctree.new(max_depth, omitted_top_layers, act1nodes)
+	_svo = SparseVoxelOctree.new(max_depth, act1nodes)
 	
 	
 func _voxelise(layer: int, faces: PackedVector3Array):
@@ -233,11 +224,8 @@ func _get_configuration_warnings():
 	var warnings: PackedStringArray = []
 	if not $Extent.shape is BoxShape3D:
 		warnings.push_back("Extent must be BoxShape3D.")
-	if omitted_top_layers > max_depth - TreeAttribute.MIN_ACTIVE_LAYER:
-		warnings.push_back(
-				"Too many top layers omitted. Must spare at least " + str(TreeAttribute.MIN_ACTIVE_LAYER) + " layers for the tree (max_depth - omitted_top_layers >= " + str(TreeAttribute.LEAF_LAYERS) + ").")
 	if max_depth >= TreeAttribute.DANGEROUS_MAX_DEPTH:
-		warnings.push_back("Are you sure your machine can handle a voxel tree this deep and big?")
+		warnings.push_back("Can your machine really handle a voxel tree this deep and big?")
 	return warnings
 
 
@@ -252,19 +240,20 @@ var _entered_shapes: Array[CollisionShape3D] = []
 var _node_cube_size: PackedFloat32Array = []
 var _leaf_cube_size: float = 1
 func calculate_every_layer_cube_size():
-	var node_layers: int = max_depth - TreeAttribute.LEAF_LAYERS - omitted_top_layers
+	var node_layers: int = max_depth - TreeAttribute.LEAF_LAYERS
 	_node_cube_size.resize(node_layers)
 	var s = $Extent.shape.size
 	var max_extent = maxf(maxf(s.x, s.y), s.z)
 	for i in range(0, node_layers):
 		_node_cube_size[i] = max_extent / 2**(max_depth - i - TreeAttribute.LEAF_LAYERS - 1)
 	_leaf_cube_size = _node_cube_size[0]/4
+	
 
 enum TreeAttribute{
 	LEAF_LAYERS = 2,
-	MIN_ACTIVE_LAYER = 3,
+	MIN_DEPTH = 4,
 	DANGEROUS_MAX_DEPTH = 11,
-	MAX_DEPTH = 18,
+	MAX_DEPTH = 14,
 }
 
 var _svo: SparseVoxelOctree

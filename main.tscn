@@ -6,7 +6,7 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_u7qyq"]
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_7m2if"]
-points = PackedVector3Array(0.5, 0.5, 0.5, 1.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5)
+points = PackedVector3Array(0, 0.5, 0.5, 1, 0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, 0.5)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_54eij")
@@ -14,13 +14,14 @@ script = ExtResource("1_54eij")
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0)
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
 shape = SubResource("BoxShape3D_u7qyq")
 
 [node name="Node3D" type="Node3D" parent="."]
+visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D"]
 shape = SubResource("ConvexPolygonShape3D_7m2if")
