@@ -21,7 +21,6 @@ collision_mask = 0
 shape = SubResource("BoxShape3D_u7qyq")
 
 [node name="Node3D" type="Node3D" parent="."]
-visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D"]
 shape = SubResource("ConvexPolygonShape3D_7m2if")

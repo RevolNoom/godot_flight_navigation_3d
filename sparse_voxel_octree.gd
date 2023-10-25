@@ -1,7 +1,5 @@
 class_name SparseVoxelOctree
 
-## TODO: Build whole tree
-
 ## @layers: Depth of the tree
 ## Construction of this tree omits root node
 ## @act1nodes: List of morton codes of active nodes in layer 1. 
@@ -16,12 +14,21 @@ func _init(layers: int, act1nodes: PackedInt64Array):
 	_fill_neighbor_top_down()
 	
 
-func node(layer: int, idx: int) -> SVONode:
+func node_i(layer: int, idx: int) -> SVONode:
 	return _nodes[layer][idx]
 
+#func subgrid_i(idx) -> int:
+#	return _leaves[idx]
+
+func node(layer: int, morton: int) -> SVONode:
+	var m_node = SVONode.new()
+	m_node.morton = morton
+	return _nodes[layer][_nodes[layer].bsearch_custom(m_node, 
+			func(node1: SVONode, node2: SVONode):
+				return node1.morton < node2.morton)]
+
+
 # TODO:
-func is_solid(morton_code: int) -> bool:
-	return false
 func from_file(filename: String):
 	pass
 func to_file(filename: String):
@@ -32,12 +39,12 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 	act1nodes.sort()
 	
 	## Allocating memory for subgrids
-	var err = _leaves.resize(act1nodes.size() * 8)
-	assert(err == OK, "Could't allocate %d nodes for SVO subgrids. Error code: %d" \
-				% [act1nodes.size() * 8, err])
+	#var err = _leaves.resize(act1nodes.size() * 8)
+	#assert(err == OK, "Could't allocate %d nodes for SVO subgrids. Error code: %d" \
+	#			% [act1nodes.size() * 8, err])
 	
 	## Init layer 0
-	err = _nodes[0].resize(act1nodes.size() * 8)
+	var err = _nodes[0].resize(act1nodes.size() * 8)
 	_nodes[0] = _nodes[0].map(func(value): return SVONode.new())
 	assert(err == OK, "Could't allocate %d nodes for SVO layer %d. Error code: %d" \
 				% [act1nodes.size() * 8, 0, err])
@@ -64,6 +71,8 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 			for i in range(1, parent_idx.size()):
 				if (active_nodes[i-1] >> 3) != (active_nodes[i] >> 3):
 					parent_idx[i] = parent_idx[i-1] + 1
+				else:
+					parent_idx[i] = parent_idx[i-1]
 			
 			## Allocate memory for current layer
 			var current_layer_size = (parent_idx[parent_idx.size()-1] + 1) * 8
@@ -81,9 +90,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 			
 			# Fill parent idx for children
 			var link_to_parent = _to_link(layer, i)
-			print("To link: %d %d %d" % [layer, i, link_to_parent])
 			for child in range(8):
-				print("Layer %d node %d parentlink %d" % [layer, 8*i+child, link_to_parent])
 				_nodes[layer-1][8*i + child].parent = link_to_parent
 		
 		## Prepare for the next layer construction
@@ -205,7 +212,7 @@ func _ask_parent_for_neighbor(
 
 ## Each leaf is a 4x4x4 compound of voxels
 ## They make up 2 bottom-most layers of the tree
-var _leaves: PackedInt64Array = []
+#var _leaves: PackedInt64Array = []
 
 ## Since _leaves make up 2 bottom-most layers,
 ## _nodes[0] is the 3rd layer of the tree, 
@@ -232,6 +239,10 @@ enum Neighbor
 class SVONode:
 	var morton: int
 	var parent: int
+	
+	# For layer 0, first_child IS the subgrid
+	# For layer 1 and up, _nodes[layer-1][first_child] is its first child
+	# _nodes[layer-1][first_child+1] is 2nd child... upto +7 (8th child)
 	var first_child: int
 	var xn: int
 	var xp: int
@@ -264,8 +275,8 @@ static func _subgrid(link: int) -> int:
 
 ## The rest
 static func _offset(link: int) -> int:
-	#print("\nlink: %d\noffset: %d\n" % [link, (link << 4) >> 10])
 	return (link << 4) >> 10
+
 
 ## WARNING: Not checking valid value for performance 
 static func _to_link(layer: int, offset: int, subgrid: int = 0) -> int:
@@ -273,7 +284,16 @@ static func _to_link(layer: int, offset: int, subgrid: int = 0) -> int:
 
 
 static func _test_for_orphan(svo: SparseVoxelOctree):
-	for i in range(svo._nodes.size()):
+	print("Testing SVO for orphan")
+	var orphan_found = 0
+	for i in range(svo._nodes.size()-1):	# -1 to omit root node
 		for j in range(svo._nodes[i].size()):
 			if svo._nodes[i][j].parent == NULL_LINK:
+				orphan_found += 1
 				printerr("NULL parent: Layer %d Node %d" % [i, j])
+	var err_str = "Completed with %d orphan%s found" \
+					% [orphan_found, "s" if orphan_found > 1 else ""]
+	if orphan_found:
+		printerr(err_str)
+	else:
+		print(err_str)
