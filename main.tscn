@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=6 format=3 uid="uid://dgo7fj4tmihlq"]
 
 [ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://navigation_space_3d.tscn" id="1_6of4y"]
 [ext_resource type="Script" path="res://main.gd" id="1_54eij"]
+[ext_resource type="Script" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="3_frfsx"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_u7qyq"]
 
@@ -12,6 +13,8 @@ points = PackedVector3Array(0, 0.5, 0.5, 1, 0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, 0.5)
 script = ExtResource("1_54eij")
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
+max_depth = 4
+leaf_cube_size = 0.5
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0)
@@ -24,3 +27,10 @@ shape = SubResource("BoxShape3D_u7qyq")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D"]
 shape = SubResource("ConvexPolygonShape3D_7m2if")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 3, 3)
+script = ExtResource("3_frfsx")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)

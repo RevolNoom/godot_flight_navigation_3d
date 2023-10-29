@@ -14,18 +14,22 @@ func _init(layers: int, act1nodes: PackedInt64Array):
 	_fill_neighbor_top_down()
 	
 
-func node_i(layer: int, idx: int) -> SVONode:
-	return _nodes[layer][idx]
+func node_from_offset(layer: int, offset: int) -> SVONode:
+	return _nodes[layer][offset]
+	
+	
+func node_from_link(link: int) -> SVONode:
+	return _nodes[_layer_of(link)][_offset(link)]
 
 #func subgrid_i(idx) -> int:
 #	return _leaves[idx]
 
-func node(layer: int, morton: int) -> SVONode:
+func index_from_morton(layer: int, morton: int) -> int:
 	var m_node = SVONode.new()
 	m_node.morton = morton
-	return _nodes[layer][_nodes[layer].bsearch_custom(m_node, 
+	return _nodes[layer].bsearch_custom(m_node, 
 			func(node1: SVONode, node2: SVONode):
-				return node1.morton < node2.morton)]
+				return node1.morton < node2.morton)
 
 
 # TODO:
@@ -44,10 +48,11 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 	#			% [act1nodes.size() * 8, err])
 	
 	## Init layer 0
-	var err = _nodes[0].resize(act1nodes.size() * 8)
+	_nodes[0].resize(act1nodes.size() * 8)
 	_nodes[0] = _nodes[0].map(func(value): return SVONode.new())
-	assert(err == OK, "Could't allocate %d nodes for SVO layer %d. Error code: %d" \
-				% [act1nodes.size() * 8, 0, err])
+	## Set all subgrid voxels as free space
+	for node in _nodes[0]:
+		node.first_child = 0
 	
 	var active_nodes = act1nodes
 	
@@ -56,17 +61,17 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 		## Fill children's morton code 
 		for i in range(0, active_nodes.size()):
 			for child in range(8):
-				_nodes[layer-1][i+child].morton\
-					= (active_nodes[i] << 3) + (child & 0b111) if \
-						layer < _nodes.size() else NULL_LINK
+				_nodes[layer-1][i*8+child].morton\
+					= (active_nodes[i] << 3) + (child & 0b111)
 		
 						
 		var parent_idx = active_nodes.duplicate()
 		parent_idx[0] = 0
 		
-		# Handle root node case
+		# ROOT NODE CASE
 		if layer == _nodes.size()-1:
 			_nodes[layer] = [SVONode.new()]
+			_nodes[layer][0].morton = 0
 		else:
 			for i in range(1, parent_idx.size()):
 				if (active_nodes[i-1] >> 3) != (active_nodes[i] >> 3):
@@ -76,9 +81,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 			
 			## Allocate memory for current layer
 			var current_layer_size = (parent_idx[parent_idx.size()-1] + 1) * 8
-			err = _nodes[layer].resize(current_layer_size)
-			assert(err == OK, "Could't allocate %d nodes for SVO layer %d. Error code: %d" \
-						% [current_layer_size, 0, err])
+			_nodes[layer].resize(current_layer_size)
 			_nodes[layer] = _nodes[layer].map(func(x): return SVONode.new())
 
 		# Fill parent/children index
@@ -96,7 +99,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 		## Prepare for the next layer construction
 		active_nodes = _get_parent_mortons(active_nodes)
 	
-	_test_for_orphan(self)
+	_comprehensive_test(self)
 
 
 ## WARN: This func relies on @active_nodes being sorted and contains only uniques
@@ -283,6 +286,12 @@ static func _to_link(layer: int, offset: int, subgrid: int = 0) -> int:
 	return (layer << 60) | (offset << 6) | subgrid 
 
 
+static func _comprehensive_test(svo: SparseVoxelOctree):
+	print("Testing SVO Validity")
+	_test_for_orphan(svo)
+	_test_for_null_morton(svo)
+	print("SVO Validity Test completed")
+
 static func _test_for_orphan(svo: SparseVoxelOctree):
 	print("Testing SVO for orphan")
 	var orphan_found = 0
@@ -294,6 +303,22 @@ static func _test_for_orphan(svo: SparseVoxelOctree):
 	var err_str = "Completed with %d orphan%s found" \
 					% [orphan_found, "s" if orphan_found > 1 else ""]
 	if orphan_found:
+		printerr(err_str)
+	else:
+		print(err_str)
+
+
+static func _test_for_null_morton(svo: SparseVoxelOctree):
+	print("Testing SVO for null morton")
+	var unnamed = 0
+	for i in range(svo._nodes.size()):	# -1 to omit root node
+		for j in range(svo._nodes[i].size()):
+			if svo._nodes[i][j].morton == NULL_LINK:
+				unnamed += 1
+				printerr("NULL morton: Layer %d Node %d" % [i, j])
+	var err_str = "Completed with %d null mortons%s found" \
+					% [unnamed, "s" if unnamed > 1 else ""]
+	if unnamed:
 		printerr(err_str)
 	else:
 		print(err_str)

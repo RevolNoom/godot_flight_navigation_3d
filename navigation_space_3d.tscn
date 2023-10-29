@@ -1,9 +1,15 @@
-[gd_scene load_steps=3 format=3 uid="uid://c1c25qj7uljje"]
+[gd_scene load_steps=5 format=3 uid="uid://c1c25qj7uljje"]
 
 [ext_resource type="Script" path="res://navigation_space_3d.gd" id="1_3yis1"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_nou3d"]
 size = Vector3(4, 4, 4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4mqn8"]
+emission_enabled = true
+emission = Color(0.392157, 0.392157, 0.392157, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rg7b8"]
 
 [node name="NavigationSpace3D" type="Area3D"]
 collision_layer = 0
@@ -13,6 +19,13 @@ leaf_cube_size = 0.25
 
 [node name="Extent" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_nou3d")
+
+[node name="CubeTemplate" type="MeshInstance3D" parent="."]
+visible = false
+material_override = SubResource("StandardMaterial3D_4mqn8")
+mesh = SubResource("BoxMesh_rg7b8")
+
+[node name="DebugCubes" type="Node3D" parent="."]
 
 [connection signal="body_shape_entered" from="." to="." method="_on_body_shape_entered"]
 [connection signal="body_shape_exited" from="." to="." method="_on_body_shape_exited"]

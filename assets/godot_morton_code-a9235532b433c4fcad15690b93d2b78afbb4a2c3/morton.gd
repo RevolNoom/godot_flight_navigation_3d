@@ -13,20 +13,12 @@ class_name Morton
 ##
 ## @length: 
 ## Specify how long the binary part after "0b" is.
-## @length < 0 means as long as needed.
-## Add 0's paddings if it's longer than the result
-## truncate if shorter
-##
-## NOTE: This function fails to address value -2^63
-static func int_to_bin(x: int, length: int = -1, prefix0b: bool = true) -> String:
-	var bin = ""
-	if x == 0:
-		bin = "0"
-	else:
-		while x != 0:
-			bin = bin + str(x & 1)
-			x >>= 1
-	bin = bin.substr(0, length)
-	bin += "0".repeat(maxi(0, length - bin.length()))
-	bin = ("0b" if prefix0b else "") + bin.reverse()
-	return bin
+## + Drop the most significant bits if shorter
+static func int_to_bin(x: int, length: int = 64, prefix0b: bool = true) -> String:
+	var bin = "0".repeat(64)
+	for i in range(64):
+		if x & (1 << (63-i)):
+			bin[i] = "1"
+	return ("0b" if prefix0b else "")\
+		+  "0".repeat(maxi(0, length - bin.length()))\
+		+  bin.substr(clampi(bin.length() - length, 0, bin.length()))

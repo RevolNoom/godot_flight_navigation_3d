@@ -13,6 +13,7 @@ class_name NavigationSpace3D
 
 # TODO: Support more type of shapes, currently only BoxShape is supported
 
+# TODO: When determine act1nodes, also store info about triangles overlapping them
 
 # TODO: Bake geometry & save to files
 @export_file() var bakedFile: String = ""
@@ -50,6 +51,7 @@ func voxelise():
 	_svo = SparseVoxelOctree.new(max_depth, act1nodes)
 	_voxelise_leaf_layer()
 	_fill_solid()
+	_draw_debug_boxes()
 
 
 ############################
@@ -102,6 +104,8 @@ func _on_body_shape_exited(
 
 ############## PRIVATE METHODS ###############
 
+## TODO: Return dictionary associating: 
+## TODO: Morton code of active nodes ~~~ Triangles overlapping it
 func _determine_act1nodes() -> PackedInt64Array:
 	var act1nodes: Dictionary = {}
 	for col_shape in _entered_shapes:
@@ -110,6 +114,8 @@ func _determine_act1nodes() -> PackedInt64Array:
 	return act1nodes.keys()
 
 
+## TODO: Return dictionary associating: 
+## TODO: Morton code of active nodes ~~~ Triangles overlapping it
 ## @polygon is assumed to have length divisible by 3
 ## Every 3 elements make up a triangle
 func _voxelise_polygon_layer1(polygon_faces: PackedVector3Array) -> Dictionary:
@@ -118,7 +124,8 @@ func _voxelise_polygon_layer1(polygon_faces: PackedVector3Array) -> Dictionary:
 		result.merge(_voxelise_triangle_layer1(polygon_faces.slice(i*3, (i+1)*3)))
 	return result
 
-
+## TODO: Return dictionary associating: 
+## TODO: Morton code of active nodes ~~~ Triangles overlapping it
 ## Return a dictionary with keys are Morton codes of active nodes
 func _voxelise_triangle_layer1(triangle: PackedVector3Array) -> Dictionary:
 	var result = {}
@@ -142,11 +149,13 @@ func _voxelise_triangle_subgrid(triangle: PackedVector3Array):
 	var tbt = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _leaf_cube_size)
 	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(_leaf_cube_size, tbt.aabb)
 	
+	var nvox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(_node0_size, tbt.aabb)
 	
 	# TODO: Probably the problem is here. Don't subtract it before overlap testing
 	var vox_origin = _extent_origin / _leaf_cube_size
 	vox_range[0] -= Vector3i(vox_origin)
 	vox_range[1] -= Vector3i(vox_origin)
+	
 	## vox_range is morton code into subgrid 
 	## As such, we can derive subgrid's layer-0 bounding box through it
 	## Each vox_range[0] component must be floor()ed, and vox_range[1] ceil()ed
@@ -161,22 +170,45 @@ func _voxelise_triangle_subgrid(triangle: PackedVector3Array):
 	
 	## Get the node0 at the "position" corner of the BB as the start point
 	## for the overlap-test loops 
-	var node0start:= _svo.node(0, Morton3.encode64(
+	var n0x_i: int = _svo.index_from_morton(0, Morton3.encode64(
 			vox_range[0].x, vox_range[0].y, vox_range[0].z))
 	
+	var n0x = _svo.node_from_offset(0, n0x_i)
 	## Loop through each node0 in the BB
 	for x in range(vox_range[0].x, vox_range[1].x):
-		var n0y = node0start.duplicate()
+		var n0y = n0x
 		for y in range(vox_range[0].y, vox_range[1].y):
+			var n0z = n0y
 			for z in range(vox_range[0].z, vox_range[1].z):
-				pass
-	
-
-
-func _noob_tri_vox_overlap_test(
-		vox_range: Array[Vector3i], 
-		triangle: PackedVector3Array):
-	pass
+				var m = Morton3.decode64(n0z.morton)
+				# Position of this node0
+				var n0p = Vector3(Morton3.x(m) , Morton3.y(m), Morton3.z(m)) * _node0_size\
+						- _half_extent
+						
+				## Test the subgrid
+				for vox_m in range(64):
+					## Decode voxel morton into x, y, z
+					var dm = Morton3.decode64(vox_m)
+					var voxel_position = Vector3(
+						Morton3.x(dm), 
+						Morton3.y(dm), 
+						Morton3.z(dm))\
+						* _leaf_cube_size
+						
+					#print("Testing: %v" % (n0p + voxel_position))
+					if tbt.overlap_voxel(n0p + voxel_position):
+						print("Overlap %v"% (n0p + voxel_position))
+						n0z.first_child |= 1 << vox_m
+				
+				# Move on to next node 0 in +z position
+				n0z = _svo.node_from_link(n0z.zp)
+			# Move on to next node 0 in +y position
+			n0y = _svo.node_from_link(n0y.yp)
+		# Move on to next node 0 in +x position
+		n0x = _svo.node_from_link(n0x.xp)
+		#TODO: Test result
+							
+				
 
 
 ## @size: The length in side of a voxel
@@ -224,6 +256,36 @@ func _fill_solid():
 	pass
 
 
+############## DEBUGS #######################
+
+func _draw_debug_boxes():
+	for cube in $DebugCubes.get_children():
+		cube.queue_free()
+	$CubeTemplate.mesh.size = Vector3(1,1,1)*_leaf_cube_size*0.5
+	for node0 in _svo._nodes[0]:
+			
+		node0 = node0 as SparseVoxelOctree.SVONode
+		
+		#print("Node:\t%s\nSolid:\t%s" % 
+		#	[Morton.int_to_bin(node0.morton, 64, false), 
+		#	Morton.int_to_bin(node0.first_child, 64, false)])
+			
+		var d = Morton3.decode64(node0.morton)
+		var node_pos = - _half_extent + _node0_size \
+						* Vector3(Morton3.x(d),
+								Morton3.y(d), 
+								Morton3.z(d))
+		for i in range(64):
+			if node0.first_child & (1<<i):
+				var di = Morton3.decode64(i) 
+				var offset = _leaf_cube_size * Vector3(Morton3.x(di), Morton3.y(di), Morton3.z(di))
+				var pos = node_pos + offset - Vector3(1,1,1)/2*_leaf_cube_size
+				var cube = $CubeTemplate.duplicate()
+				cube.visible = true
+				$DebugCubes.add_child(cube)
+				cube.position = pos
+				
+
 ############## CONFIG WARNINGS ##############
 
 func _get_configuration_warnings():
@@ -264,6 +326,7 @@ enum TreeAttribute{
 
 var _svo: SparseVoxelOctree
 
-@onready var _extent_origin: Vector3 = - $Extent.shape.size/2
+@onready var _half_extent: Vector3 = $Extent.shape.size/2
+@onready var _extent_origin: Vector3 = - $Extent.shape.size/2 + position
 func _on_extent_property_list_changed():
-	_extent_origin = - $Extent.shape.size/2
+	_extent_origin = - $Extent.shape.size/2 + position
