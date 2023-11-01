@@ -20,13 +20,24 @@ static func decode64(code: int) -> int:
 			| (_decodeMB64((code >> 1) & _INTERPOSITION) << 21)\
 			| (_decodeMB64((code >> 2) & _INTERPOSITION) << 42)
 
-static func x(decoded: int) -> int:
+static func decode_vec3(code: int) -> Vector3:
+	return Vector3(_decodeMB64(code & _INTERPOSITION),
+					_decodeMB64((code >> 1) & _INTERPOSITION),
+					_decodeMB64((code >> 2) & _INTERPOSITION))
+					
+static func decode_vec3i(code: int) -> Vector3i:
+	return Vector3i(_decodeMB64(code & _INTERPOSITION),
+					_decodeMB64((code >> 1) & _INTERPOSITION),
+					_decodeMB64((code >> 2) & _INTERPOSITION))
+
+
+static func get_x(decoded: int) -> int:
 	return decoded & 0x1FFFFF
 
-static func y(decoded: int) -> int:
+static func get_y(decoded: int) -> int:
 	return (decoded >> 21) & 0x1FFFFF
 	
-static func z(decoded: int) -> int:
+static func get_z(decoded: int) -> int:
 	return decoded >> 42
 
 
@@ -99,7 +110,7 @@ static func _automated_test():
 		var value = 1 << i
 		var encode_value = Morton3.encode64(value, 0, 0)
 		var expected_value = 1 << (i*3)
-		var decode_value = Morton3.x(Morton3.decode64(expected_value))
+		var decode_value = Morton3.decode_vec3i(expected_value).x
 		#print("Value:\t%s\nEncode:\t%s\nExpect:\t%s\nDecode:\t%s\n" % \
 		#		[int_to_bin(value, 64),
 		#		int_to_bin(encode_value, 64),
@@ -110,17 +121,17 @@ static func _automated_test():
 			no_error = false
 			printerr("Encoding %d got %d but expected %d!" % [value, encode_value, expected_value])
 			printerr("Value:\t'%s'\nEncoded:\t%s\nExpected:\t%s" \
-					% [int_to_bin(value, 64),\
-						int_to_bin(expected_value, 64),\
-						int_to_bin(encode_value, 64)])
+					% [int_to_bin(value),\
+						int_to_bin(expected_value),\
+						int_to_bin(encode_value)])
 		
 		if decode_value != value:
 			no_error = false
 			printerr("Decoding %d got %d but expected %d!" % [expected_value, decode_value, value])
 			printerr("Value:\t%s\nDecoded:\t%s\nExpected:\t%s" \
-					% [int_to_bin(expected_value, 64),\
-						int_to_bin(decode_value, 64),\
-						int_to_bin(value, 64)])
+					% [int_to_bin(expected_value),\
+						int_to_bin(decode_value),\
+						int_to_bin(value)])
 						
 	# TODO: Add inc/dec add/sub tests
 	

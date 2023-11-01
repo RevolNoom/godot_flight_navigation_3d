@@ -16,10 +16,18 @@ static func decode64(code: int) -> int:
 	return _decodeMB64(code & _INTERPOSITION)\
 			| ((_decodeMB64(code >> 1) & _INTERPOSITION) << 32)
 			
-static func x(decoded: int) -> int:
+static func decode_vec2(code: int) -> Vector2:
+	return Vector2(_decodeMB64(code & _INTERPOSITION),
+					_decodeMB64(code >> 1) & _INTERPOSITION)
+					
+static func decode_vec2i(code: int) -> Vector2i:
+	return Vector2i(_decodeMB64(code & _INTERPOSITION),
+					_decodeMB64(code >> 1) & _INTERPOSITION)
+			
+static func get_x(decoded: int) -> int:
 	return decoded & 0xFFFF_FFFF
 	
-static func y(decoded: int) -> int:
+static func get_y(decoded: int) -> int:
 	return decoded >> 32
 
 ## Add two Morton code
@@ -92,7 +100,7 @@ static func _automated_test():
 		var value = 1 << i
 		var encode_value = encode64(value, 0)
 		var expected_value = 1 << (i*2)
-		var decode_value = Morton2.x(decode64(expected_value))
+		var decode_value = Morton2.decode_vec2i(expected_value).x
 		#print("Value:\t%s\nEncode:\t%s\nExpect:\t%s\nDecode:\t%s\n" % \
 		#		[int_to_bin(value, 64),
 		#		int_to_bin(encode_value, 64),
@@ -103,17 +111,17 @@ static func _automated_test():
 			no_error = false
 			printerr("Encoding %d got %d but expected %d!" % [value, encode_value, expected_value])
 			printerr("Value:\t'%s'\nEncoded:\t%s\nExpected:\t%s" \
-					% [int_to_bin(value, 64),\
-						int_to_bin(expected_value, 64),\
-						int_to_bin(encode_value, 64)])
+					% [int_to_bin(value),\
+						int_to_bin(expected_value),\
+						int_to_bin(encode_value)])
 		
 		if decode_value != value:
 			no_error = false
 			printerr("Decoding %d got %d but expected %d!" % [expected_value, decode_value, value])
 			printerr("Value:\t%s\nDecoded:\t%s\nExpected:\t%s" \
-					% [int_to_bin(expected_value, 64),\
-						int_to_bin(decode_value, 64),\
-						int_to_bin(value, 64)])
+					% [int_to_bin(expected_value),\
+						int_to_bin(decode_value),\
+						int_to_bin(value)])
 	# TODO: Add inc/dec/add/sub tests
 	if no_error:
 		print("All Morton2 tests passed.")

@@ -9,6 +9,9 @@ var aabb: AABB
 var n: Vector3
 
 func _init(v: PackedVector3Array, dp: Vector3):
+	## DEBUG
+	#self._v = v
+	
 	## Bounding box
 	aabb = AABB()
 	aabb.position = v[0]
@@ -122,6 +125,9 @@ func _projection_2d_overlaps(p: Vector3) -> bool:
 		and (_ne_zx[1].dot(p_zx) + _de_xz[1]) >= 0\
 		and (_ne_zx[2].dot(p_zx) + _de_xz[2]) >= 0
 
+## DEBUGS
+## These vertices are not needed for test check
+#var _v: PackedVector3Array = [null, null, null]
 
 ## Distance Factor from each 
 ## critical point to triangle plane
