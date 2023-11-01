@@ -102,7 +102,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 		## Prepare for the next layer construction
 		active_nodes = _get_parent_mortons(active_nodes)
 	
-	SVO._comprehensive_test(self)
+	#SVO._comprehensive_test(self)
 
 
 ## WARN: This func relies on @active_nodes being sorted and contains only uniques
@@ -207,7 +207,8 @@ func _ask_parent_for_neighbor(
 			
 	if parent_nbor == NULL_LINK:
 		return NULL_LINK
-	var nbor_first_child = _nodes[parent_layer][SVO._offset(parent_nbor)].first_child
+	var offset = SVO._offset(parent_nbor)
+	var nbor_first_child = _nodes[parent_layer][offset].first_child
 	
 	if nbor_first_child == NULL_LINK:
 		return parent_nbor

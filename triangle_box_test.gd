@@ -10,7 +10,7 @@ var n: Vector3
 
 func _init(v: PackedVector3Array, dp: Vector3):
 	## DEBUG
-	#self._v = v
+	self._v = v
 	
 	## Bounding box
 	aabb = AABB()
@@ -81,7 +81,6 @@ func _init(v: PackedVector3Array, dp: Vector3):
 ## Do that test to get potential overlapping voxels and then feed them here
 ## @return true if triangle overlaps
 func overlap_voxel(p: Vector3) -> bool:
-	#print()
 	var po = _plane_overlaps(p)
 	var p2o = _projection_2d_overlaps(p)
 	#print("Test overlap %s:\nPlane Overlap: %s\nProjection Overlaps: %s" % [p, po, p2o])
@@ -127,7 +126,7 @@ func _projection_2d_overlaps(p: Vector3) -> bool:
 
 ## DEBUGS
 ## These vertices are not needed for test check
-#var _v: PackedVector3Array = [null, null, null]
+var _v: PackedVector3Array = [null, null, null]
 
 ## Distance Factor from each 
 ## critical point to triangle plane

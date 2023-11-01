@@ -8,7 +8,7 @@ func _ready():
 
 
 
-######## TEST ZONE #############
+######## TEST #############
 
 func _automated_test():
 	_test_debug_draw()

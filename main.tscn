@@ -1,43 +1,18 @@
-[gd_scene load_steps=7 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=5 format=3 uid="uid://dgo7fj4tmihlq"]
 
 [ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://navigation_space_3d.tscn" id="1_6of4y"]
 [ext_resource type="Script" path="res://main.gd" id="1_54eij"]
+[ext_resource type="PackedScene" uid="uid://v4ygiu7dj4ur" path="res://cat_test.tscn" id="2_lqgnc"]
 [ext_resource type="Script" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="3_frfsx"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_kmrpe"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5xqj6"]
-transparency = 1
-albedo_color = Color(1, 0, 0, 0.196078)
-emission_enabled = true
-emission = Color(1, 1, 1, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_u7qyq"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_54eij")
 
+[node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
+
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
-max_depth = 5
-leaf_cube_size = 0.25
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="NavigationSpace3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -1.5, 0)
-mesh = SubResource("BoxMesh_kmrpe")
-skeleton = NodePath("")
-surface_material_override/0 = SubResource("StandardMaterial3D_5xqj6")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0)
-collision_mask = 0
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
-shape = SubResource("BoxShape3D_u7qyq")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D/CollisionShape3D"]
-mesh = SubResource("BoxMesh_kmrpe")
-skeleton = NodePath("")
-surface_material_override/0 = SubResource("StandardMaterial3D_5xqj6")
+max_depth = 6
+leaf_cube_size = 0.125
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 3, 3)
@@ -45,4 +20,3 @@ script = ExtResource("3_frfsx")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
-visible = false

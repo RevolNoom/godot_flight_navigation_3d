@@ -81,17 +81,33 @@ func _get_box_faces(col_shape: CollisionShape3D) -> PackedVector3Array:
 	var ma = box.get_mesh_arrays()
 	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ma)
 	
-	# Convert triangles to local NavigationSpaceTransform
-	var mesh_to_navspace: \
+	return _convert_to_local_transform_in_place(col_shape, arr_mesh.get_faces())
+
+
+func _get_polygon_faces(col_shape: CollisionShape3D) -> PackedVector3Array:
+	var polymesh = ArrayMesh.new()
+	var surface_array = []
+	surface_array.resize(Mesh.ARRAY_MAX)
+	surface_array[Mesh.ARRAY_VERTEX] =\
+		(col_shape.shape as ConvexPolygonShape3D).points
+	polymesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surface_array)
+	return _convert_to_local_transform_in_place(col_shape, polymesh.get_faces())
+
+
+## Convert @out_triangles (in-place) from col_shape's transform 
+## to NavigationSpace transform
+## Return reference to @out_triangles
+func _convert_to_local_transform_in_place(
+	col_shape: CollisionShape3D, 
+	out_triangles: PackedVector3Array) -> PackedVector3Array:
+		var mesh_to_navspace: \
 		Transform3D = $Origin.global_transform.inverse() \
 					* col_shape.global_transform
 	
-	var triangles = arr_mesh.get_faces()
-	for i in range(0, triangles.size()):
-		triangles[i] = mesh_to_navspace * triangles[i]
-	
-	return triangles
-
+		for i in range(0, out_triangles.size()):
+			out_triangles[i] = mesh_to_navspace * out_triangles[i]
+		return out_triangles
+		
 
 func _on_body_shape_exited(
 	_body_rid: RID,
@@ -114,6 +130,15 @@ func _determine_act1nodes() -> Dictionary:
 		if col_shape.shape is BoxShape3D:
 			_merge_triangle_overlap_node_dicts(act1node_triangles, 
 				_voxelise_polygon(node1_size, _get_box_faces(col_shape)))
+		elif col_shape.shape is ConvexPolygonShape3D:
+			_merge_triangle_overlap_node_dicts(act1node_triangles, 
+				_voxelise_polygon(node1_size, _get_polygon_faces(col_shape)))
+		elif col_shape.shape is ConcavePolygonShape3D:
+			print("Concave")
+			_merge_triangle_overlap_node_dicts(act1node_triangles, 
+				_voxelise_polygon(node1_size, 
+					_convert_to_local_transform_in_place(col_shape, 
+						col_shape.shape.get_faces())))
 	return act1node_triangles
 
 
@@ -123,10 +148,9 @@ func _determine_act1nodes() -> Dictionary:
 ## Every 3 elements make up a triangle
 func _voxelise_polygon(vox_size: float, polygon_faces: PackedVector3Array) -> Dictionary:
 	var result = {}
-	@warning_ignore("integer_division")
-	for i in range(polygon_faces.size()/3):
+	for i in range(0, polygon_faces.size(), 3):
 		_merge_triangle_overlap_node_dicts(result, 
-			_voxelise_triangle(vox_size, polygon_faces.slice(i*3, (i+1)*3)))
+			_voxelise_triangle(vox_size, polygon_faces.slice(i, i+3)))
 	return result
 
 ## Return a dictionary 
@@ -159,7 +183,7 @@ func _voxelise_triangle(vox_size: float, triangle: PackedVector3Array) -> Dictio
 		
 	var result = {}
 	var tbt = TriangleBoxTest.new(triangle, Vector3(1,1,1) * vox_size)
-	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(vox_size, tbt.aabb)
+	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(vox_size, tbt.aabb, $Extent.shape.size)
 		
 	for x in range(vox_range[0].x, vox_range[1].x):
 		for y in range(vox_range[0].y, vox_range[1].y):
@@ -175,14 +199,16 @@ func _voxelise_triangle(vox_size: float, triangle: PackedVector3Array) -> Dictio
 
 ## @size: The length in side of a voxel
 ## @t_aabb: Triangle's AABB
+## @vox_bound: Clamp the result between 0 and vox_bound/size (exclusive)
 ## @return: [begin, end) (end is exclusive)
 ##	(end - begin) is non-negative
 ##	begin and end are inside Navigation Space  
 ##	Includes also voxels meerly touched by t_aabb
-func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB) -> Array[Vector3i]:
+func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB, vox_bound: Vector3) -> Array[Vector3i]:
 	# Begin & End
 	var b = t_aabb.position/size
 	var e = t_aabb.end/size
+	var vb = vox_bound/size
 	
 	#print("b: %s" % str(b))
 	#print("e: %s" % str(e))
@@ -196,12 +222,9 @@ func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB) -> Array[Vector3i]:
 	e.y = e.y + (1 if e.y == round(e.y) else 0)
 	e.z = e.z + (1 if e.z == round(e.z) else 0)
 	
-	# Because by configuration, all Extent sides are equal
-	var vox_bound = $Extent.shape.size
-	
 	# Clamp to fit inside Navigation Space
-	b = b.clamp(Vector3(), vox_bound)
-	e = e.clamp(Vector3(), vox_bound)
+	b = b.clamp(Vector3(), vb)
+	e = e.clamp(Vector3(), vb)
 	
 	return [b.floor(), e.ceil()]
 
@@ -236,19 +259,19 @@ func _voxelise_tree_node0(node1_morton: int, triangles: PackedVector3Array):
 	#print("Voxing 0:   %s" % Morton.int_to_bin(node1_morton))
 	var node0size = _node_size(0)
 	var node1size = _node_size(1) 
+	
 	var node1pos = Morton3.decode_vec3(node1_morton) * node1size
 	var node0s: Array[SVO.SVONode] = []
 	node0s.resize(8)
 	var node0pos: PackedVector3Array = []
-	node0pos.resize(8)
+	node0pos.resize(8)	
 	for m in range(8):
 		node0s[m] = _svo.node_from_morton(0, (node1_morton << 3) | m)
 		node0pos[m] = node1pos + Morton3.decode_vec3(m) * node0size
 		
-	@warning_ignore("integer_division")
-	for i in range(triangles.size()/3):
+	for i in range(0, triangles.size(), 3):
 		var threads: Array[Thread] = []
-		var triangle = triangles.slice(i*3, (i+1)*3)
+		var triangle = triangles.slice(i, i+3)
 		
 		# Node layer 0 - Triangle Test
 		var tbt0 = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
@@ -265,17 +288,29 @@ func _voxelise_tree_node0(node1_morton: int, triangles: PackedVector3Array):
 		for thread in threads:
 			thread.wait_to_finish()
 
+# TODO: Optimize _node_size calls
+# TODO: Pre-calculate morton offset of leaf nodes
 func _voxelise_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: Vector3):
 	var node0_solid_state: int = node0.first_child
-	for morton in range(64):
-		var vox_offset = Morton3.decode_vec3(morton) * _leaf_cube_size
-		var leaf_pos = node0pos+vox_offset
-		if (node0_solid_state & (1<<morton) == 0)\
-			and tbtl.overlap_voxel(leaf_pos):
-				if leaf_pos.x in [0, 3.75]:
-					var v = tbtl._v
-					print("WHAT?")
-				node0_solid_state |= 1<<morton
+	# TODO: Find voxels with bounding boxes overlaps triangle's BB
+	
+	var node0size = Vector3(1,1,1) * _node_size(0)
+	var node0aabb = AABB(node0pos, node0size)
+	var intersection = tbtl.aabb.intersection(node0aabb)
+	intersection.position -= node0pos
+	var vox_range = _voxels_overlapped_by_aabb(_leaf_cube_size, intersection, node0size)
+	
+	# BUG: The voxels haven't been checked for Bounding Box overlap
+	# Resulting in some extra "spikes"
+	for x in range(vox_range[0].x, vox_range[1].x):
+		for y in range(vox_range[0].y, vox_range[1].y):
+			for z in range(vox_range[0].z, vox_range[1].z):
+				var morton = Morton3.encode64(x,y,z)
+				var vox_offset = Vector3(x,y,z) * _leaf_cube_size
+				var leaf_pos = node0pos+vox_offset
+				if (node0_solid_state & (1 << morton) == 0)\
+					and tbtl.overlap_voxel(leaf_pos):
+						node0_solid_state |= 1<<morton
 	node0.first_child = node0_solid_state
 
 
@@ -288,7 +323,7 @@ func _fill_solid():
 func _draw_debug_boxes():
 	for cube in $Origin/DebugCubes.get_children():
 		cube.queue_free()
-	$CubeTemplate.mesh.size = _leaf_cube_size * Vector3(1,1,1)*0.95
+	$CubeTemplate.mesh.size = _leaf_cube_size * Vector3(1,1,1)*0.2
 	var node0_size = _node_size(0)
 	for node0 in _svo._nodes[0]:
 			
@@ -315,13 +350,11 @@ func _draw_debug_boxes():
 ## Return: @base will contain all informations from append. Duplicates are 
 ## possible, if @append appears more than once 
 func _merge_triangle_overlap_node_dicts(base: Dictionary, append: Dictionary):
-	#print("Bef")
 	for key in append.keys():
 		if base.has(key):
 			base[key].append_array(append[key])
 		else:
 			base[key] = append[key].duplicate()
-	#print("Aft")
 	# Since @base is already a reference, no need to return anything here
 
 
@@ -367,6 +400,5 @@ func _recalculate_area_origin():
 	_extent_origin = $Origin.position
 	
 func _on_extent_property_list_changed():
-	print("Extent changed")
 	_recalculate_area_origin()
 	_recalculate_leaf_size()
