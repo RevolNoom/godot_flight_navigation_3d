@@ -19,7 +19,7 @@ func node_from_offset(layer: int, offset: int) -> SVONode:
 	
 	
 func node_from_link(link: int) -> SVONode:
-	return _nodes[SVO._layer(link)][SVO._offset(link)]
+	return _nodes[SVOLink.layer(link)][SVOLink.offset(link)]
 
 #func subgrid_i(idx) -> int:
 #	return _leaves[idx]
@@ -36,9 +36,9 @@ func index_from_morton(layer: int, morton: int) -> int:
 
 
 # TODO:
-func from_file(filename: String):
+func from_file(_filename: String):
 	pass
-func to_file(filename: String):
+func to_file(_filename: String):
 	pass
 
 ## Allocate memory for each layer in bulk
@@ -77,10 +77,9 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 			_nodes[layer][0].morton = 0
 		else:
 			for i in range(1, parent_idx.size()):
-				if (active_nodes[i-1] >> 3) != (active_nodes[i] >> 3):
-					parent_idx[i] = parent_idx[i-1] + 1
-				else:
-					parent_idx[i] = parent_idx[i-1]
+				parent_idx[i] = parent_idx[i-1]\
+					+ int(SVO._mortons_diff_parent(active_nodes[i-1], active_nodes[i]))
+		
 			
 			## Allocate memory for current layer
 			var current_layer_size = (parent_idx[parent_idx.size()-1] + 1) * 8
@@ -89,13 +88,13 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 
 		# Fill parent/children index
 		for i in range(0, active_nodes.size()):
-			var node_idx = (8*parent_idx[i] + active_nodes[i] & 0b111)
+			var j = 8*parent_idx[i] + (active_nodes[i] & 0b111)
 			# Fill child idx for current layer
-			_nodes[layer][node_idx].first_child\
-					= SVO._to_link(layer-1, 8*i)
+			_nodes[layer][j].first_child\
+					= SVOLink.from(layer-1, 8*i)
 			
 			# Fill parent idx for children
-			var link_to_parent = SVO._to_link(layer, i)
+			var link_to_parent = SVOLink.from(layer, j)
 			for child in range(8):
 				_nodes[layer-1][8*i + child].parent = link_to_parent
 		
@@ -108,89 +107,99 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 ## WARN: This func relies on @active_nodes being sorted and contains only uniques
 func _get_parent_mortons(active_nodes: PackedInt64Array) -> PackedInt64Array:
 	#print("Child mortons: %s" % str(active_nodes))
-	var result: PackedInt64Array = []
+	if active_nodes.size() == 0:
+		return []
+		
+	var result: PackedInt64Array = [active_nodes[0] >> 3]
 	result.resize(active_nodes.size())
-	result.resize(0)
+	result.resize(1)
 	for morton in active_nodes:
-		var parent_code = (morton>>3)
-		if result.size() == 0 or result[result.size()-1] != parent_code:
+		var parent_code = morton>>3
+		if result[result.size()-1] != parent_code:
 			result.push_back(parent_code)
-	
 	#print("parent mortons: %s" % str(result))
 	return result
 
-
+#TODO: Is there any way to remove the enum test reeks?
 ## Fill neighbor informations, so that lower layers can rely on 
 ## their parents to figure out their neighbors
 func _fill_neighbor_top_down():
 	## Setup root node links
-	_nodes[_nodes.size()-1][0].first_child = SVO._to_link(_nodes.size()-2, 0)
+	_nodes[_nodes.size()-1][0].first_child = SVOLink.from(_nodes.size()-2, 0)
 	
 	for layer in range(_nodes.size()-2, -1, -1):
 		var this_layer = _nodes[layer]
 		for i in range(this_layer.size()):
-			var m = this_layer[i].morton
-			var parent_i = SVO._offset(this_layer[i].parent)
+			var this_node = this_layer[i]
+			var parent_i = SVOLink.offset(this_node.parent)
+			var p_layer = layer+1
 			
-			##### X #####
+			for direction in [Neighbor.X_NEG, Neighbor.X_POS,
+								Neighbor.Y_NEG, Neighbor.Y_POS,
+								Neighbor.Z_NEG, Neighbor.Z_POS]:
+				var neighbor: int = 0
+				match direction:
+					Neighbor.X_NEG:
+						neighbor = Morton3.dec_x(this_node.morton)
+					Neighbor.X_POS:
+						neighbor = Morton3.inc_x(this_node.morton)
+					Neighbor.Y_NEG: 
+						neighbor = Morton3.dec_y(this_node.morton)
+					Neighbor.Y_POS:
+						neighbor = Morton3.inc_y(this_node.morton)
+					Neighbor.Z_NEG: 
+						neighbor = Morton3.dec_z(this_node.morton)
+					Neighbor.Z_POS:
+						neighbor = Morton3.inc_z(this_node.morton)
 			
-			if m & 0b001:	# x = 1
-				this_layer[i].xn = SVO._to_link(layer, i ^ 0b001)
-				
-				var xp_nei = _ask_parent_for_neighbor(layer+1, parent_i, Neighbor.X_POS)
-				this_layer[i].xp = SVO._to_link(layer,
-						(xp_nei + ((i & 0b111) ^ 0b001)))\
-							if xp_nei != NULL_LINK else NULL_LINK
-			else:	# x = 0
-				var xn_nei = _ask_parent_for_neighbor(layer+1, parent_i, Neighbor.X_NEG)
-				this_layer[i].xn = SVO._to_link(layer,
-							(xn_nei + ((i & 0b111) ^ 0b001)))\
-								if xn_nei != NULL_LINK else NULL_LINK
-				this_layer[i].xp = SVO._to_link(layer, i ^ 0b001)
+				if not _mortons_diff_parent(neighbor, this_node.morton):
+					var nb_link = SVOLink.from(layer, (i & ~0b111) | (neighbor & 0b111))
+					match direction:
+						Neighbor.X_NEG:
+							this_node.xn = nb_link
+						Neighbor.X_POS:
+							this_node.xp = nb_link
+						Neighbor.Y_NEG: 
+							this_node.yn = nb_link
+						Neighbor.Y_POS:
+							this_node.yp = nb_link
+						Neighbor.Z_NEG: 
+							this_node.zn = nb_link
+						Neighbor.Z_POS:
+							this_node.zp = nb_link
+				else:
+					# TODO:
+					var actual_neighbor = _ask_parent_for_neighbor(p_layer, 
+											parent_i, direction, neighbor)
+					match direction:
+						Neighbor.X_NEG:
+							this_node.xn = actual_neighbor
+						Neighbor.X_POS:
+							this_node.xp = actual_neighbor
+						Neighbor.Y_NEG: 
+							this_node.yn = actual_neighbor
+						Neighbor.Y_POS:
+							this_node.yp = actual_neighbor
+						Neighbor.Z_NEG: 
+							this_node.zn = actual_neighbor
+						Neighbor.Z_POS:
+							this_node.zp = actual_neighbor
 			
-			##### Y #####
-			
-			if m & 0b010:	# y = 1
-				this_layer[i].yn = SVO._to_link(layer, i ^ 0b010)
-				var yp_nei = _ask_parent_for_neighbor(layer+1, parent_i, Neighbor.Y_POS)
-				this_layer[i].yp = SVO._to_link(layer,
-						(yp_nei + ((i & 0b111) ^ 0b010)))\
-							if yp_nei != NULL_LINK else NULL_LINK
-			else:	# y = 0
-				var yn_nei = _ask_parent_for_neighbor(layer+1, parent_i, Neighbor.Y_NEG)
-				this_layer[i].yn = SVO._to_link(layer,
-						(yn_nei + ((i & 0b111) ^ 0b010)))\
-							if yn_nei != NULL_LINK else NULL_LINK
-				this_layer[i].yp = SVO._to_link(layer, i ^ 0b010)
 
-			##### Z #####
-			
-			if m & 0b100:	# z = 1
-				this_layer[i].zn = SVO._to_link(layer, i ^ 0b100)
-				
-				var zp_nei = _ask_parent_for_neighbor(layer+1, parent_i, Neighbor.Z_POS)
-				this_layer[i].zp = SVO._to_link(layer,
-						(zp_nei + ((i & 0b111) ^ 0b100)))\
-							if zp_nei != NULL_LINK else NULL_LINK
-			else:	# z = 0
-				var zn_nei = _ask_parent_for_neighbor(layer+1, parent_i, Neighbor.Z_NEG)
-				this_layer[i].zn = SVO._to_link(layer,
-						(zn_nei + ((i & 0b111) ^ 0b100))\
-							if zn_nei != NULL_LINK else NULL_LINK)
-							
-				this_layer[i].zp = SVO._to_link(layer, i ^ 0b100)
-	#print("Breakpoint")
-
-
-# Ask parent for their x_pos neighbor, get parent's neighbor's first_child
-# If first_child is null link, then child's neighbor is parent's neighbor
-# Else, same-size neighbor exists, return their first child index
+# TODO: BUG: Didn't check for different layer neighbor
+# Ask parent for parent's neighbor
+# If parent's neighbor is on same layer with parent:
+## then get parent's neighbor's first_child
+## If first_child is null link, then child's neighbor is parent's neighbor
+## Else, same-size neighbor exists, return their first child index
+# Else, if parent's
 func _ask_parent_for_neighbor(
 		parent_layer: int, 
 		parent_idx: int, 
-		direction: Neighbor):
+		direction: Neighbor,
+		child_neighbor: int):
 	var parent = _nodes[parent_layer][parent_idx] as SVONode
-	var parent_nbor
+	var parent_nbor: int = 0
 	match direction:
 		Neighbor.X_NEG:
 			parent_nbor = parent.xn
@@ -205,16 +214,29 @@ func _ask_parent_for_neighbor(
 		Neighbor.Z_POS:
 			parent_nbor = parent.zp
 			
-	if parent_nbor == NULL_LINK:
-		return NULL_LINK
-	var offset = SVO._offset(parent_nbor)
-	var nbor_first_child = _nodes[parent_layer][offset].first_child
+	if parent_nbor == SVOLink.NULL:
+		return SVOLink.NULL
 	
-	if nbor_first_child == NULL_LINK:
+	# Parent's neighbor is one in higher layer
+	if parent_layer != SVOLink.layer(parent_nbor):
 		return parent_nbor
 	
-	return SVO._offset(nbor_first_child)
+	var offset = SVOLink.offset(parent_nbor)
+	print(Morton.int_to_bin(parent_nbor))
+	var nbor_first_child = _nodes[parent_layer][offset].first_child
 	
+	if nbor_first_child == SVOLink.NULL:
+		return parent_nbor
+	
+	return SVOLink.from(parent_layer-1, 
+		(SVOLink.offset(nbor_first_child) & ~0b111)\
+		| (child_neighbor & 0b111))
+
+
+# @m1, @m2: Morton3 codes
+# @return true if svo nodes with codes m1 and m2 don't have the same parent
+static func _mortons_diff_parent(m1: int, m2: int) -> bool: 
+	return (m1^m2) & 0b111
 
 
 ## Each leaf is a 4x4x4 compound of voxels
@@ -259,36 +281,16 @@ class SVONode:
 	var zp: int
 	
 	func _init():
-		morton = NULL_LINK
-		parent = NULL_LINK
-		first_child = NULL_LINK
-		xn = NULL_LINK
-		xp = NULL_LINK
-		yn = NULL_LINK
-		yp = NULL_LINK
-		zn = NULL_LINK
-		zp = NULL_LINK
-
-# All 1s
-const NULL_LINK = ~0
-
-## 4 leftmost bits
-static func _layer(link: int) -> int:
-	return link >> 60
-
-## 6 rightmost bits
-static func _subgrid(link: int) -> int:
-	return link & 0x3F
-
-## The rest
-static func _offset(link: int) -> int:
-	return (link << 4) >> 10
-
-
-## WARNING: Not checking valid value for performance 
-static func _to_link(layer: int, offset: int, subgrid: int = 0) -> int:
-	return (layer << 60) | (offset << 6) | subgrid 
-
+		morton = SVOLink.NULL
+		parent = SVOLink.NULL
+		first_child = SVOLink.NULL
+		xn = SVOLink.NULL
+		xp = SVOLink.NULL
+		yn = SVOLink.NULL
+		yp = SVOLink.NULL
+		zn = SVOLink.NULL
+		zp = SVOLink.NULL
+		
 
 static func _comprehensive_test(svo: SVO):
 	print("Testing SVO Validity")
@@ -296,12 +298,13 @@ static func _comprehensive_test(svo: SVO):
 	_test_for_null_morton(svo)
 	print("SVO Validity Test completed")
 
+
 static func _test_for_orphan(svo: SVO):
 	print("Testing SVO for orphan")
 	var orphan_found = 0
 	for i in range(svo._nodes.size()-1):	# -1 to omit root node
 		for j in range(svo._nodes[i].size()):
-			if svo._nodes[i][j].parent == NULL_LINK:
+			if svo._nodes[i][j].parent == SVOLink.NULL:
 				orphan_found += 1
 				printerr("NULL parent: Layer %d Node %d" % [i, j])
 	var err_str = "Completed with %d orphan%s found" \
@@ -317,7 +320,7 @@ static func _test_for_null_morton(svo: SVO):
 	var unnamed = 0
 	for i in range(svo._nodes.size()):	# -1 to omit root node
 		for j in range(svo._nodes[i].size()):
-			if svo._nodes[i][j].morton == NULL_LINK:
+			if svo._nodes[i][j].morton == SVOLink.NULL:
 				unnamed += 1
 				printerr("NULL morton: Layer %d Node %d" % [i, j])
 	var err_str = "Completed with %d null mortons%s found" \

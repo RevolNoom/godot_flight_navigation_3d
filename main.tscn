@@ -9,10 +9,11 @@
 script = ExtResource("1_54eij")
 
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.503, 0.5, 0)
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
-max_depth = 6
-leaf_cube_size = 0.125
+max_depth = 8
+leaf_cube_size = 0.03125
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 3, 3)

@@ -323,7 +323,7 @@ func _fill_solid():
 func _draw_debug_boxes():
 	for cube in $Origin/DebugCubes.get_children():
 		cube.queue_free()
-	$CubeTemplate.mesh.size = _leaf_cube_size * Vector3(1,1,1)*0.2
+	$CubeTemplate.mesh.size = _leaf_cube_size * Vector3(1,1,1)*0.5
 	var node0_size = _node_size(0)
 	for node0 in _svo._nodes[0]:
 			
