@@ -3,8 +3,8 @@ class_name SVOLink
 static var NULL = ~0
 
 ## WARNING: Not checking valid value for performance 
-static func from(layer: int, offset: int, subgrid: int = 0) -> int:
-	return (layer << 60) | (offset << 6) | subgrid 
+static func from(svo_layer: int, array_offset: int, subgrid_idx: int = 0) -> int:
+	return (svo_layer << 60) | (array_offset << 6) | subgrid_idx 
 
 ## 4 leftmost bits
 static func layer(link: int) -> int:

@@ -152,7 +152,7 @@ func _fill_neighbor_top_down():
 					Neighbor.Z_POS:
 						neighbor = Morton3.inc_z(this_node.morton)
 			
-				if not _mortons_diff_parent(neighbor, this_node.morton):
+				if not SVO._mortons_diff_parent(neighbor, this_node.morton):
 					var nb_link = SVOLink.from(layer, (i & ~0b111) | (neighbor & 0b111))
 					match direction:
 						Neighbor.X_NEG:
@@ -329,3 +329,36 @@ static func _test_for_null_morton(svo: SVO):
 		printerr(err_str)
 	else:
 		print(err_str)
+		
+		
+## Create a svo with only voxels on the surfaces
+static func _get_debug_svo(layer: int) -> SVO:
+	var layer1_side_length = 2 ** (layer-4)
+	var act1nodes = []
+	for i in range(8**(layer-4)):
+		var node1 = Morton3.decode_vec3i(i)
+		if node1.x in [0, layer1_side_length - 1]\
+		or node1.y in [0, layer1_side_length - 1]\
+		or node1.z in [0, layer1_side_length - 1]:
+			act1nodes.append(i)
+			
+	var svo:= SVO.new(layer, act1nodes)
+	
+	var layer0_side_length = 2 ** (layer-3)
+	for node0 in svo._nodes[0]:
+		node0 = node0 as SVO.SVONode
+		var n0pos := Morton3.decode_vec3i(node0.morton)
+		if n0pos.x in [0, layer0_side_length - 1]\
+		or n0pos.y in [0, layer0_side_length - 1]\
+		or n0pos.z in [0, layer0_side_length - 1]:
+			for i in range(64):
+				# Voxel position (relative to its node0 origin)
+				var vpos := Morton3.decode_vec3i(i)
+				if (n0pos.x == 0 and vpos.x == 0)\
+				or (n0pos.y == 0 and vpos.y == 0)\
+				or (n0pos.z == 0 and vpos.z == 0)\
+				or (n0pos.x == layer0_side_length - 1 and vpos.x == 3)\
+				or (n0pos.y == layer0_side_length - 1 and vpos.y == 3)\
+				or (n0pos.z == layer0_side_length - 1 and vpos.z == 3):
+					node0.first_child |= 1<<i
+	return svo
