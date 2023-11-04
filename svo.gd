@@ -1,5 +1,8 @@
 class_name SVO
 
+# TODO: The neighbor filling algorithm could be sped up by allocating 1 thread
+# per neighbor direction (-x, +x, -y,...) 
+
 ## @layers: Depth of the tree
 ## Construction of this tree omits root node
 ## @act1nodes: List of morton codes of active nodes in layer 1. 
@@ -12,7 +15,12 @@ func _init(layers: int, act1nodes: PackedInt64Array):
 
 	_construct_bottom_up(act1nodes)
 	_fill_neighbor_top_down()
-	
+
+
+# TODO: Return an array of links that connects @svolink_from to @svolink_dest
+func find_path(svolink_from: int, svolink_dest) -> PackedInt64Array:
+	return []
+
 
 func node_from_offset(layer: int, offset: int) -> SVONode:
 	return _nodes[layer][offset]

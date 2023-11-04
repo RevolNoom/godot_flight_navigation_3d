@@ -1,11 +1,14 @@
 extends Node3D
 
+
 func _on_timer_timeout():
-	$NavigationSpace3D.voxelize_async()
+	#$NavigationSpace3D.voxelize_async()
+	$NavigationSpace3D.voxelize()
 
 func _on_navigation_space_3d_finished():
+	pass
 	#$MeshInstance3D.visible = true
-	$NavigationSpace3D._draw_debug_boxes()
+	#$NavigationSpace3D._draw_debug_boxes()
 
 ######## TEST #############
 
@@ -22,5 +25,3 @@ func _test_debug_draw():
 	ns._svo = SVO._get_debug_svo(max_depth)
 	add_child(ns)
 	ns._draw_debug_boxes()
-
-

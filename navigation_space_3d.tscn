@@ -1,14 +1,6 @@
-[gd_scene load_steps=9 format=3 uid="uid://c1c25qj7uljje"]
+[gd_scene load_steps=7 format=3 uid="uid://c1c25qj7uljje"]
 
 [ext_resource type="Script" path="res://navigation_space_3d.gd" id="1_3yis1"]
-[ext_resource type="Script" path="res://svo_info.gd" id="2_07dhk"]
-
-[sub_resource type="Resource" id="Resource_s805t"]
-script = ExtResource("2_07dhk")
-leaf_cube_size = 0.5
-max_required_memory = 0.0
-approx_required_memory = 0.0
-approx_voxelize_time = 0.0
 
 [sub_resource type="BoxMesh" id="BoxMesh_vd4ml"]
 
@@ -32,7 +24,7 @@ size = Vector3(4, 4, 4)
 [node name="NavigationSpace3D" type="Area3D"]
 collision_layer = 0
 script = ExtResource("1_3yis1")
-information = SubResource("Resource_s805t")
+leaf_cube_size = 0.5
 
 [node name="Origin" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, -2, -2)

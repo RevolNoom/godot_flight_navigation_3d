@@ -1,5 +1,9 @@
 # Voxelize StaticBodies in the specified area
 # "monitoring" and "monitorable" must be kept on to detect StaticBody3D
+
+# WARNING: Do NOT call voxelize() or voxelize_async() in _ready(). 
+# Call it only after all the shapes have been registered by the physic engine
+# e.g. 0.05s after _ready()
 @tool
 extends Area3D
 class_name NavigationSpace3D
@@ -34,12 +38,17 @@ signal finished()
 						notify_property_list_changed()
 
 
-## TODO: Update approx/max memory, approx vox time.
-## These values give you a better idea on which tree configuration to choose.
-## They are READ-ONLY. Modifying them has no effect on the tree construction.
-@export var information := SVOInfo.new():
+## Disable editor warnings when max_depth is too big
+@export var disable_depth_warning := false:
 	set(value):
-		_update_information()
+		disable_depth_warning = value
+		notify_property_list_changed()
+		
+
+## This value is READ-ONLY. Modifying them has no effect on the tree construction.
+@export var leaf_cube_size := 0.0:
+	get:
+		return _leaf_cube_size
 
 
 func _ready():
@@ -50,6 +59,7 @@ func _ready():
 
 ## Expensive, should call only once
 ## when all CollisionShapes are registered
+## WARNING: That means don't call it on _ready()!
 ## This function blocks the main thread
 func voxelize():
 	_voxelize()
@@ -163,11 +173,19 @@ func _determine_act1nodes() -> Dictionary:
 ## Morton code of active nodes ~~~ Triangles overlapping it
 ## @polygon is assumed to have length divisible by 3
 ## Every 3 elements make up a triangle
+## Allocate one thread per triangle
 func _voxelize_polygon(vox_size: float, polygon_faces: PackedVector3Array) -> Dictionary:
 	var result = {}
+	var threads: Array[Thread] = []
+	# Using roundf() to avoid integer division warning
+	threads.resize(polygon_faces.size() / 3)
+	threads.resize(0)
 	for i in range(0, polygon_faces.size(), 3):
-		_merge_triangle_overlap_node_dicts(result, 
-			_voxelize_triangle(vox_size, polygon_faces.slice(i, i+3)))
+		threads.push_back(Thread.new())
+		threads.back().start(_voxelize_triangle.bind(vox_size, polygon_faces.slice(i, i+3)))
+			
+	for thread in threads:
+		_merge_triangle_overlap_node_dicts(result, thread.wait_to_finish())
 	return result
 
 ## Return a dictionary 
@@ -175,29 +193,6 @@ func _voxelize_polygon(vox_size: float, polygon_faces: PackedVector3Array) -> Di
 ## Values: Triangles overlapping it, 
 ##	serialized into a PackedVector3Array. Every 3 makes a triangle
 func _voxelize_triangle(vox_size: float, triangle: PackedVector3Array) -> Dictionary:
-	#if triangle == PackedVector3Array([Vector3(2, 2.5, 2.5), Vector3(3, 2.5, 2.5), Vector3(2, 1.5, 2.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(3, 2.5, 2.5), Vector3(3, 1.5, 2.5), Vector3(2, 1.5, 2.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(3, 2.5, 1.5), Vector3(2, 2.5, 1.5), Vector3(3, 1.5, 1.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(3, 2.5, 2.5), Vector3(3, 2.5, 1.5), Vector3(3, 1.5, 2.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(3, 2.5, 1.5), Vector3(3, 1.5, 1.5), Vector3(3, 1.5, 2.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(2, 2.5, 1.5), Vector3(2, 2.5, 2.5), Vector3(2, 1.5, 1.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(2, 2.5, 2.5), Vector3(2, 1.5, 2.5), Vector3(2, 1.5, 1.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(3, 2.5, 2.5), Vector3(2, 2.5, 2.5), Vector3(3, 2.5, 1.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(2, 2.5, 2.5), Vector3(2, 2.5, 1.5), Vector3(3, 2.5, 1.5)]):
-	#	return {}
-	#if triangle == PackedVector3Array([Vector3(2, 1.5, 2.5), Vector3(3, 1.5, 2.5), Vector3(2, 1.5, 1.5)]):
-	#	return {}
-	#if triangle != PackedVector3Array([Vector3(3, 1.5, 2.5), Vector3(3, 1.5, 1.5), Vector3(2, 1.5, 1.5)]):
-	#	return {}
-		
 	var result = {}
 	var tbt = TriangleBoxTest.new(triangle, Vector3(1,1,1) * vox_size)
 	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(vox_size, tbt.aabb, _extent_size)
@@ -226,9 +221,6 @@ func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB, vox_bound: Vector3) -
 	var b = t_aabb.position/size
 	var e = t_aabb.end/size
 	var vb = vox_bound/size
-	
-	#print("b: %s" % str(b))
-	#print("e: %s" % str(e))
 	
 	# Include voxels meerly touched by t_aabb
 	b.x = b.x - (1 if b.x == round(b.x) else 0)
@@ -334,8 +326,7 @@ func _fill_solid():
 ############## DEBUGS #######################
 
 
-## TODO: Draw with threads
-func _draw_debug_boxes():
+func draw_debug_boxes():
 	for cube in $Origin/DebugCubes.get_children():
 		cube.queue_free()
 	var node0_size = _node_size(0)
@@ -361,7 +352,7 @@ func _draw_debug_boxes():
 	# TODO: BUG: The cubes are off, somehow
 	for i in range(all_pos.size()):
 		$Origin/DebugCubes.multimesh.set_instance_transform(i, 
-			$Origin/DebugCubes.transform.translated(all_pos[i]))
+			Transform3D(Basis(), all_pos[i]))
 
 
 func _collect_cubes(
@@ -373,7 +364,7 @@ func _collect_cubes(
 	var node_pos = node0_size * Morton3.decode_vec3(node0.morton)
 	for vox in range(64):
 		if node0.first_child & (1<<vox):
-			var offset = _leaf_cube_size * (Morton3.decode_vec3(i) + Vector3(0.5,0.5,0.5))
+			var offset = _leaf_cube_size * (Morton3.decode_vec3(vox) + Vector3(0.5,0.5,0.5))
 			var pos = node_pos + offset
 			cube_pos[i].push_back(pos)
 
@@ -397,11 +388,17 @@ func _get_configuration_warnings():
 	var warnings: PackedStringArray = []
 	if not $Extent.shape is BoxShape3D:
 		warnings.push_back("Extent must be BoxShape3D.")
-	if max_depth >= TreeAttribute.DANGEROUS_MAX_DEPTH:
-		warnings.push_back("Can your machine really handle a voxel tree this deep and big?")
 	var s = $Extent.shape.size
 	if s.x != s.y or s.y != s.z:
 		warnings.push_back("Extent's side lengths must be equal. Make Extent a cube.")
+	
+	if disable_depth_warning:
+		return warnings
+
+	if max_depth >= TreeAttribute.DANGEROUS_DRAW_DEPTH:
+		warnings.push_back("Calling draw_debug_boxes() might crash at this tree depth.")
+	if max_depth >= TreeAttribute.DANGEROUS_MAX_DEPTH:
+		warnings.push_back("Can your machine really handle a voxel tree this deep and big?")
 	return warnings
 
 
@@ -420,7 +417,8 @@ func _node_size(layer: int) -> float:
 enum TreeAttribute{
 	LEAF_LAYERS = 2,
 	MIN_DEPTH = 4,
-	DANGEROUS_MAX_DEPTH = 11,
+	DANGEROUS_DRAW_DEPTH = 8,
+	DANGEROUS_MAX_DEPTH = DANGEROUS_DRAW_DEPTH + 2,
 	MAX_DEPTH = 14,
 }
 
@@ -444,4 +442,4 @@ func _on_extent_property_list_changed():
 
 func _update_information():
 	if get_child_count() > 0:
-		information.leaf_cube_size = $Extent.shape.size.x / 2**(max_depth-1)
+		_leaf_cube_size = $Extent.shape.size.x / 2**(max_depth-1)
