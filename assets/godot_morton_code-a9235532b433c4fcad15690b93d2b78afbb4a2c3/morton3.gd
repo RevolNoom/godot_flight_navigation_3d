@@ -8,6 +8,9 @@ class_name Morton3
 static func encode64(x: int, y: int, z: int) -> int:
 	assert(not ((x|y|z) & (~0x1FFFFF)), "ERROR: Morton3 encoding values of more than 21 bits")
 	return _encodeMB64(x) | (_encodeMB64(y)<<1) | (_encodeMB64(z)<<2)
+	
+static func encode64v(v: Vector3i) -> int:
+	return Morton3.encode64(v.x, v.y, v.z)
 
 ## Return @code decoded into an int64 "zyx"
 ## 21 least significant bits are x

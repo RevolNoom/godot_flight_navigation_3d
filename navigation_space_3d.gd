@@ -1,6 +1,11 @@
 # Voxelize StaticBodies in the specified area
 # "monitoring" and "monitorable" must be kept on to detect StaticBody3D
 
+# TODO: Unify the use of "layer", "depth".
+# Some places mean SVO depth + 2 subgrid layers
+# Other places mean only SVO depth
+
+
 # WARNING: Do NOT call voxelize() or voxelize_async() in _ready(). 
 # Call it only after all the shapes have been registered by the physic engine
 # e.g. 0.05s after _ready()
@@ -8,20 +13,20 @@
 extends Area3D
 class_name NavigationSpace3D
 
-## Emitted when voxelize() finishes
+## Emitted when voxelize() or voxelize_async() finishes
 signal finished()
 
 # TODO: Specialize Triangle-box overlap test for these cases:
-## - One-voxel thick bounding box
-## - Dominant normal axis (3 possible voxels/column)
+# - One-voxel thick bounding box
+# - Dominant normal axis (3 possible voxels/column)
 
 # TODO: Support more type of shapes
 # Sphere
 # Capsule
 # Cylinder
 
-# TODO: Bake geometry & save to files
-@export_file() var bakedFile: String = ""
+## TODO: Bake geometry & save to files
+#@export_file() var bakedFile: String = ""
 
 ## Higher depth rasterizes collision shapes in more details,
 ## but also consumes more memory. Each layer adds roughly 8 
@@ -45,7 +50,7 @@ signal finished()
 		notify_property_list_changed()
 		
 
-## This value is READ-ONLY. Modifying them has no effect on the tree construction.
+## This value is READ-ONLY. Modifying it has no effect on the tree construction.
 @export var leaf_cube_size := 0.0:
 	get:
 		return _leaf_cube_size
@@ -59,19 +64,24 @@ func _ready():
 
 ## Expensive, should call only once
 ## when all CollisionShapes are registered
-## WARNING: That means don't call it on _ready()!
+## WARNING: Do Not call it on _ready()!
 ## This function blocks the main thread
 func voxelize():
 	_voxelize()
 	emit_signal("finished")
 
 ## Like voxelize(), but doesn't block the main thread
-## Emit "finished" when... finish.
 var _background_voxelize_thread: Thread
 func voxelize_async():
 	_background_voxelize_thread = Thread.new()
-	_background_voxelize_thread.start(_voxelize_async)
+	_background_voxelize_thread.start(_voxelize_async, Thread.PRIORITY_LOW)
 
+
+func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
+	return $Astar.find_path(from, to, _svo, _extent_size.x)
+
+#func find_path_async(from: Vector3, to: Vector3, ...) -> PackedVector3Array:
+#	return []
 
 #################################
 
@@ -80,7 +90,6 @@ func _voxelize():
 	var svo = SVO.new(max_depth, act1node_triangles.keys())
 	_voxelize_tree(svo, act1node_triangles)
 	_svo = svo
-	#_fill_solid()
 
 func _voxelize_async():
 	_voxelize()
@@ -155,17 +164,18 @@ func _determine_act1nodes() -> Dictionary:
 	var act1node_triangles: Dictionary = {}
 	var node1_size = _node_size(1)
 	for col_shape in _entered_shapes:
+		var faces = []
 		if col_shape.shape is BoxShape3D:
-			_merge_triangle_overlap_node_dicts(act1node_triangles, 
-				_voxelize_polygon(node1_size, _get_box_faces(col_shape)))
+			faces = _get_box_faces(col_shape) 
 		elif col_shape.shape is ConvexPolygonShape3D:
-			_merge_triangle_overlap_node_dicts(act1node_triangles, 
-				_voxelize_polygon(node1_size, _get_polygon_faces(col_shape)))
+			faces = _get_polygon_faces(col_shape) 
 		elif col_shape.shape is ConcavePolygonShape3D:
-			_merge_triangle_overlap_node_dicts(act1node_triangles, 
-				_voxelize_polygon(node1_size, 
-					_convert_to_local_transform_in_place(col_shape, 
-						col_shape.shape.get_faces())))
+			faces = _convert_to_local_transform_in_place(col_shape, 
+						col_shape.shape.get_faces())
+		
+		_merge_triangle_overlap_node_dicts(act1node_triangles, 
+			_voxelize_polygon(node1_size, faces))
+			
 	return act1node_triangles
 
 
@@ -182,7 +192,9 @@ func _voxelize_polygon(vox_size: float, polygon_faces: PackedVector3Array) -> Di
 	threads.resize(0)
 	for i in range(0, polygon_faces.size(), 3):
 		threads.push_back(Thread.new())
-		threads.back().start(_voxelize_triangle.bind(vox_size, polygon_faces.slice(i, i+3)))
+		threads.back().start(
+			_voxelize_triangle.bind(vox_size, polygon_faces.slice(i, i+3)), 
+			Thread.PRIORITY_LOW)
 			
 	for thread in threads:
 		_merge_triangle_overlap_node_dicts(result, thread.wait_to_finish())
@@ -252,7 +264,9 @@ func _voxelize_tree(svo: SVO, act1node_triangles: Dictionary):
 	
 	for key in a1t_keys:
 		threads.push_back(Thread.new())
-		threads.back().start(_voxelize_tree_node0.bind(svo, key, act1node_triangles[key]))
+		threads.back().start(
+			_voxelize_tree_node0.bind(svo, key, act1node_triangles[key]),
+			Thread.PRIORITY_LOW)
 	
 	for t in threads:
 		t.wait_to_finish()
@@ -271,7 +285,7 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 	var node0s: Array[SVO.SVONode] = []
 	node0s.resize(8)
 	var node0pos: PackedVector3Array = []
-	node0pos.resize(8)	
+	node0pos.resize(8)
 	for m in range(8):
 		node0s[m] = svo.node_from_morton(0, (node1_morton << 3) | m)
 		node0pos[m] = node1pos + Morton3.decode_vec3(m) * node0size
@@ -290,7 +304,9 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 		for m in range(8):
 			if tbt0.overlap_voxel(node0pos[m]):
 				threads.push_back(Thread.new())
-				threads.back().start(_voxelize_tree_leaves.bind(tbtl, node0s[m], node0pos[m]))
+				threads.back().start(
+					_voxelize_tree_leaves.bind(tbtl, node0s[m], node0pos[m]),
+					Thread.PRIORITY_LOW)
 						
 		for thread in threads:
 			thread.wait_to_finish()
@@ -318,11 +334,6 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 	node0.first_child = node0_solid_state
 
 
-# TODO: But is it really needed?
-func _fill_solid():
-	pass
-
-
 ############## DEBUGS #######################
 
 
@@ -338,7 +349,9 @@ func draw_debug_boxes():
 	cube_pos.resize(_svo._nodes[0].size())
 	for i in range(_svo._nodes[0].size()):
 		threads.push_back(Thread.new())
-		threads.back().start(_collect_cubes.bind(_svo._nodes[0][i], cube_pos, i, node0_size))
+		threads.back().start(
+			_collect_cubes.bind(_svo._nodes[0][i], cube_pos, i, node0_size),
+			Thread.PRIORITY_LOW)
 	for thread in threads:
 		thread.wait_to_finish()
 	
@@ -349,7 +362,6 @@ func draw_debug_boxes():
 	$Origin/DebugCubes.multimesh.mesh.size = _leaf_cube_size * Vector3(1,1,1)
 	$Origin/DebugCubes.multimesh.instance_count = all_pos.size()
 		
-	# TODO: BUG: The cubes are off, somehow
 	for i in range(all_pos.size()):
 		$Origin/DebugCubes.multimesh.set_instance_transform(i, 
 			Transform3D(Basis(), all_pos[i]))

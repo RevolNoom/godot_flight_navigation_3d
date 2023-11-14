@@ -7,6 +7,12 @@ class_name Morton2
 static func encode64(x: int, y: int) -> int:
 	assert(not ((x|y) & (~0xFFFF_FFFF)), "ERROR: Morton2 encoding values of more than 32 bits")
 	return _encodeMB64(x) | (_encodeMB64(y)<<1)
+	
+## Return a 64 bits Morton code, with x, y bits interleaved like this:
+## 0b y20 x20 y19 x19 ... y0 x0
+## Can't encode value > 4294967295 (0x7FFF_FFFF, 32 bits)
+static func encode64v(v: Vector2i) -> int:
+	return Morton2.encode64(v.x, v.y)
 
 ## Return @code decoded into a int64 "yx"
 ## 32 least significant bits are x, the rest is y

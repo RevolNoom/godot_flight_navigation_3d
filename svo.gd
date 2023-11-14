@@ -17,11 +17,6 @@ func _init(layers: int, act1nodes: PackedInt64Array):
 	_fill_neighbor_top_down()
 
 
-# TODO: Return an array of links that connects @svolink_from to @svolink_dest
-func find_path(svolink_from: int, svolink_dest) -> PackedInt64Array:
-	return []
-
-
 func node_from_offset(layer: int, offset: int) -> SVONode:
 	return _nodes[layer][offset]
 	
@@ -42,6 +37,11 @@ func index_from_morton(layer: int, morton: int) -> int:
 			func(node1: SVONode, node2: SVONode):
 				return node1.morton < node2.morton)
 
+
+## Return the depth, excluding the subgrid levels
+var depth: int:
+	get:
+		return _nodes.size()
 
 # TODO:
 func from_file(_filename: String):

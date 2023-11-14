@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://c1c25qj7uljje"]
+[gd_scene load_steps=8 format=3 uid="uid://c1c25qj7uljje"]
 
 [ext_resource type="Script" path="res://navigation_space_3d.gd" id="1_3yis1"]
+[ext_resource type="Script" path="res://greedy_a_star.gd" id="2_nlqg2"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_vd4ml"]
 
@@ -39,6 +40,9 @@ shape = SubResource("BoxShape3D_nou3d")
 visible = false
 mesh = SubResource("BoxMesh_27dsg")
 skeleton = NodePath("../..")
+
+[node name="Astar" type="Node" parent="."]
+script = ExtResource("2_nlqg2")
 
 [connection signal="body_shape_entered" from="." to="." method="_on_body_shape_entered"]
 [connection signal="body_shape_exited" from="." to="." method="_on_body_shape_exited"]
