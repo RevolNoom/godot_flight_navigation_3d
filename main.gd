@@ -1,11 +1,11 @@
 extends Node3D
 
 func _ready():
-	PriorityQueue._automated_test()
-
+	#PriorityQueue._automated_test()
+	pass
 
 func _on_timer_timeout():
-	#$NavigationSpace3D.voxelize_async()
+	$NavigationSpace3D.voxelize_async()
 	#$NavigationSpace3D.voxelize()
 	pass
 

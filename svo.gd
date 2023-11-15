@@ -24,8 +24,13 @@ func node_from_offset(layer: int, offset: int) -> SVONode:
 func node_from_link(link: int) -> SVONode:
 	return _nodes[SVOLink.layer(link)][SVOLink.offset(link)]
 
-#func subgrid_i(idx) -> int:
-#	return _leaves[idx]
+
+## Return neighbor nodes' links of node with @svolink
+## TODO: Return neighbors in SVONode attributes
+## and all smaller nodes (vox) if we're going from big vox to small vox 
+func neighbors_of(svolink: int) -> PackedInt64Array:
+	return []
+
 
 func node_from_morton(layer: int, morton: int) -> SVONode:
 	return _nodes[layer][index_from_morton(layer, morton)]

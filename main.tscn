@@ -18,7 +18,6 @@ skeleton = NodePath("../NavigationSpace3D")
 
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
 transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.523782, 0, -0.224479)
-visible = false
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
 max_depth = 9
@@ -27,12 +26,10 @@ leaf_cube_size = 0.015625
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 4, 3)
-visible = false
 script = ExtResource("3_frfsx")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
-visible = false
 
 [node name="Timer" type="Timer" parent="."]
 wait_time = 0.1

@@ -2,8 +2,10 @@
 extends Node
 class_name GreedyAStar
 
-@export_enum("Face Centers", "Cube Centers") var endpoints = "Face Centers":
+## TODO: Currently only support Voxel Centers
+@export_enum("Face Centers", "Voxel Centers") var endpoints = "Voxel Centers":
 	set(value):
+		endpoints = "Voxel Centers"
 		endpoints = value
 		if endpoints == "Face Centers":
 			_endpoints = _face_centers
@@ -25,7 +27,12 @@ class_name GreedyAStar
 ## The bigger the node, the less it costs to move through it
 @export var size_compensation_factor: float = 0.05
 
-## no matter how big the node is, travelling
+## If true, the cost between two voxels is unit_cost
+## Otherwise, 
+## TODO: Actually make it work
+@export var use_unit_cost: bool = true
+
+## No matter how big the node is, travelling
 ## through it has the same cost
 @export var unit_cost: float = 1
 
@@ -41,17 +48,40 @@ func find_path(from: Vector3, to: Vector3, svo: SVO, extent: float) -> PackedVec
 
 func _greedy_a_star(from: int, to: int, svo: SVO):
 	# The Priority Queue of best nodes to search
-	var uncharted:= PriorityQueue.new()
+	# Element: [Total Cost Estimated, SVOLink]
+	# Sorted by TCE. pop() returns element with smallest TCE
+	const TotalCostEstimated = 0
+	const SvoLink = 1
+	var unsearched:= PriorityQueue.new(
+		func (u1, u2) -> bool:
+			return u1[TotalCostEstimated] > u2[TotalCostEstimated])
 	
-	# Dictionary of nodes already searched
-	# Key - Value: SVOLink - real cost
-	var charted: Dictionary
+	# Dictionary of nodes already visited,
+	# so that it's not visited more than once
+	# Key - Value: SVOLink - Real Cost
+	var charted: Dictionary = {}
+	
+	unsearched.push([INF, from])
+	charted[from] = 0
+	
+	while unsearched.size() > 0:
+		var best_node = unsearched.pop()
+		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
+		var neighbor_cost = charted[best_node[SvoLink]] + unit_cost
+		for neighbor in bn_neighbors:
+			if charted.has(neighbor):
+				continue
+			charted[neighbor] = neighbor_cost
+			unsearched.push([neighbor_cost\
+				+ _compute_cost(from, neighbor)\
+				+ _estimate_cost(neighbor, to)\
+				, neighbor])
+			
 	pass
- 
-func _neighbors_of(node_link) -> PackedInt64Array:
-	return []
 
-func _get_total_cost(svolink_from: int, svolink_to: int) -> float:
+
+## Calculate the cost between two connected voxels
+func _compute_cost(svolink_from: int, svolink_to: int) -> float:
 	var layer_f = SVOLink.layer(svolink_from)
 	var layer_t = SVOLink.layer(svolink_to)
 	
@@ -59,9 +89,10 @@ func _get_total_cost(svolink_from: int, svolink_to: int) -> float:
 	var grid_t = SVOLink.subgrid(svolink_to)
 	
 	return 0
-	# return (_compute_cost() + w * _estimate_cost())\
+	# return (_computSvoLinke_cost() + w * _estimate_cost())\
 	# * (1 - layer_t * size_compensation_factor)
 
+## Calculate the cost between a voxel and its destination
 func _estimate_cost(svolink1: int, svolink2: int) -> float:
 	return distance
 
@@ -70,9 +101,6 @@ func _estimate_cost(svolink1: int, svolink2: int) -> float:
 func _convert_to_svolink(svo_depth: int, extent_size: float, position: Vector3) -> int:
 	return 0
 
-
-func _compute_cost() -> float:
-	return 0
 
 func _node_centers():
 	pass

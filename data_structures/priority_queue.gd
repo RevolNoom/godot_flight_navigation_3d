@@ -3,13 +3,16 @@ class_name PriorityQueue
 
 
 ## @comp: func(a, b) -> bool, comparator of two elements
-## Default to Less comparison. pop() returns the greatest element
-## Use
+## Default to Less comparator -> pop() returns the greatest element
+## Use Greater comparator to get pop() to return the smallest element
 func _init(comp := Comparator.LESS):
 	_comp = comp
 	_heap = []
 	_size = 0
 
+## Return the number of elements in the heap
+func size() -> int: 
+	return _size
 
 ## TODO: Process an array in-place
 static func from(array: Array, _comp := Comparator.LESS) -> PriorityQueue:
