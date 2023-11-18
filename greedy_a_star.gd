@@ -2,16 +2,19 @@
 extends Node
 class_name GreedyAStar
 
-## TODO: Currently only support Voxel Centers
-@export_enum("Face Centers", "Voxel Centers") var endpoints = "Voxel Centers":
-	set(value):
-		endpoints = "Voxel Centers"
-		endpoints = value
-		if endpoints == "Face Centers":
-			_endpoints = _face_centers
-		else:
-			_endpoints = _node_centers
+## TODO: Support Face Centers in the future
+#@export_enum("Face Centers", "Voxel Centers") var endpoints = "Voxel Centers":
+#	set(value):
+#		endpoints = "Voxel Centers"
+#		endpoints = value
+#		if endpoints == "Face Centers":
+#			_endpoints = _face_centers
+#		else:
+#			_endpoints = _node_centers
 
+## Function used to estimate cost between a voxel and destination
+## And used to calculate adjacent voxels cost, if @use_unit_cost is disabled
+## TODO: Support Manhattan in the future
 @export_enum("Euclidean", "Manhattan") var distance = "Euclidean":
 	set(value):
 		distance = value
@@ -27,9 +30,9 @@ class_name GreedyAStar
 ## The bigger the node, the less it costs to move through it
 @export var size_compensation_factor: float = 0.05
 
-## If true, the cost between two voxels is unit_cost
-## Otherwise, 
-## TODO: Actually make it work
+## If true, the cost between two voxels is unit_cost no matter their sizes
+## Otherwise, use distance function to calculate
+## TODO: Actually make it works
 @export var use_unit_cost: bool = true
 
 ## No matter how big the node is, travelling
@@ -45,7 +48,7 @@ func find_path(from: Vector3, to: Vector3, svo: SVO, extent: float) -> PackedVec
 	# A* algo
 	return []
 
-
+# @from, @to: SVOLink 
 func _greedy_a_star(from: int, to: int, svo: SVO):
 	# The Priority Queue of best nodes to search
 	# Element: [Total Cost Estimated, SVOLink]
@@ -72,29 +75,33 @@ func _greedy_a_star(from: int, to: int, svo: SVO):
 			if charted.has(neighbor):
 				continue
 			charted[neighbor] = neighbor_cost
+			if neighbor == to:
+				break
 			unsearched.push([neighbor_cost\
-				+ _compute_cost(from, neighbor)\
-				+ _estimate_cost(neighbor, to)\
+				+ _compute_cost(from, neighbor, svo)\
+				+ _estimate_cost(neighbor, to, svo)\
 				, neighbor])
 			
 	pass
 
 
-## Calculate the cost between two connected voxels
-func _compute_cost(svolink_from: int, svolink_to: int) -> float:
-	var layer_f = SVOLink.layer(svolink_from)
-	var layer_t = SVOLink.layer(svolink_to)
+## @from, @to: SVOLink
+## Calculate the cost between two connected voxels 
+## Direction is from @from to @to
+func _compute_cost(from: int, to: int, svo: SVO) -> float:
+	#var layer_f = SVOLink.layer(svolink_from)
+	#var layer_t = SVOLink.layer(svolink_to)
 	
-	var grid_f = SVOLink.subgrid(svolink_from)
-	var grid_t = SVOLink.subgrid(svolink_to)
+	#var grid_f = SVOLink.subgrid(svolink_from)
+	#var grid_t = SVOLink.subgrid(svolink_to)
 	
-	return 0
-	# return (_computSvoLinke_cost() + w * _estimate_cost())\
-	# * (1 - layer_t * size_compensation_factor)
+	#return 0
+	return unit_cost * (1 - SVOLink.layer(to) * size_compensation_factor)
 
-## Calculate the cost between a voxel and its destination
-func _estimate_cost(svolink1: int, svolink2: int) -> float:
-	return distance
+
+## Calculate the cost to travel from @svolink to @destination
+func _estimate_cost(svolink: int, destination: int, svo: SVO) -> float:
+	return w * _distance.call(svolink, destination, svo)
 
 
 ## Return SVOLink of the smallest node in the svo tree that contains this position
@@ -102,20 +109,40 @@ func _convert_to_svolink(svo_depth: int, extent_size: float, position: Vector3) 
 	return 0
 
 
-func _node_centers():
-	pass
+#func _node_centers():
+#	pass
 	
-func _face_centers():
-	pass
+#func _face_centers():
+#	pass
 
-func _euclidean():
+
+func _euclidean(svolink1: int, svolink2: int, svo: SVO) -> float:
+	## TODO: Maybe distance_squared_to is a better choice?
+	return _node_center(svolink1, svo).distance_to(_node_center(svolink2, svo))
+
+
+## Calculate the center of the voxel
+## where 1 unit distance corresponds to side length of 1 subgrid voxel
+func _node_center(svolink: int, svo: SVO) -> Vector3:
+	var node = svo.node_from_link(svolink)
+	var layer = SVOLink.layer(svolink)
+	var corner_pos = Morton3.decode_vec3(node.morton)\
+			* (2 ** (layer+2))
+	
+	# In case layer 0 node has some solid voxels, the center
+	# is the center of the subgrid voxel, not of the node
+	if layer == 0 and node.first_child != 0:
+		return corner_pos + Morton3.decode_vec3(SVOLink.subgrid(svolink))\
+				+ Vector3(1,1,1)*0.5
+			
+	return corner_pos + Vector3(1,1,1) * (2 ** (layer+1))
+
+
+func _manhattan(svolink1: int, svolink2: int, svo: SVO):
 	pass
 	
-func _manhattan():
-	pass
-	
-var _distance
-var _endpoints
+var _distance: Callable
+var _endpoints: Callable
 
 func _on_property_list_changed():
 	update_configuration_warnings()

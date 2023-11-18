@@ -27,7 +27,7 @@ func node_from_link(link: int) -> SVONode:
 
 ## Return neighbor nodes' links of node with @svolink
 ## TODO: Return neighbors in SVONode attributes
-## and all smaller nodes (vox) if we're going from big vox to small vox 
+## and all smallest nodes (vox) if we're going from big vox to small vox 
 func neighbors_of(svolink: int) -> PackedInt64Array:
 	return []
 
