@@ -27,9 +27,67 @@ func node_from_link(link: int) -> SVONode:
 
 ## Return neighbor nodes' links of node with @svolink
 ## TODO: Return neighbors in SVONode attributes
-## and all smallest nodes (vox) if we're going from big vox to small vox 
+## and all smallest nodes (vox) if we're going from big vox to small vox
 func neighbors_of(svolink: int) -> PackedInt64Array:
-	return []
+	var node = node_from_link(svolink)
+	var layer = SVOLink.layer(svolink)
+	
+	var neighbors: PackedInt64Array = []
+	# Case when we are dealing with big nodes
+	# A node may have neighbors of any layer (bigger, smaller, same)
+	if (layer == 0 and node.first_child == 0) or layer != 0:
+		pass
+	# Case when we are dealing with a subgrid voxel
+	# A subgrid voxel may have neighbor voxels of
+	# same layer or higher (i.e. bigger node)
+	else:
+		var subgrid = SVOLink.subgrid(svolink)
+		var temp = Morton3.inc_x(subgrid)
+		pass
+	return neighbors
+
+
+# @svolink: link to a node (not a subgrid voxel!)
+# Return all highest-resolution voxels that make up the face of node @svolink
+func smallest_voxels_on_surface(face: Neighbor, svolink: int) -> PackedInt64Array:
+	var layer = SVOLink.layer(svolink)
+	if layer == 0:
+		# TODO: Return the links!
+		match face:
+			Neighbor.X_NEG:
+				return []
+			Neighbor.X_POS:
+				return []
+			Neighbor.Y_NEG:
+				return []
+			Neighbor.Y_POS:
+				return []
+			Neighbor.Z_NEG:
+				return []
+			Neighbor.Z_POS:
+				return []
+	
+	var node = node_from_link(svolink)
+
+	# If this node doesn't have any child
+	# Then it makes up the face itself
+	if node.first_child == SVOLink.NULL:
+		return [svolink]
+
+	# TODO: Recursively return smallest_voxels_on_surface() on children
+	match face:
+		Neighbor.X_NEG:
+			return []
+		Neighbor.X_POS:
+			return []
+		Neighbor.Y_NEG:
+			return []
+		Neighbor.Y_POS:
+			return []
+		Neighbor.Z_NEG:
+			return []
+		_: #Neighbor.Z_POS:
+			return []
 
 
 func node_from_morton(layer: int, morton: int) -> SVONode:
@@ -199,7 +257,6 @@ func _fill_neighbor_top_down():
 							this_node.zp = actual_neighbor
 			
 
-# TODO: BUG: Didn't check for different layer neighbor
 # Ask parent for parent's neighbor
 # If parent's neighbor is on same layer with parent:
 ## then get parent's neighbor's first_child

@@ -70,18 +70,49 @@ static func dec_z(code: int) -> int:
 	var z_diff = (code & _Z_MASK) - 4
 	return ((z_diff & _Z_MASK) | (code & _YX_MASK))
 
-static func add(lhs: int, rhs: int):
+## Return a new morton code
+## with each component of @lhs added by @rhs counterpart 
+static func add(lhs: int, rhs: int) -> int:
 	var x_sum = (lhs | _ZY_MASK) + (rhs & _X_MASK)
 	var y_sum = (lhs | _ZX_MASK) + (rhs & _Y_MASK)
 	var z_sum = (lhs | _YX_MASK) + (rhs & _Z_MASK)
 	return ((x_sum & _X_MASK) | (y_sum & _Y_MASK) | (z_sum & _Z_MASK))
 
-static func sub(lhs: int, rhs: int):
+## Return a new morton code
+## with each component of @lhs subtracted by @rhs counterpart 
+static func sub(lhs: int, rhs: int) -> int:
 	var x_diff = (lhs & _X_MASK) - (rhs & _X_MASK)
 	var y_diff = (lhs & _Y_MASK) - (rhs & _Y_MASK)
 	var z_diff = (lhs & _Z_MASK) - (rhs & _Z_MASK)
 	return ((x_diff & _X_MASK) | (y_diff & _Y_MASK) | (z_diff & _Z_MASK))
 
+## Greater Than >
+## Return true if all components of @lhs is greater than @rhs counterpart
+static func gt(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) > (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) > (rhs & _Y_MASK)\
+		and (lhs & _Z_MASK) > (rhs & _Z_MASK)
+
+## Greater Than or Equal >=
+## Return true if all components of @lhs is greater than @rhs counterpart
+static func ge(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) >= (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) >= (rhs & _Y_MASK)\
+		and (lhs & _Z_MASK) >= (rhs & _Z_MASK)
+
+## Less Than <
+## Return true if all components of @lhs is less than @rhs counterpart
+static func lt(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) < (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) < (rhs & _Y_MASK)\
+		and (lhs & _Z_MASK) < (rhs & _Z_MASK)
+
+## Less Than or Equal <=
+## Return true if all components of @lhs is less than or equal to @rhs counterpart
+static func le(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) <= (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) <= (rhs & _Y_MASK)\
+		and (lhs & _Z_MASK) <= (rhs & _Z_MASK)
 
 #### IMPLEMENTATION DETAILS ####
 

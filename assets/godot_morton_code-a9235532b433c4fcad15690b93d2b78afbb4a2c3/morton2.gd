@@ -73,6 +73,29 @@ static func dec_y(code: int) -> int:
 	var y_diff = ((code & _Y_MASK) - 2)
 	return ((y_diff & _Y_MASK) | (code & _X_MASK))
 
+## Greater Than >
+## Return true if all components of @lhs is greater than @rhs counterpart
+static func gt(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) > (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) > (rhs & _Y_MASK)
+
+## Greater Than or Equal >=
+## Return true if all components of @lhs is greater than @rhs counterpart
+static func ge(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) >= (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) >= (rhs & _Y_MASK)
+
+## Less Than <
+## Return true if all components of @lhs is less than @rhs counterpart
+static func lt(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) < (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) < (rhs & _Y_MASK)
+
+## Less Than or Equal <=
+## Return true if all components of @lhs is less than or equal to @rhs counterpart
+static func le(lhs: int, rhs: int) -> bool:
+	return (lhs & _X_MASK) <= (rhs & _X_MASK)\
+		and (lhs & _Y_MASK) <= (rhs & _Y_MASK)
 
 #### IMPLEMENTATION DETAILS ####
 
