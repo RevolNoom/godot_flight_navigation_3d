@@ -28,70 +28,10 @@ func node_from_link(link: int) -> SVONode:
 ## Return neighbor nodes' links of node with @svolink
 ## TODO: Return neighbors in SVONode attributes
 ## and all smallest nodes (vox) if we're going from big vox to small vox
-func neighbors_of(svolink: int) -> PackedInt64Array:
-	var node = node_from_link(svolink)
-	var layer = SVOLink.layer(svolink)
-	
-	var neighbors: PackedInt64Array = []
-	# Case when we are dealing with big nodes
-	# A node may have neighbors of any layer (bigger, smaller, same)
-	if (layer == 0 and node.first_child == 0) or layer != 0:
-		pass
-	# Case when we are dealing with a subgrid voxel
-	# A subgrid voxel may have neighbor voxels of
-	# same layer or higher (i.e. bigger node)
-	else:
-		var subgrid = SVOLink.subgrid(svolink)
-		var temp = Morton3.inc_x(subgrid)
-		pass
-	return neighbors
-
-
-# @svolink: link to a node (not a subgrid voxel!)
-# Return all highest-resolution voxels that make up the face of node @svolink
-func smallest_voxels_on_surface(face: Neighbor, svolink: int) -> PackedInt64Array:
-	var layer = SVOLink.layer(svolink)
-	if layer == 0:
-		# TODO: Return the links!
-		match face:
-			Neighbor.X_NEG:
-				return []
-			Neighbor.X_POS:
-				return []
-			Neighbor.Y_NEG:
-				return []
-			Neighbor.Y_POS:
-				return []
-			Neighbor.Z_NEG:
-				return []
-			Neighbor.Z_POS:
-				return []
-	
-	var node = node_from_link(svolink)
-
-	# If this node doesn't have any child
-	# Then it makes up the face itself
-	if node.first_child == SVOLink.NULL:
-		return [svolink]
-
-	# TODO: Recursively return smallest_voxels_on_surface() on children
-	match face:
-		Neighbor.X_NEG:
-			return []
-		Neighbor.X_POS:
-			return []
-		Neighbor.Y_NEG:
-			return []
-		Neighbor.Y_POS:
-			return []
-		Neighbor.Z_NEG:
-			return []
-		_: #Neighbor.Z_POS:
-			return []
-
 
 func node_from_morton(layer: int, morton: int) -> SVONode:
 	return _nodes[layer][index_from_morton(layer, morton)]
+
 
 func index_from_morton(layer: int, morton: int) -> int:
 	var m_node = SVONode.new()
@@ -99,6 +39,30 @@ func index_from_morton(layer: int, morton: int) -> int:
 	return _nodes[layer].bsearch_custom(m_node, 
 			func(node1: SVONode, node2: SVONode):
 				return node1.morton < node2.morton)
+
+
+func neighbors_of(svolink: int) -> PackedInt64Array:
+	var node = node_from_link(svolink)
+	var layer = SVOLink.layer(svolink)
+	
+	# TODO: Handle subgrid voxel neighbors
+	if (layer == 0 and node.first_child != 0):
+		var neighbors: PackedInt64Array = []
+		var subgrid = SVOLink.subgrid(svolink)
+		var m = Morton3.decode_vec3i(subgrid)
+		## TODO: _ask_parent_for_subgrid_neighbor
+		#if m.x > 0:
+		return neighbors
+	else:
+		# Get voxels on face opposite to direction
+		# e.g. If neighbor is in positive direction, 
+		# then get voxels on negative face
+		return (_smallest_voxels_on_surface(Face.X_NEG, node.xp)\
+			+  _smallest_voxels_on_surface(Face.X_POS, node.xn))\
+			+  (_smallest_voxels_on_surface(Face.Y_NEG, node.yp)\
+			+  _smallest_voxels_on_surface(Face.Y_POS, node.yn))\
+			+  (_smallest_voxels_on_surface(Face.Z_NEG, node.zp)\
+			+  _smallest_voxels_on_surface(Face.Z_POS, node.zn))
 
 
 ## Return the depth, excluding the subgrid levels
@@ -205,83 +169,82 @@ func _fill_neighbor_top_down():
 			var parent_i = SVOLink.offset(this_node.parent)
 			var p_layer = layer+1
 			
-			for direction in [Neighbor.X_NEG, Neighbor.X_POS,
-								Neighbor.Y_NEG, Neighbor.Y_POS,
-								Neighbor.Z_NEG, Neighbor.Z_POS]:
+			for face in [Face.X_NEG, Face.X_POS,
+								Face.Y_NEG, Face.Y_POS,
+								Face.Z_NEG, Face.Z_POS]:
 				var neighbor: int = 0
-				match direction:
-					Neighbor.X_NEG:
+				match face:
+					Face.X_NEG:
 						neighbor = Morton3.dec_x(this_node.morton)
-					Neighbor.X_POS:
+					Face.X_POS:
 						neighbor = Morton3.inc_x(this_node.morton)
-					Neighbor.Y_NEG: 
+					Face.Y_NEG: 
 						neighbor = Morton3.dec_y(this_node.morton)
-					Neighbor.Y_POS:
+					Face.Y_POS:
 						neighbor = Morton3.inc_y(this_node.morton)
-					Neighbor.Z_NEG: 
+					Face.Z_NEG: 
 						neighbor = Morton3.dec_z(this_node.morton)
-					Neighbor.Z_POS:
+					Face.Z_POS:
 						neighbor = Morton3.inc_z(this_node.morton)
 			
 				if not SVO._mortons_diff_parent(neighbor, this_node.morton):
 					var nb_link = SVOLink.from(layer, (i & ~0b111) | (neighbor & 0b111))
-					match direction:
-						Neighbor.X_NEG:
+					match face:
+						Face.X_NEG:
 							this_node.xn = nb_link
-						Neighbor.X_POS:
+						Face.X_POS:
 							this_node.xp = nb_link
-						Neighbor.Y_NEG: 
+						Face.Y_NEG: 
 							this_node.yn = nb_link
-						Neighbor.Y_POS:
+						Face.Y_POS:
 							this_node.yp = nb_link
-						Neighbor.Z_NEG: 
+						Face.Z_NEG: 
 							this_node.zn = nb_link
-						Neighbor.Z_POS:
+						Face.Z_POS:
 							this_node.zp = nb_link
 				else:
-					# TODO:
 					var actual_neighbor = _ask_parent_for_neighbor(p_layer, 
-											parent_i, direction, neighbor)
-					match direction:
-						Neighbor.X_NEG:
+											parent_i, face, neighbor)
+					match face:
+						Face.X_NEG:
 							this_node.xn = actual_neighbor
-						Neighbor.X_POS:
+						Face.X_POS:
 							this_node.xp = actual_neighbor
-						Neighbor.Y_NEG: 
+						Face.Y_NEG: 
 							this_node.yn = actual_neighbor
-						Neighbor.Y_POS:
+						Face.Y_POS:
 							this_node.yp = actual_neighbor
-						Neighbor.Z_NEG: 
+						Face.Z_NEG: 
 							this_node.zn = actual_neighbor
-						Neighbor.Z_POS:
+						Face.Z_POS:
 							this_node.zp = actual_neighbor
 			
 
 # Ask parent for parent's neighbor
 # If parent's neighbor is on same layer with parent:
-## then get parent's neighbor's first_child
-## If first_child is null link, then child's neighbor is parent's neighbor
-## Else, same-size neighbor exists, return their first child index
-# Else, if parent's
+# + then get parent's neighbor's first_child
+# If first_child is null link, then child's neighbor is parent's neighbor
+# Else, same-size neighbor exists, return their first child index
+# Else, if parent's... (I forgot to comment the last part. Now I forgot)
 func _ask_parent_for_neighbor(
 		parent_layer: int, 
 		parent_idx: int, 
-		direction: Neighbor,
+		face: Face,
 		child_neighbor: int):
 	var parent = _nodes[parent_layer][parent_idx] as SVONode
 	var parent_nbor: int = 0
-	match direction:
-		Neighbor.X_NEG:
+	match face:
+		Face.X_NEG:
 			parent_nbor = parent.xn
-		Neighbor.X_POS:
+		Face.X_POS:
 			parent_nbor = parent.xp
-		Neighbor.Y_NEG:
+		Face.Y_NEG:
 			parent_nbor = parent.yn
-		Neighbor.Y_POS:
+		Face.Y_POS:
 			parent_nbor = parent.yp
-		Neighbor.Z_NEG:
+		Face.Z_NEG:
 			parent_nbor = parent.zn
-		Neighbor.Z_POS:
+		Face.Z_POS:
 			parent_nbor = parent.zp
 			
 	if parent_nbor == SVOLink.NULL:
@@ -301,6 +264,85 @@ func _ask_parent_for_neighbor(
 	return SVOLink.from(parent_layer-1, 
 		(SVOLink.offset(nbor_first_child) & ~0b111)\
 		| (child_neighbor & 0b111))
+
+
+## Return all subgrid voxels which has morton code coordinate
+## equals to some of @v 's x, y, z components
+## @v 's component is -1 if you want to disable checking that component
+static func _get_subgrid_voxels_where_component_equals(v: Vector3i) -> PackedInt64Array:
+	var result: PackedInt64Array = []
+	for i in range(64):
+		var mv = Morton3.decode_vec3i(i)
+		if v.x != -1 and mv.x != v.x:
+			continue
+		if v.y != -1 and mv.y != v.y:
+			continue
+		if v.z != -1 and mv.z != v.z:
+			continue
+		result.push_back(i)
+	# Debug print
+	# print("v: %v, result: %s" % [v, 
+	#		str((result as Array).map(
+	#			func(value): 
+	#				return Morton.int_to_bin(value).substr(58)))])
+	return result
+
+static var face_subgrid: Array[PackedInt64Array] = [
+	_get_subgrid_voxels_where_component_equals(Vector3i(0, -1, -1)),
+	_get_subgrid_voxels_where_component_equals(Vector3i(3, -1, -1)),
+	_get_subgrid_voxels_where_component_equals(Vector3i(-1, 0, -1)),
+	_get_subgrid_voxels_where_component_equals(Vector3i(-1, 3, -1)),
+	_get_subgrid_voxels_where_component_equals(Vector3i(-1, -1, 0)),
+	_get_subgrid_voxels_where_component_equals(Vector3i(-1, -1, 3)),
+]
+
+
+## @svolink: link to a node (not a subgrid voxel!)
+## Return all highest-resolution voxels that make up the face of node @svolink
+func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
+	if svolink == SVOLink.NULL:
+		return []
+	
+	var layer = SVOLink.layer(svolink)
+	var node = node_from_link(svolink)
+	
+	if layer == 0:
+		# This node0 is all free space. No need to travel its subgrid
+		if node.first_child == 0:
+			return [svolink]
+		# Return all subgrid voxels on the specified face
+		return (face_subgrid[face] as Array).map(
+			func(voxel_idx) -> int:
+				return SVOLink.set_offset(voxel_idx, svolink))
+	
+	# If this node doesn't have any child
+	# Then it makes up the face itself
+	if node.first_child == SVOLink.NULL:
+		return [svolink]
+
+	# This vector holds index of 4 children on @face
+	var children_on_face: Vector4i =\
+			Vector4i(node.first_child,
+					node.first_child,
+					node.first_child,
+					node.first_child)
+	match face:
+		Face.X_NEG:
+			children_on_face += Vector4i(0,2,4,6)
+		Face.X_POS:
+			children_on_face += Vector4i(1,3,5,7)
+		Face.Y_NEG:
+			children_on_face += Vector4i(0,1,4,5)
+		Face.Y_POS:
+			children_on_face += Vector4i(2,3,6,7)
+		Face.Z_NEG:
+			children_on_face += Vector4i(0,1,2,3)
+		_: #Face.Z_POS:
+			children_on_face += Vector4i(4,5,6,7)
+	return (_smallest_voxels_on_surface(face, children_on_face.x)\
+		+  _smallest_voxels_on_surface(face, children_on_face.y))\
+		+  (_smallest_voxels_on_surface(face, children_on_face.z)\
+		+  _smallest_voxels_on_surface(face, children_on_face.w))
 
 
 # @m1, @m2: Morton3 codes
@@ -325,7 +367,7 @@ var _nodes: Array = []
 
 # Links to neighbors
 # Could be parent's neighbor
-enum Neighbor
+enum Face
 {
 	X_NEG, #x-1
 	X_POS, #x+1

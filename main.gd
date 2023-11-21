@@ -5,7 +5,7 @@ func _ready():
 	pass
 
 func _on_timer_timeout():
-	$NavigationSpace3D.voxelize_async()
+	#$NavigationSpace3D.voxelize_async()
 	#$NavigationSpace3D.voxelize()
 	pass
 
