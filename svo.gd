@@ -22,6 +22,7 @@ func node_from_offset(layer: int, offset: int) -> SVONode:
 	
 	
 func node_from_link(link: int) -> SVONode:
+	var debug = Morton3.int_to_bin(link)
 	return _nodes[SVOLink.layer(link)][SVOLink.offset(link)]
 
 
@@ -46,14 +47,22 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 	var layer = SVOLink.layer(svolink)
 	
 	var neighbors: PackedInt64Array = []
-	if (layer == 0 and node.first_child != 0):
+	if layer == 0 and node.first_child != 0:
 		var subgrid = SVOLink.subgrid(svolink)
 		var m = Morton3.decode_vec3i(subgrid)
 		
 		# [Face: Neighbor in which direction,
-		# subgrid: Subgrid value of the voxel neighbor we're looking for
-		for neighbor in [[Face.X_NEG, Morton3.dec_x(subgrid)]]:
-			if Morton3.lt(neighbor[1], 64):
+		# subgrid: Subgrid value of the voxel neighbor we're looking for]
+		# TODO: Check subgrid on surface
+		for neighbor in [
+			[Face.X_NEG, Morton3.dec_x(subgrid)],
+			[Face.X_POS, Morton3.inc_x(subgrid)],
+			[Face.Y_NEG, Morton3.dec_y(subgrid)],
+			[Face.Y_POS, Morton3.inc_y(subgrid)],
+			[Face.Z_NEG, Morton3.dec_z(subgrid)],
+			[Face.Z_POS, Morton3.inc_z(subgrid)],
+			]:
+			if Morton3.ge(neighbor[1], 0) and Morton3.lt(neighbor[1], 64):
 				neighbors.push_back(SVOLink.set_subgrid(neighbor[1], svolink))
 			else:
 				var nb_link := node.neighbor(neighbor[0])
@@ -126,7 +135,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array):
 		for i in range(0, active_nodes.size()):
 			for child in range(8):
 				_nodes[layer-1][i*8+child].morton\
-					= (active_nodes[i] << 3) + (child & 0b111)
+					= (active_nodes[i] << 3) | child
 		
 						
 		var parent_idx = active_nodes.duplicate()
@@ -268,7 +277,6 @@ func _ask_parent_for_neighbor(
 		return parent_nbor
 	
 	var offset = SVOLink.offset(parent_nbor)
-	print(Morton.int_to_bin(parent_nbor))
 	var nbor_first_child = _nodes[parent_layer][offset].first_child
 	
 	if nbor_first_child == SVOLink.NULL:
@@ -361,7 +369,9 @@ func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 # @m1, @m2: Morton3 codes
 # @return true if svo nodes with codes m1 and m2 don't have the same parent
 static func _mortons_diff_parent(m1: int, m2: int) -> bool: 
-	return (m1^m2) & 0b111
+	# Same parent means 61 most significant bits are the same
+	# Thus, m1 ^ m2 should have 61 MSB == 0
+	return (m1^m2) >> 3
 
 
 ## Each leaf is a 4x4x4 compound of voxels

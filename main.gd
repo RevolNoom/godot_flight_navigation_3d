@@ -12,10 +12,17 @@ func _on_timer_timeout():
 func _on_navigation_space_3d_finished():
 	#pass
 	#$MeshInstance3D.visible = true
+	var ns = $NavigationSpace3D
 	$NavigationSpace3D.draw_debug_boxes()
 	print("Finding path")
 	var path = $NavigationSpace3D.find_path(Vector3(-1, -1, -1), Vector3(-1, 1, -1))
-	print("Path: %s" % str(path))
+	#var black = Color.BLACK
+	#black.a = 100
+	#ns.draw_svolink_box(SVOLink.from_navspace(ns, Vector3(-1, -1, -1)), black )
+	#var brown = Color.BROWN
+	#brown.a = 100
+	#ns.draw_svolink_box(SVOLink.from_navspace(ns, Vector3(-1, 1, -1)), brown)
+	#print("Path: %s" % str(path))
 
 ######## TEST #############
 

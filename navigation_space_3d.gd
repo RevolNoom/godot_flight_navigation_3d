@@ -79,10 +79,7 @@ func voxelize_async():
 
 ## @from, @to: Global Positions
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
-	return $Astar.find_path(
-		to_local(from) - _extent_origin, 
-		to_local(to) - _extent_origin, 
-		_svo, self)
+	return $Astar.find_path(from, to, self)
 
 #func find_path_async(from: Vector3, to: Vector3, ...) -> PackedVector3Array:
 #	return []
@@ -342,12 +339,16 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 
 
 ## TODO: Add Color argument
-func draw_svolink_box(svolink: int):
+func draw_svolink_box(svolink: int, color: Color = Color.WHITE):
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
 	cube.mesh.size = Vector3.ONE * _node_size(SVOLink.layer(svolink))
+	cube.mesh.material = StandardMaterial3D.new()
+	cube.mesh.material.albedo_color = color
 	$Origin/SVOLinkCubes.add_child(cube)
-	cube.position = SVOLink.to_navspace(_svo, self, svolink)
+	#print("link: %s" % Morton3.int_to_bin(svolink))
+	cube.position = SVOLink.to_navspace(self, svolink)
+	#print("cube pos: %v" % [cube.position])
 
 
 func draw_debug_boxes():

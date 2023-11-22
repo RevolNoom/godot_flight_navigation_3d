@@ -11,6 +11,7 @@ class_name GreedyAStar
 #			_endpoints = _face_centers
 #		else:
 #			_endpoints = _node_centers
+#var _endpoints: Callable
 
 ## Function used to estimate cost between a voxel and destination
 ## And used to calculate adjacent voxels cost, if @use_unit_cost is disabled
@@ -22,6 +23,7 @@ class_name GreedyAStar
 			_distance = _euclidean
 		else:
 			_distance = _manhattan
+var _distance: Callable = _euclidean
 
 ## Bias weight. The higher it is, the more A* is biased toward estimation,
 ## prefer exploring nodes it thinks are closer to the goal
@@ -43,16 +45,17 @@ class_name GreedyAStar
 ## @svo: A SVO contains collision information
 ## @extent: The length of one side of the navigation space (assumed as cube)
 ## @return: The path connecting @from and @to through the navigation space
-func find_path(from: Vector3, to: Vector3, svo: SVO, navspace: NavigationSpace3D) -> PackedVector3Array:
-	var logical_path = _greedy_a_star(SVOLink.from_navspace(svo, navspace, from), 
-					SVOLink.from_navspace(svo, navspace, to),
+func find_path(from: Vector3, to: Vector3, navspace: NavigationSpace3D) -> PackedVector3Array:
+	var svo = navspace._svo
+	var logical_path = _greedy_a_star(SVOLink.from_navspace(navspace, from), 
+					SVOLink.from_navspace(navspace, to),
 					svo)
 	var result: PackedVector3Array = []
 	result.resize(logical_path.size())
 	
 	for i in range(logical_path.size()):
 		var get_subgrid_center: bool = svo.node_from_link(logical_path[i]).first_child != 0
-		result[i] = SVOLink.to_navspace(svo, navspace, logical_path[i], get_subgrid_center)
+		result[i] = SVOLink.to_navspace(navspace, logical_path[i], get_subgrid_center)
 	
 	return result
 
@@ -86,6 +89,8 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 		for neighbor in bn_neighbors:
 			if charted.has(neighbor):
 				continue
+			
+			var debug = get_parent().draw_svolink_box(neighbor, Color.BLACK)
 			charted[neighbor] = neighbor_cost
 			if neighbor == to:
 				break
@@ -166,8 +171,6 @@ func _node_center(svolink: int, svo: SVO) -> Vector3:
 func _manhattan(svolink1: int, svolink2: int, svo: SVO):
 	pass
 	
-var _distance: Callable
-var _endpoints: Callable
 
 func _on_property_list_changed():
 	update_configuration_warnings()
