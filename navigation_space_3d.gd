@@ -77,8 +77,12 @@ func voxelize_async():
 	_background_voxelize_thread.start(_voxelize_async, Thread.PRIORITY_LOW)
 
 
+## @from, @to: Global Positions
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
-	return $Astar.find_path(from, to, _svo, _extent_size.x)
+	return $Astar.find_path(
+		to_local(from) - _extent_origin, 
+		to_local(to) - _extent_origin, 
+		_svo, self)
 
 #func find_path_async(from: Vector3, to: Vector3, ...) -> PackedVector3Array:
 #	return []
@@ -335,6 +339,15 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 
 
 ############## DEBUGS #######################
+
+
+## TODO: Add Color argument
+func draw_svolink_box(svolink: int):
+	var cube = MeshInstance3D.new()
+	cube.mesh = BoxMesh.new()
+	cube.mesh.size = Vector3.ONE * _node_size(SVOLink.layer(svolink))
+	$Origin/SVOLinkCubes.add_child(cube)
+	cube.position = SVOLink.to_navspace(_svo, self, svolink)
 
 
 func draw_debug_boxes():

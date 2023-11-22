@@ -45,24 +45,50 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 	var node = node_from_link(svolink)
 	var layer = SVOLink.layer(svolink)
 	
-	# TODO: Handle subgrid voxel neighbors
+	var neighbors: PackedInt64Array = []
 	if (layer == 0 and node.first_child != 0):
-		var neighbors: PackedInt64Array = []
 		var subgrid = SVOLink.subgrid(svolink)
 		var m = Morton3.decode_vec3i(subgrid)
-		## TODO: _ask_parent_for_subgrid_neighbor
-		#if m.x > 0:
-		return neighbors
+		
+		# [Face: Neighbor in which direction,
+		# subgrid: Subgrid value of the voxel neighbor we're looking for
+		for neighbor in [[Face.X_NEG, Morton3.dec_x(subgrid)]]:
+			if Morton3.lt(neighbor[1], 64):
+				neighbors.push_back(SVOLink.set_subgrid(neighbor[1], svolink))
+			else:
+				var nb_link := node.neighbor(neighbor[0])
+						
+				# Neighbor does not exist
+				if nb_link == SVOLink.NULL:
+					continue
+					
+				# Free-space nodes (higher layer). Return whole
+				if SVOLink.layer(nb_link) > 0:
+					neighbors.push_back(nb_link)
+					continue
+					
+				var nb_node = node_from_link(nb_link)
+				# Free-space node0. Return whole
+				if nb_node.first_child == 0:
+					neighbors.push_back(nb_link)
+					continue
+				
+				# Get that subgrid voxel on neighbor node0
+				neighbors.push_back(SVOLink.set_subgrid(nb_node.first_child, subgrid & 0x3F))
 	else:
 		# Get voxels on face opposite to direction
 		# e.g. If neighbor is in positive direction, 
 		# then get voxels on negative face
-		return (_smallest_voxels_on_surface(Face.X_NEG, node.xp)\
-			+  _smallest_voxels_on_surface(Face.X_POS, node.xn))\
-			+  (_smallest_voxels_on_surface(Face.Y_NEG, node.yp)\
-			+  _smallest_voxels_on_surface(Face.Y_POS, node.yn))\
-			+  (_smallest_voxels_on_surface(Face.Z_NEG, node.zp)\
-			+  _smallest_voxels_on_surface(Face.Z_POS, node.zn))
+		for nb in [[Face.X_NEG, node.xp], 
+					[Face.X_POS, node.xn], 
+					[Face.Y_NEG, node.yp], 
+					[Face.Y_POS, node.yn], 
+					[Face.Z_NEG, node.zp],
+					[Face.Z_POS, node.zn]]:
+			if nb[1] != SVOLink.NULL:
+				neighbors.append_array(_smallest_voxels_on_surface(nb[0], nb[1]))
+	
+	return neighbors
 
 
 ## Return the depth, excluding the subgrid levels
@@ -232,21 +258,8 @@ func _ask_parent_for_neighbor(
 		face: Face,
 		child_neighbor: int):
 	var parent = _nodes[parent_layer][parent_idx] as SVONode
-	var parent_nbor: int = 0
-	match face:
-		Face.X_NEG:
-			parent_nbor = parent.xn
-		Face.X_POS:
-			parent_nbor = parent.xp
-		Face.Y_NEG:
-			parent_nbor = parent.yn
-		Face.Y_POS:
-			parent_nbor = parent.yp
-		Face.Z_NEG:
-			parent_nbor = parent.zn
-		Face.Z_POS:
-			parent_nbor = parent.zp
-			
+	var parent_nbor: int = parent.neighbor(face)
+	
 	if parent_nbor == SVOLink.NULL:
 		return SVOLink.NULL
 	
@@ -378,19 +391,22 @@ enum Face
 }
 
 class SVONode:
+	## Morton index of this node. Also defines where it is in space
 	var morton: int
-	var parent: int
+	
+	var parent: int #SVOLink
 	
 	# For layer 0, first_child IS the subgrid
 	# For layer 1 and up, _nodes[layer-1][first_child] is its first child
 	# _nodes[layer-1][first_child+1] is 2nd child... upto +7 (8th child)
-	var first_child: int
-	var xn: int
-	var xp: int
-	var yn: int
-	var yp: int
-	var zn: int
-	var zp: int
+	var first_child: int #SVOLink
+	
+	var xn: int #SVOLink, X-negative neighbor
+	var xp: int #SVOLink, X-positive neighbor
+	var yn: int #SVOLink
+	var yp: int #SVOLink
+	var zn: int #SVOLink
+	var zp: int #SVOLink
 	
 	func _init():
 		morton = SVOLink.NULL
@@ -402,6 +418,21 @@ class SVONode:
 		yp = SVOLink.NULL
 		zn = SVOLink.NULL
 		zp = SVOLink.NULL
+	
+	func neighbor(face: Face) -> int:
+		match face:
+			Face.X_NEG:
+				return xn
+			Face.X_POS:
+				return xp
+			Face.Y_NEG:
+				return yn
+			Face.Y_POS:
+				return yp
+			Face.Z_NEG:
+				return zn
+			_: #Face.Z_POS:
+				return zp
 		
 
 static func _comprehensive_test(svo: SVO):

@@ -43,13 +43,25 @@ class_name GreedyAStar
 ## @svo: A SVO contains collision information
 ## @extent: The length of one side of the navigation space (assumed as cube)
 ## @return: The path connecting @from and @to through the navigation space
-func find_path(from: Vector3, to: Vector3, svo: SVO, extent: float) -> PackedVector3Array:
-	#_convert_to_svolink()
-	# A* algo
-	return []
+func find_path(from: Vector3, to: Vector3, svo: SVO, navspace: NavigationSpace3D) -> PackedVector3Array:
+	var logical_path = _greedy_a_star(SVOLink.from_navspace(svo, navspace, from), 
+					SVOLink.from_navspace(svo, navspace, to),
+					svo)
+	var result: PackedVector3Array = []
+	result.resize(logical_path.size())
+	
+	for i in range(logical_path.size()):
+		var get_subgrid_center: bool = svo.node_from_link(logical_path[i]).first_child != 0
+		result[i] = SVOLink.to_navspace(svo, navspace, logical_path[i], get_subgrid_center)
+	
+	return result
 
-# @from, @to: SVOLink 
-func _greedy_a_star(from: int, to: int, svo: SVO):
+
+## @from, @to: SVOLink
+## Return an array of SVOLinks represents a 
+## connected path between @from and @to
+## Return empty array if path not found
+func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 	# The Priority Queue of best nodes to search
 	# Element: [Total Cost Estimated, SVOLink]
 	# Sorted by TCE. pop() returns element with smallest TCE
@@ -81,8 +93,21 @@ func _greedy_a_star(from: int, to: int, svo: SVO):
 				+ _compute_cost(from, neighbor, svo)\
 				+ _estimate_cost(neighbor, to, svo)\
 				, neighbor])
-			
-	pass
+	
+	if not charted.has(to):
+		return []
+	
+	var path: PackedInt64Array = [to]
+	
+	while path[path.size()-1] != from:
+		var back_node := path[path.size()-1]
+		var neighbors := svo.neighbors_of(back_node)
+		for n in neighbors:
+			if charted[n] + _compute_cost(n, back_node, svo) == charted[back_node]:
+				path.append(n)
+				break
+	path.reverse()
+	return path
 
 
 ## @from, @to: SVOLink
@@ -103,9 +128,9 @@ func _compute_cost(from: int, to: int, svo: SVO) -> float:
 func _estimate_cost(svolink: int, destination: int, svo: SVO) -> float:
 	return w * _distance.call(svolink, destination, svo)
 
-
-## Return SVOLink of the smallest node in the svo tree that contains this position
-func _convert_to_svolink(svo_depth: int, extent_size: float, position: Vector3) -> int:
+## @extent: The length of one side of the navigation space (assumed to be cube)
+## Return SVOLink of the smallest node in @svo that contains @position
+func _convert_to_svolink(position: Vector3, extent: float, svo: SVO) -> int:
 	return 0
 
 

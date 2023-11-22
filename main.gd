@@ -5,7 +5,7 @@ func _ready():
 	pass
 
 func _on_timer_timeout():
-	#$NavigationSpace3D.voxelize_async()
+	$NavigationSpace3D.voxelize_async()
 	#$NavigationSpace3D.voxelize()
 	pass
 
@@ -13,6 +13,9 @@ func _on_navigation_space_3d_finished():
 	#pass
 	#$MeshInstance3D.visible = true
 	$NavigationSpace3D.draw_debug_boxes()
+	print("Finding path")
+	var path = $NavigationSpace3D.find_path(Vector3(-1, -1, -1), Vector3(-1, 1, -1))
+	print("Path: %s" % str(path))
 
 ######## TEST #############
 

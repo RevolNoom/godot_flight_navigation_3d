@@ -33,6 +33,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, -2, -2)
 [node name="DebugCubes" type="MultiMeshInstance3D" parent="Origin"]
 multimesh = SubResource("MultiMesh_nucqm")
 
+[node name="SVOLinkCubes" type="Node3D" parent="Origin"]
+
 [node name="Extent" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_nou3d")
 
