@@ -351,6 +351,9 @@ func draw_svolink_box(svolink: int, color: Color = Color.WHITE):
 	#print("cube pos: %v" % [cube.position])
 
 
+## BUG: When SVO is passed empty act1nodes for construction, SVO consists
+## of only 1 giant voxel
+## This function incorrectly draws 1 subgrid voxel instead of the whole big space
 func draw_debug_boxes():
 	for cube in $Origin/DebugCubes.get_children():
 		cube.queue_free()

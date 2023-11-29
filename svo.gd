@@ -9,6 +9,14 @@ class_name SVO
 ##		Must contains only unique elements
 ## 		Layer 1 counted bottom-up, 0-based, excluding subgrids (leaves layer)
 func _init(layers: int, act1nodes: PackedInt64Array):
+	# Handle case when there's nothing in space
+	if act1nodes.size() == 0:
+		printerr("SVO construction: No active nodes found. Did you forget to put some objects in space, or turn on NavSpace/Object physic flags?")
+		_nodes = [[SVONode.new()]]
+		_nodes[0][0].morton = 0
+		_nodes[0][0].first_child = SVOLink.NULL
+		return
+		
 	# Minus 2 grid layers. But should I refactor it into a const?
 	for i in range(layers-2):
 		_nodes.push_back([])
@@ -114,11 +122,6 @@ func to_file(_filename: String):
 ## Allocate memory for each layer in bulk
 func _construct_bottom_up(act1nodes: PackedInt64Array):
 	act1nodes.sort()
-	
-	## Allocating memory for subgrids
-	#var err = _leaves.resize(act1nodes.size() * 8)
-	#assert(err == OK, "Could't allocate %d nodes for SVO subgrids. Error code: %d" \
-	#			% [act1nodes.size() * 8, err])
 	
 	## Init layer 0
 	_nodes[0].resize(act1nodes.size() * 8)

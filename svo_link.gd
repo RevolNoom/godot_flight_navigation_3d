@@ -79,7 +79,7 @@ static func from_navspace(
 	if not aabb.has_point(position):
 		#print("Position: %v -> null" % position)
 		return SVOLink.NULL
-		
+	
 	var link_layer := svo._nodes.size()-1
 	var link_offset:= 0
 	

@@ -17,7 +17,7 @@ mesh = SubResource("BoxMesh_4xi1d")
 skeleton = NodePath("../NavigationSpace3D")
 
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.523782, 0, -0.224479)
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 4.65685, 0, -0.224479)
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
 max_depth = 5
