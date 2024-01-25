@@ -78,8 +78,12 @@ func voxelize_async():
 
 
 ## @from, @to: Global Positions
+## @return: Path that connects @from and @to, each point represented in global coordinate
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
-	return $Astar.find_path(from, to, self)
+	var svolink_path: Array = $Astar.find_path(get_svolink_of(from), get_svolink_of(to), _svo)
+	return svolink_path.map(func (link) -> Vector3:
+		return get_global_position_of(link))
+
 
 #func find_path_async(from: Vector3, to: Vector3, ...) -> PackedVector3Array:
 #	return []
@@ -380,11 +384,7 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 	while link_layer > 0:
 		var this_node_link = SVOLink.from(link_layer, link_offset, 0)
 		var this_node = _svo.node_from_link(this_node_link)
-		print("link: %s" % Morton3.int_to_bin(this_node_link))
-		print("mort: %s" % Morton.int_to_bin(_svo.node_from_link(this_node_link).morton))
 		if this_node.first_child == SVOLink.NULL:
-			draw_svolink_box(this_node_link)
-			#print("Position: %v -> %s" % [position, Morton3.int_to_bin(this_node_link)])
 			return this_node_link
 
 		link_offset = SVOLink.offset(this_node.first_child)
@@ -421,15 +421,13 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 		
 	#navspace.draw_svolink_box(SVOLink.from(link_layer, link_offset, Morton3.encode64v(subgridv)))
 	var link = SVOLink.from(link_layer, link_offset, Morton3.encode64v(subgridv))
-	print("lay0: %s" % Morton.int_to_bin(link))
-	print("mor0: %s" % Morton.int_to_bin(_svo.node_from_link(link).morton))
 	return link
 
 ############## DEBUGS #######################
 
 
 ## TODO: Add Color argument
-func draw_svolink_box(svolink: int, color: Color = Color.WHITE):
+func draw_svolink_box(svolink: int, color: Color = Color.RED):
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
 	cube.mesh.size = Vector3.ONE * _node_size(SVOLink.layer(svolink))
@@ -525,34 +523,10 @@ func _on_property_list_changed():
 
 ##############
 
-static func automated_test():
-	# The tests are incomplete 
-	# because I couldn't initialize the helper variables (_extent_origin, for example)
-	return
-	print("Start FlyingNavigation3D automated test")
-	var flyspace = FlyingNavigation3D.new()
-	flyspace._svo = SVO._get_debug_svo(6)
-	var perfect_result = true
-	for test in [
-		[Vector3(-2, -2, -2), Vector3i(0, 0, 0)],
-		[Vector3(0, 0, 0), Vector3i(0, 0, 0)]
-	]:
-		var svolink = flyspace.get_svolink_of(test[0])
-		var result := SVOLink.from(test[1].x, test[1].y, test[1].z)
-		if svolink != result:
-			perfect_result = false
-			printerr("Expected %s, got %s" % [Morton.int_to_bin(result), Morton.int_to_bin(svolink)])
-	if perfect_result:
-		print("All positions encoded to/decoded from svolink successfully")
-	
-	print("Finished FlyingNavigation3D automated test")
-	
-##############
-
 var _entered_shapes: Array[CollisionShape3D] = []
 
 func _node_size(layer: int) -> float:
-	return _leaf_cube_size * (2**(2 + layer))
+	return _leaf_cube_size * (1 if layer == 0 else (2**(2 + layer)))
 
 
 enum TreeAttribute{
@@ -565,7 +539,7 @@ enum TreeAttribute{
 
 var _svo: SVO
 
-var _leaf_cube_size: float = 1
+var _leaf_cube_size: float = 1.0
 var _extent_origin := Vector3()
 var _extent_size:= Vector3()
 var _origin_global_transform_inv: Transform3D

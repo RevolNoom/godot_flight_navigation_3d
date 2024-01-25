@@ -46,8 +46,8 @@ var _distance: Callable = _euclidean
 ## @from: SVOLink
 ## @to: SVOLink
 ## @return: The path connecting @from and @to through the navigation space, as SVOLinks
-func find_path(from: int, to: int, flyspace: FlyingNavigation3D) -> PackedInt64Array:
-	return _greedy_a_star(from, to, flyspace._svo)
+func find_path(from: int, to: int, svo: SVO) -> PackedInt64Array:
+	return _greedy_a_star(from, to, svo)
 
 
 ## @from, @to: SVOLink
@@ -75,17 +75,16 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 	while unsearched.size() > 0:
 		var best_node = unsearched.pop()
 		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
-		var neighbor_cost = charted[best_node[SvoLink]] + unit_cost
 		for neighbor in bn_neighbors:
 			if charted.has(neighbor):
 				continue
 			
-			var debug = get_parent().draw_svolink_box(neighbor, Color.BLACK)
+			var neighbor_cost = charted[best_node[SvoLink]] \
+					+ _compute_cost(best_node[SvoLink], neighbor, svo)
 			charted[neighbor] = neighbor_cost
 			if neighbor == to:
 				break
 			unsearched.push([neighbor_cost\
-				+ _compute_cost(from, neighbor, svo)\
 				+ _estimate_cost(neighbor, to, svo)\
 				, neighbor])
 	

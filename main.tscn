@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=9 format=3 uid="uid://dgo7fj4tmihlq"]
 
 [ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://navigation_space_3d.tscn" id="1_6of4y"]
 [ext_resource type="Script" path="res://main.gd" id="1_54eij"]
@@ -6,6 +6,17 @@
 [ext_resource type="Script" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="3_frfsx"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_4xi1d"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a0dbp"]
+albedo_color = Color(1, 0, 0, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_prx7j"]
+material = SubResource("StandardMaterial3D_a0dbp")
+size = Vector3(0.1, 0.1, 0.1)
+
+[sub_resource type="MultiMesh" id="MultiMesh_gwf84"]
+transform_format = 1
+mesh = SubResource("BoxMesh_prx7j")
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_54eij")
@@ -17,7 +28,7 @@ mesh = SubResource("BoxMesh_4xi1d")
 skeleton = NodePath("../NavigationSpace3D")
 
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.460151, 0, -0.224)
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.460151, -0.234849, -0.224)
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
 max_depth = 6
@@ -35,6 +46,9 @@ transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0,
 wait_time = 0.1
 one_shot = true
 autostart = true
+
+[node name="PathDebugDraw" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_gwf84")
 
 [connection signal="finished" from="NavigationSpace3D" to="." method="_on_navigation_space_3d_finished"]
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
