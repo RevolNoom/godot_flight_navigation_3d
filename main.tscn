@@ -17,12 +17,12 @@ mesh = SubResource("BoxMesh_4xi1d")
 skeleton = NodePath("../NavigationSpace3D")
 
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
-transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 4.65685, 0, -0.224479)
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.460151, 0, -0.224)
 
 [node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
-max_depth = 5
+max_depth = 6
 disable_depth_warning = true
-leaf_cube_size = 0.25
+leaf_cube_size = 0.125
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 4, 3)

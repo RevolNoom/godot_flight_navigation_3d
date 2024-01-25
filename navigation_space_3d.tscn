@@ -22,7 +22,7 @@ emission = Color(1, 1, 1, 1)
 material = SubResource("StandardMaterial3D_hd38a")
 size = Vector3(4, 4, 4)
 
-[node name="NavigationSpace3D" type="Area3D"]
+[node name="FlyingNavigation3D" type="Area3D"]
 collision_layer = 0
 script = ExtResource("1_3yis1")
 leaf_cube_size = 0.5
@@ -39,7 +39,6 @@ multimesh = SubResource("MultiMesh_nucqm")
 shape = SubResource("BoxShape3D_nou3d")
 
 [node name="DebugVisual" type="MeshInstance3D" parent="Extent"]
-visible = false
 mesh = SubResource("BoxMesh_27dsg")
 skeleton = NodePath("../..")
 

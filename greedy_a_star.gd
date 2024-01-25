@@ -43,21 +43,11 @@ var _distance: Callable = _euclidean
 
 
 ## @svo: A SVO contains collision information
-## @extent: The length of one side of the navigation space (assumed as cube)
-## @return: The path connecting @from and @to through the navigation space
-func find_path(from: Vector3, to: Vector3, navspace: NavigationSpace3D) -> PackedVector3Array:
-	var svo = navspace._svo
-	var logical_path = _greedy_a_star(SVOLink.from_navspace(navspace, from), 
-					SVOLink.from_navspace(navspace, to),
-					svo)
-	var result: PackedVector3Array = []
-	result.resize(logical_path.size())
-	
-	for i in range(logical_path.size()):
-		var get_subgrid_center: bool = svo.node_from_link(logical_path[i]).first_child != 0
-		result[i] = SVOLink.to_navspace(navspace, logical_path[i], get_subgrid_center)
-	
-	return result
+## @from: SVOLink
+## @to: SVOLink
+## @return: The path connecting @from and @to through the navigation space, as SVOLinks
+func find_path(from: int, to: int, flyspace: FlyingNavigation3D) -> PackedInt64Array:
+	return _greedy_a_star(from, to, flyspace._svo)
 
 
 ## @from, @to: SVOLink
@@ -176,6 +166,6 @@ func _on_property_list_changed():
 	update_configuration_warnings()
 	
 func _get_configuration_warnings():
-	if get_parent() == null or not get_parent() is NavigationSpace3D:
-		return ["Must be a child of NavigationSpace3D"]
+	if get_parent() == null or not get_parent() is FlyingNavigation3D:
+		return ["Must be a child of FlyingNavigation3D"]
 	return []

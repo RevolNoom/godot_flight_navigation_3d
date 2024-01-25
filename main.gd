@@ -1,6 +1,7 @@
 extends Node3D
 
 func _ready():
+	#FlyingNavigation3D.automated_test()
 	#PriorityQueue._automated_test()
 	pass
 
@@ -10,11 +11,15 @@ func _on_timer_timeout():
 	pass
 
 func _on_navigation_space_3d_finished():
+	print("Done")
+	var link = $NavigationSpace3D.get_svolink_of(Vector3(2,2,2))
+	print("Result link: %s" % Morton.int_to_bin(link))
+	print("SVOLink pos: %v" % $NavigationSpace3D.get_global_position_of(link))
 	#pass
 	#$MeshInstance3D.visible = true
-	$NavigationSpace3D.draw_debug_boxes()
-	print("Finding path")
-	var path = $NavigationSpace3D.find_path(Vector3(-1, -1, -1), Vector3(-1, 1, -1))
+	#$NavigationSpace3D.draw_debug_boxes()
+	#print("Finding path")
+	#var path = $NavigationSpace3D.find_path(Vector3(-1, -1, -1), Vector3(-1, 1, -1))
 	#var black = Color.BLACK
 	#black.a = 100
 	#ns.draw_svolink_box(SVOLink.from_navspace(ns, Vector3(-1, -1, -1)), black )

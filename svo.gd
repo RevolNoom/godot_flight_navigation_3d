@@ -30,7 +30,7 @@ func node_from_offset(layer: int, offset: int) -> SVONode:
 	
 	
 func node_from_link(link: int) -> SVONode:
-	var debug = Morton3.int_to_bin(link)
+	var _debug = Morton3.int_to_bin(link)
 	return _nodes[SVOLink.layer(link)][SVOLink.offset(link)]
 
 

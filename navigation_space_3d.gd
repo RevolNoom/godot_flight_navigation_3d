@@ -11,7 +11,7 @@
 # e.g. 0.05s after _ready()
 @tool
 extends Area3D
-class_name NavigationSpace3D
+class_name FlyingNavigation3D
 
 ## Emitted when voxelize() or voxelize_async() finishes
 signal finished()
@@ -335,6 +335,96 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 	node0.first_child = node0_solid_state
 
 
+### Convert Game World Position <-> SVO Logical Position
+
+##TODO: Rewrite this
+## @return: center of the node with @svolink in @svo.
+## If @svolink is in layer 0, return center of the leaf
+func get_global_position_of(svolink: int) -> Vector3:
+	var extent = _extent_size
+	var link_layer = SVOLink.layer(svolink)
+	var node = _svo.node_from_link(svolink)
+	if link_layer == 0:
+		var subgrid_voxel_size = extent / (1 << (max_depth - 1)) # equals 2^(nodes.size()+1)
+		var voxel_morton = (node.morton << 6) | SVOLink.subgrid(svolink)
+		return (Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) * subgrid_voxel_size\
+				+ _extent_origin
+		
+	var node_size = extent / (2 ** (_svo._nodes.size() - link_layer - 1))
+	return (Morton3.decode_vec3(node.morton) + Vector3.ONE*0.5) * node_size\
+			+ _extent_origin
+
+
+## @return: SVOLink of the smallest node/leaf in @svo that encloses @gposition
+##
+## @gposition: Global position that needs conversion to svolink
+##
+## @return_closest_node: determine what to return if navspace doesn't encloses @gposition
+## if false, return SVOLink.NULL
+## TODO: if true, return the closest node 
+func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> int:
+	var local_pos = to_local(gposition) - _extent_origin
+	var extent = _extent_size.x
+	var aabb := AABB(Vector3.ZERO, Vector3.ONE*extent)
+	
+	# Points outside Navigation Space
+	## TODO: Return the closest node
+	if not aabb.has_point(position):
+		#print("Position: %v -> null" % position)
+		return SVOLink.NULL
+	
+	var link_layer := _svo._nodes.size()-1
+	var link_offset:= 0
+	
+	# Descend the tree layer by layer
+	while link_layer > 0:
+		var this_node_link = SVOLink.from(link_layer, link_offset, 0)
+		var this_node = _svo.node_from_link(this_node_link)
+		print("link: %s" % Morton3.int_to_bin(this_node_link))
+		print("mort: %s" % Morton.int_to_bin(_svo.node_from_link(this_node_link).morton))
+		if this_node.first_child == SVOLink.NULL:
+			draw_svolink_box(this_node_link)
+			#print("Position: %v -> %s" % [position, Morton3.int_to_bin(this_node_link)])
+			return this_node_link
+
+		link_offset = SVOLink.offset(this_node.first_child)
+		link_layer -= 1
+		
+		var aabb_center := aabb.position + aabb.size/2
+		var new_pos := aabb.position
+		
+		if local_pos.x >= aabb_center.x:
+			link_offset |= 0b001
+			new_pos.x = aabb_center.x
+			
+		if local_pos.y >= aabb_center.y:
+			link_offset |= 0b010
+			new_pos.y = aabb_center.y
+			
+		if local_pos.z >= aabb_center.z:
+			link_offset |= 0b100
+			new_pos.z = aabb_center.z
+			
+		aabb = AABB(new_pos, aabb.size/2)
+		
+	# If code reaches here, it means we have descended down to layer 0 already
+	# Look for the subgrid voxel that encloses @position
+	var subdivides = [aabb.size.x*0.25,
+					aabb.size.x*0.5, 
+					aabb.size.x*0.75]
+	var subgridv = Vector3i.ZERO
+	subgridv.x = subdivides.bsearch(position.x - aabb.position.x)
+	subgridv.y = subdivides.bsearch(position.y - aabb.position.y)
+	subgridv.z = subdivides.bsearch(position.z - aabb.position.z)
+	#print("Position: %v -> %s" % [position, 
+	#	Morton3.int_to_bin(SVOLink.from(layer, offset, Morton3.encode64v(subgridv)))])
+		
+	#navspace.draw_svolink_box(SVOLink.from(link_layer, link_offset, Morton3.encode64v(subgridv)))
+	var link = SVOLink.from(link_layer, link_offset, Morton3.encode64v(subgridv))
+	print("lay0: %s" % Morton.int_to_bin(link))
+	print("mor0: %s" % Morton.int_to_bin(_svo.node_from_link(link).morton))
+	return link
+
 ############## DEBUGS #######################
 
 
@@ -346,8 +436,7 @@ func draw_svolink_box(svolink: int, color: Color = Color.WHITE):
 	cube.mesh.material = StandardMaterial3D.new()
 	cube.mesh.material.albedo_color = color
 	$Origin/SVOLinkCubes.add_child(cube)
-	#print("link: %s" % Morton3.int_to_bin(svolink))
-	cube.position = SVOLink.to_navspace(self, svolink)
+	cube.global_position = get_global_position_of(svolink)
 	#print("cube pos: %v" % [cube.position])
 
 
@@ -436,6 +525,29 @@ func _on_property_list_changed():
 
 ##############
 
+static func automated_test():
+	# The tests are incomplete 
+	# because I couldn't initialize the helper variables (_extent_origin, for example)
+	return
+	print("Start FlyingNavigation3D automated test")
+	var flyspace = FlyingNavigation3D.new()
+	flyspace._svo = SVO._get_debug_svo(6)
+	var perfect_result = true
+	for test in [
+		[Vector3(-2, -2, -2), Vector3i(0, 0, 0)],
+		[Vector3(0, 0, 0), Vector3i(0, 0, 0)]
+	]:
+		var svolink = flyspace.get_svolink_of(test[0])
+		var result := SVOLink.from(test[1].x, test[1].y, test[1].z)
+		if svolink != result:
+			perfect_result = false
+			printerr("Expected %s, got %s" % [Morton.int_to_bin(result), Morton.int_to_bin(svolink)])
+	if perfect_result:
+		print("All positions encoded to/decoded from svolink successfully")
+	
+	print("Finished FlyingNavigation3D automated test")
+	
+##############
 
 var _entered_shapes: Array[CollisionShape3D] = []
 
