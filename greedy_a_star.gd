@@ -73,6 +73,7 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 	charted[from] = 0
 	
 	while unsearched.size() > 0:
+		#print("Unsearched size: %d" % unsearched.size())
 		var best_node = unsearched.pop()
 		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
 		for neighbor in bn_neighbors:
@@ -94,12 +95,36 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 	var path: PackedInt64Array = [to]
 	
 	while path[path.size()-1] != from:
+		print("path size: %d" % path.size())
 		var back_node := path[path.size()-1]
 		var neighbors := svo.neighbors_of(back_node)
+		var pathlength = path.size()
 		for n in neighbors:
 			if charted[n] + _compute_cost(n, back_node, svo) == charted[back_node]:
 				path.append(n)
 				break
+		if path.size() == pathlength:
+			print("b: %s" % Morton.int_to_bin(back_node))
+			print("Charted backnode: %f" % charted[back_node])
+			for n in neighbors:
+				print("n: %s" % Morton.int_to_bin(n))
+				if SVOLink.layer(n) == 0:
+					(get_parent() as FlyingNavigation3D).draw_svolink_box(n, Color.AQUAMARINE)
+					print("L%d M%v O%v" %\
+						 [SVOLink.layer(n), 
+						Morton3.decode_vec3(svo.node_from_link(n).morton), 
+						Morton3.decode_vec3(SVOLink.offset(n))])
+				print("%f + %f != %f" % [charted[n], _compute_cost(n, back_node, svo), charted[back_node]])
+			
+			#print("Neighbors: \n%s" % str(Array(neighbors).map(func(svolink): 
+				#return "L%d M%v O%v" %\
+				 #[SVOLink.layer(svolink), 
+				#Morton3.decode_vec3(svo.node_from_link(svolink).morton), 
+				#Morton3.decode_vec3(SVOLink.offset(svolink))])))
+				
+			#print("Neighbors pos after convert SVO: %s" % str(Array(neighbors).map(func(svolink):
+					#return get_parent().get_global_position_of(svolink))))
+			break
 	path.reverse()
 	return path
 

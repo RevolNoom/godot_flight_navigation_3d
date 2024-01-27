@@ -232,14 +232,14 @@ func _voxelize_triangle(vox_size: float, triangle: PackedVector3Array) -> Dictio
 ## @return: [begin, end) (end is exclusive)
 ##	(end - begin) is non-negative
 ##	begin and end are inside Navigation Space  
-##	Includes also voxels meerly touched by t_aabb
+##	Includes also voxels merely touched by t_aabb
 func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB, vox_bound: Vector3) -> Array[Vector3i]:
 	# Begin & End
 	var b = t_aabb.position/size
 	var e = t_aabb.end/size
 	var vb = vox_bound/size
 	
-	# Include voxels meerly touched by t_aabb
+	# Include voxels merely touched by t_aabb
 	b.x = b.x - (1 if b.x == round(b.x) else 0)
 	b.y = b.y - (1 if b.y == round(b.y) else 0)
 	b.z = b.z - (1 if b.z == round(b.z) else 0)
@@ -249,10 +249,10 @@ func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB, vox_bound: Vector3) -
 	e.z = e.z + (1 if e.z == round(e.z) else 0)
 	
 	# Clamp to fit inside Navigation Space
-	b = b.clamp(Vector3(), vb)
-	e = e.clamp(Vector3(), vb)
+	b = b.clamp(Vector3(), vb).floor()
+	e = e.clamp(Vector3(), vb).ceil()
 	
-	return [b.floor(), e.ceil()]
+	return [b, e]
 
 
 ## Allocate each node1 with 1 thread
@@ -303,7 +303,7 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 		var tbt0 = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
 		
 		# Leaf voxel - Triangle Test
-		var tbtl = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _leaf_cube_size)
+		var tbtl = TriangleBoxTest.new(triangle, Vector3(1,1,1) * leaf_cube_size)
 		#print("Leaf cube: %f" % _leaf_cube_size)
 		
 		for m in range(8):
@@ -316,22 +316,21 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 		for thread in threads:
 			thread.wait_to_finish()
 
-# TODO: Optimize _node_size calls
-# TODO: Pre-calculate morton offset of leaf nodes
+
 func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: Vector3):
 	var node0_solid_state: int = node0.first_child
 	
-	var node0size = Vector3(1,1,1) * _node_size(0)
+	var node0size = Vector3.ONE * _node_size(0)
 	var node0aabb = AABB(node0pos, node0size)
 	var intersection = tbtl.aabb.intersection(node0aabb)
 	intersection.position -= node0pos
-	var vox_range = _voxels_overlapped_by_aabb(_leaf_cube_size, intersection, node0size)
+	var vox_range = _voxels_overlapped_by_aabb(leaf_cube_size, intersection, node0size)
 	
 	for x in range(vox_range[0].x, vox_range[1].x):
 		for y in range(vox_range[0].y, vox_range[1].y):
 			for z in range(vox_range[0].z, vox_range[1].z):
 				var morton = Morton3.encode64(x,y,z)
-				var vox_offset = Vector3(x,y,z) * _leaf_cube_size
+				var vox_offset = Vector3(x,y,z) * leaf_cube_size
 				var leaf_pos = node0pos+vox_offset
 				if (node0_solid_state & (1 << morton) == 0)\
 					and tbtl.overlap_voxel(leaf_pos):
@@ -339,26 +338,24 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 	node0.first_child = node0_solid_state
 
 
-### Convert Game World Position <-> SVO Logical Position
-
-##TODO: Rewrite this
+## Convert SVO Logical Position -> Game World Position
 ## @return: center of the node with @svolink in @svo.
-## If @svolink is in layer 0, return center of the leaf
+## If @svolink is in layer 0...
+## +) And it's empty, return center of the layer-0 node
+## +) And it has some solid blocks, return center of the leaf voxel
 func get_global_position_of(svolink: int) -> Vector3:
-	var extent = _extent_size
-	var link_layer = SVOLink.layer(svolink)
+	var layer = SVOLink.layer(svolink)
 	var node = _svo.node_from_link(svolink)
-	if link_layer == 0:
-		var subgrid_voxel_size = extent / (1 << (max_depth - 1)) # equals 2^(nodes.size()+1)
+	if layer == 0 and node.first_child != 0:
 		var voxel_morton = (node.morton << 6) | SVOLink.subgrid(svolink)
-		return (Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) * subgrid_voxel_size\
+		return (Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) * leaf_cube_size\
 				+ _extent_origin
 		
-	var node_size = extent / (2 ** (_svo._nodes.size() - link_layer - 1))
-	return (Morton3.decode_vec3(node.morton) + Vector3.ONE*0.5) * node_size\
+	return (Morton3.decode_vec3(node.morton) + Vector3.ONE*0.5) * _node_size(layer)\
 			+ _extent_origin
 
 
+## Convert Game World Position -> SVO Logical Position
 ## @return: SVOLink of the smallest node/leaf in @svo that encloses @gposition
 ##
 ## @gposition: Global position that needs conversion to svolink
@@ -406,9 +403,14 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 			new_pos.z = aabb_center.z
 			
 		aabb = AABB(new_pos, aabb.size/2)
-		
+	
 	# If code reaches here, it means we have descended down to layer 0 already
-	# Look for the subgrid voxel that encloses @position
+	# If the layer 0 node is free space, return it
+	var node0 = _svo.node_from_offset(0, link_offset)
+	if node0.first_child == 0:
+		return SVOLink.from(link_layer, link_offset, 0)
+	
+	# else, return the subgrid voxel that encloses @position
 	var subdivides = [aabb.size.x*0.25,
 					aabb.size.x*0.5, 
 					aabb.size.x*0.75]
@@ -426,15 +428,31 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 ############## DEBUGS #######################
 
 
-## TODO: Add Color argument
-func draw_svolink_box(svolink: int, color: Color = Color.RED):
+func draw_svolink_box(svolink: int, node_color: Color = Color.RED, leaf_color: Color = Color.GREEN):
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
-	cube.mesh.size = Vector3.ONE * _node_size(SVOLink.layer(svolink))
+	var layer = SVOLink.layer(svolink)
+	var node = _svo.node_from_link(svolink)
 	cube.mesh.material = StandardMaterial3D.new()
-	cube.mesh.material.albedo_color = color
+	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
+			
+	if layer == 0 and node.first_child != 0:
+		cube.mesh.size = Vector3.ONE * leaf_cube_size
+		cube.mesh.material.albedo_color = leaf_color
+	else:
+		cube.mesh.size = Vector3.ONE * _node_size(layer)
+		cube.mesh.material.albedo_color = node_color
+	cube.mesh.material.albedo_color.a = 0.2
+	
+	var label = Label3D.new()
+	label.text = "L: %d\nM: %s\nO: %s" % \
+		[SVOLink.layer(svolink), 
+		str(Morton3.decode_vec3i(node.morton)), 
+		str(Morton3.decode_vec3i(SVOLink.subgrid(svolink)))]
+	label.pixel_size = 0.0008
+	cube.add_child(label)
 	$Origin/SVOLinkCubes.add_child(cube)
-	cube.global_position = get_global_position_of(svolink)
+	cube.global_position = get_global_position_of(svolink) #+ Vector3(1, 0, 0)
 	#print("cube pos: %v" % [cube.position])
 
 
@@ -463,7 +481,7 @@ func draw_debug_boxes():
 	for pv3a in cube_pos:
 		all_pos.append_array(pv3a)
 		
-	$Origin/DebugCubes.multimesh.mesh.size = _leaf_cube_size * Vector3(1,1,1)
+	$Origin/DebugCubes.multimesh.mesh.size = leaf_cube_size * Vector3(1,1,1)
 	$Origin/DebugCubes.multimesh.instance_count = all_pos.size()
 		
 	for i in range(all_pos.size()):
@@ -480,7 +498,7 @@ func _collect_cubes(
 	var node_pos = node0_size * Morton3.decode_vec3(node0.morton)
 	for vox in range(64):
 		if node0.first_child & (1<<vox):
-			var offset = _leaf_cube_size * (Morton3.decode_vec3(vox) + Vector3(0.5,0.5,0.5))
+			var offset = leaf_cube_size * (Morton3.decode_vec3(vox) + Vector3(0.5,0.5,0.5))
 			var pos = node_pos + offset
 			cube_pos[i].push_back(pos)
 
@@ -526,7 +544,7 @@ func _on_property_list_changed():
 var _entered_shapes: Array[CollisionShape3D] = []
 
 func _node_size(layer: int) -> float:
-	return _leaf_cube_size * (1 if layer == 0 else (2**(2 + layer)))
+	return leaf_cube_size * (1 << (2 + layer))
 
 
 enum TreeAttribute{
@@ -551,9 +569,11 @@ func _recalculate_cached_data():
 	_extent_size = $Extent.shape.size
 	_origin_global_transform_inv = $Origin.global_transform.inverse()
 	
+	
 func _on_extent_property_list_changed():
 	_recalculate_cached_data()
 	_update_information()
+
 
 func _update_information():
 	if get_child_count() > 0:
