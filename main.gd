@@ -46,9 +46,9 @@ func _find_path_test():
 	var to = Vector3(2, 2, 2)
 	var path = $NavigationSpace3D.find_path(from, to)
 	#$NavigationSpace3D.draw_debug_boxes()
-	$PathDebugDraw.multimesh.instance_count = path.size()
-	for i in range(path.size()):
-		$NavigationSpace3D.draw_svolink_box($NavigationSpace3D.get_svolink_of(path[i]))
+	#$PathDebugDraw.multimesh.instance_count = path.size()
+	#for i in range(path.size()):
+		#$NavigationSpace3D.draw_svolink_box($NavigationSpace3D.get_svolink_of(path[i]))
 		
 	print("Path before convert SVO: %s" % str(path))
 	#print("Path after convert SVO: %s" % str(Array(path).map(func(pos): 

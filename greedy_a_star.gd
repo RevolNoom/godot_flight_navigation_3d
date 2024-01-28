@@ -55,48 +55,71 @@ func find_path(from: int, to: int, svo: SVO) -> PackedInt64Array:
 ## connected path between @from and @to
 ## Return empty array if path not found
 func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
-	# The Priority Queue of best nodes to search
-	# Element: [Total Cost Estimated, SVOLink]
-	# Sorted by TCE. pop() returns element with smallest TCE
+	# The Priority Queue of nodes to search
+	# Element: [TotalCostEstimated, SVOLink]
+	# Sorted by TCE. TCE = f(x) = g(x) + h(x).
+	# pop() returns element with smallest TCE
 	const TotalCostEstimated = 0
 	const SvoLink = 1
-	var unsearched:= PriorityQueue.new(
+	var frontier:= PriorityQueue.new(
 		func (u1, u2) -> bool:
 			return u1[TotalCostEstimated] > u2[TotalCostEstimated])
+	frontier.push([INF, from])
 	
-	# Dictionary of nodes already visited,
-	# so that it's not visited more than once
+	# travel_cost[node] returns the current cost to travel
+	# from starting point to node
 	# Key - Value: SVOLink - Real Cost
-	var charted: Dictionary = {}
+	var travel_cost: Dictionary = {from: 0}
 	
-	unsearched.push([INF, from])
-	charted[from] = 0
+	# Nodes already visited and cannot be visited anymore
+	# Key: SVOLink. Value doesn't matter, but recommended to be null for less memory usage?
+	var visited: Dictionary = {}
 	
-	while unsearched.size() > 0:
-		#print("Unsearched size: %d" % unsearched.size())
-		var best_node = unsearched.pop()
-		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
-		for neighbor in bn_neighbors:
-			# Ignore nodes that have already been searched
-			if charted.has(neighbor):
-				continue
-			
-			# Ignore nodes that are solid
-			if svo.is_link_solid(neighbor):
-				charted[neighbor] = INF
-				continue
-			
-			var neighbor_cost = charted[best_node[SvoLink]] \
-					+ _compute_cost(best_node[SvoLink], neighbor, svo)
-			charted[neighbor] = neighbor_cost
-			if neighbor == to:
+	while frontier.size() > 0:
+		#print("frontier size: %d" % frontier.size())
+		# Get the next most promising node that we haven't visited to examine
+		var best_node
+		while frontier.size() > 0:
+			best_node = frontier.pop()
+			if not visited.has(best_node[SvoLink]):
 				break
 				
-			unsearched.push([neighbor_cost\
-				+ _estimate_cost(neighbor, to, svo)\
-				, neighbor])
+		# In case we have exhausted all frontier nodes but no unvisited node is found
+		# That means there's no path to destination
+		if visited.has(best_node[SvoLink]):
+			break
+		
+		# Mark node as visited
+		visited[best_node[SvoLink]] = null
+		
+		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
+		for neighbor in bn_neighbors:
+			# Ignore obstacles
+			if svo.is_link_solid(neighbor):
+				travel_cost[neighbor] = INF
+				visited[neighbor] = null
+				continue
+			
+			var neighbor_cost_of_current_visit = travel_cost[best_node[SvoLink]] \
+					+ _compute_cost(best_node[SvoLink], neighbor, svo)
+			
+			if neighbor_cost_of_current_visit < travel_cost.get(neighbor, INF):
+				travel_cost[neighbor] = neighbor_cost_of_current_visit
+				if not visited.has(neighbor):
+					frontier.push([neighbor_cost_of_current_visit\
+						+ _estimate_cost(neighbor, to, svo)\
+						, neighbor])
+			if neighbor == to:
+				print("Reached")
+				break
+		# The destination has been reached. Return the path now
+		if visited.has(to):
+			break
+	for travel_cost_link in travel_cost.keys():
+		# TODO: Print out problematic links and find out which node got that link as neighbors
+		(get_parent() as FlyingNavigation3D).draw_svolink_box(travel_cost_link, Color.RED, Color.BLUE) #, str(travel_cost[travel_cost_link]))
 	
-	if not charted.has(to):
+	if not visited.has(to):
 		return []
 	
 	var path: PackedInt64Array = [to]
@@ -106,21 +129,20 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 		var neighbors := svo.neighbors_of(back_node)
 		var pathlength = path.size()
 		for n in neighbors:
-			if charted[n] + _compute_cost(n, back_node, svo) == charted[back_node]:
+			if travel_cost.get(n, INF) + _compute_cost(n, back_node, svo) == travel_cost[back_node]:
 				path.append(n)
 				break
 		if path.size() == pathlength:
 			print("Find path loops forever")
-			print("back node: %s" % SVOLink.get_format_string(back_node, svo))
-			print("Charted backnode: %f" % charted[back_node])
-			for n in neighbors:
-				if SVOLink.layer(n) == 0:
-					(get_parent() as FlyingNavigation3D).draw_svolink_box(n, Color.AQUAMARINE)
-					print(SVOLink.get_format_string(n, svo))
-				print("%f + %f != %f" % [charted[n], _compute_cost(n, back_node, svo), charted[back_node]])
-			
-			print("Neighbors: \n%s" % str(Array(neighbors).map(func(svolink): 
-				return SVOLink.get_format_string(svolink, svo))))
+			#print("back node: %s" % SVOLink.get_format_string(back_node, svo))
+			#print("travel_cost backnode: %f" % travel_cost[back_node])
+			#for n in neighbors:
+				#(get_parent() as FlyingNavigation3D).draw_svolink_box(n, Color.AQUAMARINE)
+				#print(SVOLink.get_format_string(n, svo))
+				#print("%f + %f != %f" % [travel_cost[n], _compute_cost(n, back_node, svo), travel_cost[back_node]])
+			#
+			#print("Neighbors: \n%s" % str(Array(neighbors).map(func(svolink): 
+				#return SVOLink.get_format_string(svolink, svo))))
 			break
 	path.reverse()
 	return path

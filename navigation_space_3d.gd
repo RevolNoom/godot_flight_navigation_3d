@@ -427,8 +427,11 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 
 ############## DEBUGS #######################
 
-
-func draw_svolink_box(svolink: int, node_color: Color = Color.RED, leaf_color: Color = Color.GREEN):
+## @text: null for default value of svolink format string
+func draw_svolink_box(svolink: int, 
+		node_color: Color = Color.RED, 
+		leaf_color: Color = Color.GREEN,
+		text = null):
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
 	var label = Label3D.new()
@@ -438,7 +441,7 @@ func draw_svolink_box(svolink: int, node_color: Color = Color.RED, leaf_color: C
 	var node = _svo.node_from_link(svolink)
 	cube.mesh.material = StandardMaterial3D.new()
 	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
-	label.text = SVOLink.get_format_string(svolink, _svo)
+	label.text = text if text != null else SVOLink.get_format_string(svolink, _svo)
 			
 	if layer == 0 and node.first_child != 0:
 		cube.mesh.size = Vector3.ONE * leaf_cube_size
