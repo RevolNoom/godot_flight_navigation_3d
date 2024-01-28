@@ -59,10 +59,7 @@ func index_from_morton(layer: int, morton: int) -> int:
 func neighbors_of(svolink: int) -> PackedInt64Array:
 	var node = node_from_link(svolink)
 	var layer = SVOLink.layer(svolink)
-	print("Find neighbor of %d %s %s" %\
-	[layer, 
-	str(Morton3.decode_vec3i(node.morton)), 
-	str(Morton3.decode_vec3i(SVOLink.offset(svolink)))])
+	#print("Find neighbor of %s" % SVOLink.get_format_string(svolink, self))
 	
 	var neighbors: PackedInt64Array = []
 	
@@ -88,7 +85,7 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 				neighbors.push_back(SVOLink.set_subgrid(neighbor[1], svolink))
 				#if neighbors[neighbors.size()-1] == DEBUG_ERROR_LINK:
 					#print("1")
-				print("Same parent leaf: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
+				#print("Same parent leaf: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
 			else:
 				var nb_link := node.neighbor(neighbor[0])
 						
@@ -99,7 +96,7 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 				# Free-space nodes of higher layer. Return whole
 				if SVOLink.layer(nb_link) != 0:
 					neighbors.push_back(nb_link)
-					print("Free space node: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
+					#print("Free space node: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
 					
 					#if neighbors[neighbors.size()-1] == DEBUG_ERROR_LINK:
 						#print("2")
@@ -109,7 +106,7 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 				# Free-space layer-0 node. Return whole
 				if nb_node.subgrid == SVONode.EMPTY_SUBGRID:
 					neighbors.push_back(nb_link)
-					print("Free space node layer 0: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
+					#print("Free space node layer 0: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
 					
 					#if neighbors[neighbors.size()-1] == DEBUG_ERROR_LINK:
 						#print("3")
@@ -119,7 +116,7 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 				var neighbor_voxel_index = neighbor[1] & 0x3F
 				neighbors.push_back(SVOLink.set_subgrid(neighbor_voxel_index, nb_link))
 				
-				print("Subgrid voxel: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
+				#print("Subgrid voxel: %s" % Morton.int_to_bin(neighbors[neighbors.size()-1]))
 				
 				#if neighbors[neighbors.size()-1] == DEBUG_ERROR_LINK:
 					#print("4")
@@ -146,19 +143,25 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 			# Thus, one method call works on both cases
 			var surf_vox = _smallest_voxels_on_surface(nb[0], nb[1])
 			neighbors.append_array(surf_vox)
-			print("Voxels on %s:\n%s" % [str(Face.find_key(nb[0] + (1 if nb[0] % 2 == 0 else -1))), 
-				Array(surf_vox).map(func(svolink): 
-					var svonode = node_from_link(svolink)
-					return "%d %s %s" %\
-						[SVOLink.layer(svolink),
-						Morton3.decode_vec3i(svonode.morton), 
-						Morton3.decode_vec3i(SVOLink.subgrid(svolink))])])
-			print()
+			#print("Voxels on %s (neighbor: %s):\n%s" % [str(Face.find_key(nb[0] + (1 if nb[0] % 2 == 0 else -1))), 
+				#SVOLink.get_format_string(nb[1], self),
+				#Array(surf_vox).map(func(svolink): 
+					#return SVOLink.get_format_string(svolink, self))])
+			#print()
 				
 				#if neighbors.has(DEBUG_ERROR_LINK):
 					#print("5")
 	return neighbors
 
+
+# NOTE: Currently, SVO is built without inside/outside information of a mesh,
+# only solid/free space information of the surface of the mesh.
+# As a consequence, nodes on layer != 0 are all free space,
+# and only subgrid voxels can be solid
+## @return true if @svolink refers to a solid node/voxel
+func is_link_solid(svolink: int) -> bool:
+	return SVOLink.layer(svolink) == 0\
+			and node_from_link(svolink).is_solid(SVOLink.subgrid(svolink))
 
 ## Return the depth, excluding the subgrid levels
 var depth: int:
@@ -377,7 +380,7 @@ static var face_subgrid: Array[PackedInt64Array] = [
 func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 	if svolink == SVOLink.NULL:
 		return []
-	
+		
 	var layer = SVOLink.layer(svolink)
 	var node = node_from_link(svolink)
 	
@@ -385,10 +388,12 @@ func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 		# This node is all free space. No need to travel its subgrid
 		if node.subgrid == SVONode.EMPTY_SUBGRID:
 			return [svolink]
+			
 		# Return all subgrid voxels on the specified face
+		#print("Voxels of %s on %s" % [SVOLink.get_format_string(svolink, self), Face.find_key(face)])
 		return (face_subgrid[face] as Array).map(
 			func(voxel_idx) -> int:
-				return SVOLink.set_offset(voxel_idx, svolink))
+				return SVOLink.set_subgrid(voxel_idx, svolink))
 	
 	# If this node doesn't have any child
 	# Then it makes up the face itself
@@ -396,24 +401,30 @@ func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 		return [svolink]
 
 	# This vector holds index of 4 children on @face
-	var children_on_face: Vector4i =\
-			Vector4i(node.first_child,
-					node.first_child,
-					node.first_child,
-					node.first_child)
+	var children_on_face: Vector4i = Vector4i.ONE * node.first_child
+	var children_indexes: Vector4i
 	match face:
 		Face.X_NEG:
-			children_on_face += Vector4i(0,2,4,6)
+			children_indexes = Vector4i(0,2,4,6)
 		Face.X_POS:
-			children_on_face += Vector4i(1,3,5,7)
+			children_indexes = Vector4i(1,3,5,7)
 		Face.Y_NEG:
-			children_on_face += Vector4i(0,1,4,5)
+			children_indexes = Vector4i(0,1,4,5)
 		Face.Y_POS:
-			children_on_face += Vector4i(2,3,6,7)
+			children_indexes = Vector4i(2,3,6,7)
 		Face.Z_NEG:
-			children_on_face += Vector4i(0,1,2,3)
+			children_indexes = Vector4i(0,1,2,3)
 		_: #Face.Z_POS:
-			children_on_face += Vector4i(4,5,6,7)	# Note: 
+			children_indexes = Vector4i(4,5,6,7)
+	
+	# Multiply by 64 to shift all bits in indexes by 6 bits, 
+	# to ignore "subgrid" in SVOLink 
+	children_on_face += children_indexes * 64
+	
+	#print("Four children:")
+	#for child in [children_on_face.x, children_on_face.y, children_on_face.z, children_on_face.w]:
+		#print(SVOLink.get_format_string(child, self))
+	#print()
 	return (_smallest_voxels_on_surface(face, children_on_face.x)\
 		+  _smallest_voxels_on_surface(face, children_on_face.y))\
 		+  (_smallest_voxels_on_surface(face, children_on_face.z)\
@@ -513,7 +524,9 @@ class SVONode:
 				return zn
 			_: #Face.Z_POS:
 				return zp
-		
+	
+	func is_solid(subgrid_index: int) -> bool:
+		return subgrid & subgrid_index
 
 static func _comprehensive_test(svo: SVO):
 	print("Testing SVO Validity")

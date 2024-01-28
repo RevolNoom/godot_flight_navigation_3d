@@ -34,3 +34,10 @@ static func set_subgrid(new_subgrid: int, link: int) -> int:
 static func in_diff_layers(link1: int, link2: int) -> bool: 
 	return (link1^link2) & 0x0FFF_FFFF_FFFF_FFFF
 
+## Format: Layer MortonCode Subgrid
+static func get_format_string(svolink: int, svo: SVO) -> String:
+	return "%d %s %s" % [
+		SVOLink.layer(svolink),
+			Morton3.decode_vec3i(svo.node_from_link(svolink).morton), 
+			Morton3.decode_vec3i(SVOLink.subgrid(svolink))]
+	

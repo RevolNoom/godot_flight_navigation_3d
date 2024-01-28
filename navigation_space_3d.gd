@@ -431,26 +431,25 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 func draw_svolink_box(svolink: int, node_color: Color = Color.RED, leaf_color: Color = Color.GREEN):
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
+	var label = Label3D.new()
+	cube.add_child(label)
+	
 	var layer = SVOLink.layer(svolink)
 	var node = _svo.node_from_link(svolink)
 	cube.mesh.material = StandardMaterial3D.new()
 	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
+	label.text = SVOLink.get_format_string(svolink, _svo)
 			
 	if layer == 0 and node.first_child != 0:
 		cube.mesh.size = Vector3.ONE * leaf_cube_size
 		cube.mesh.material.albedo_color = leaf_color
+		label.pixel_size = leaf_cube_size / 400
 	else:
 		cube.mesh.size = Vector3.ONE * _node_size(layer)
 		cube.mesh.material.albedo_color = node_color
+		label.pixel_size = _node_size(layer) / 400
 	cube.mesh.material.albedo_color.a = 0.2
 	
-	var label = Label3D.new()
-	label.text = "L: %d\nM: %s\nO: %s" % \
-		[SVOLink.layer(svolink), 
-		str(Morton3.decode_vec3i(node.morton)), 
-		str(Morton3.decode_vec3i(SVOLink.subgrid(svolink)))]
-	label.pixel_size = 0.0008
-	cube.add_child(label)
 	$Origin/SVOLinkCubes.add_child(cube)
 	cube.global_position = get_global_position_of(svolink) #+ Vector3(1, 0, 0)
 	#print("cube pos: %v" % [cube.position])

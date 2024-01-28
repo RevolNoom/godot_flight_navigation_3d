@@ -77,7 +77,13 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 		var best_node = unsearched.pop()
 		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
 		for neighbor in bn_neighbors:
+			# Ignore nodes that have already been searched
 			if charted.has(neighbor):
+				continue
+			
+			# Ignore nodes that are solid
+			if svo.is_link_solid(neighbor):
+				charted[neighbor] = INF
 				continue
 			
 			var neighbor_cost = charted[best_node[SvoLink]] \
@@ -85,6 +91,7 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 			charted[neighbor] = neighbor_cost
 			if neighbor == to:
 				break
+				
 			unsearched.push([neighbor_cost\
 				+ _estimate_cost(neighbor, to, svo)\
 				, neighbor])
@@ -93,7 +100,6 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 		return []
 	
 	var path: PackedInt64Array = [to]
-	
 	while path[path.size()-1] != from:
 		print("path size: %d" % path.size())
 		var back_node := path[path.size()-1]
@@ -104,26 +110,17 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 				path.append(n)
 				break
 		if path.size() == pathlength:
-			print("b: %s" % Morton.int_to_bin(back_node))
+			print("Find path loops forever")
+			print("back node: %s" % SVOLink.get_format_string(back_node, svo))
 			print("Charted backnode: %f" % charted[back_node])
 			for n in neighbors:
-				print("n: %s" % Morton.int_to_bin(n))
 				if SVOLink.layer(n) == 0:
 					(get_parent() as FlyingNavigation3D).draw_svolink_box(n, Color.AQUAMARINE)
-					print("L%d M%v O%v" %\
-						 [SVOLink.layer(n), 
-						Morton3.decode_vec3(svo.node_from_link(n).morton), 
-						Morton3.decode_vec3(SVOLink.offset(n))])
+					print(SVOLink.get_format_string(n, svo))
 				print("%f + %f != %f" % [charted[n], _compute_cost(n, back_node, svo), charted[back_node]])
 			
-			#print("Neighbors: \n%s" % str(Array(neighbors).map(func(svolink): 
-				#return "L%d M%v O%v" %\
-				 #[SVOLink.layer(svolink), 
-				#Morton3.decode_vec3(svo.node_from_link(svolink).morton), 
-				#Morton3.decode_vec3(SVOLink.offset(svolink))])))
-				
-			#print("Neighbors pos after convert SVO: %s" % str(Array(neighbors).map(func(svolink):
-					#return get_parent().get_global_position_of(svolink))))
+			print("Neighbors: \n%s" % str(Array(neighbors).map(func(svolink): 
+				return SVOLink.get_format_string(svolink, svo))))
 			break
 	path.reverse()
 	return path
@@ -140,7 +137,8 @@ func _compute_cost(from: int, to: int, svo: SVO) -> float:
 	#var grid_t = SVOLink.subgrid(svolink_to)
 	
 	#return 0
-	return unit_cost * (1 - SVOLink.layer(to) * size_compensation_factor)
+	# TODO: Fix that size compensation factor
+	return unit_cost# * (1 - SVOLink.layer(to) * size_compensation_factor)
 
 
 ## Calculate the cost to travel from @svolink to @destination
