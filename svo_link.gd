@@ -28,7 +28,7 @@ static func set_offset(new_offset: int, link: int) -> int:
 
 ## WARNING: Not checking for over 6-bit values
 static func set_subgrid(new_subgrid: int, link: int) -> int:
-	return (link & ~0x3F) | new_subgrid
+	return (link & ~0b111111) | new_subgrid
 
 # @return true if they have different layer field values
 static func in_diff_layers(link1: int, link2: int) -> bool: 
@@ -36,8 +36,15 @@ static func in_diff_layers(link1: int, link2: int) -> bool:
 
 ## Format: Layer MortonCode Subgrid
 static func get_format_string(svolink: int, svo: SVO) -> String:
-	return "%d %s %s" % [
+	#return "%d %s %s" % [
+		#SVOLink.layer(svolink),
+			#Morton3.decode_vec3i(svo.node_from_link(svolink).morton), 
+			#Morton3.decode_vec3i(SVOLink.subgrid(svolink))]
+	# This version appends the value of the link at the end
+	# This function is used for debug anyway, so I modify it to my needs 
+	return "%d %s %s\n%d" % [
 		SVOLink.layer(svolink),
 			Morton3.decode_vec3i(svo.node_from_link(svolink).morton), 
-			Morton3.decode_vec3i(SVOLink.subgrid(svolink))]
+			Morton3.decode_vec3i(SVOLink.subgrid(svolink)), 
+			svolink]
 	

@@ -93,7 +93,17 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 		visited[best_node[SvoLink]] = null
 		
 		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
+		
 		for neighbor in bn_neighbors:
+			
+			## DEBUG:
+			#if neighbor == 1509:
+				#print("best_node: %d" % best_node[SvoLink])
+				#print("Neighbor: %d" % neighbor)
+				#(get_parent() as FlyingNavigation3D).draw_svolink_box(neighbor, Color.RED, Color.BLUE)
+				#(get_parent() as FlyingNavigation3D).draw_svolink_box(best_node[SvoLink], Color.RED, Color.BLUE)
+				#return []
+				
 			# Ignore obstacles
 			if svo.is_link_solid(neighbor):
 				travel_cost[neighbor] = INF
@@ -110,14 +120,16 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 						+ _estimate_cost(neighbor, to, svo)\
 						, neighbor])
 			if neighbor == to:
+				visited[neighbor] = null
 				print("Reached")
 				break
 		# The destination has been reached. Return the path now
 		if visited.has(to):
 			break
-	for travel_cost_link in travel_cost.keys():
-		# TODO: Print out problematic links and find out which node got that link as neighbors
-		(get_parent() as FlyingNavigation3D).draw_svolink_box(travel_cost_link, Color.RED, Color.BLUE) #, str(travel_cost[travel_cost_link]))
+			
+	#for travel_cost_link in travel_cost.keys():
+		## TODO: Print out problematic links and find out which node got that link as neighbors
+		#(get_parent() as FlyingNavigation3D).draw_svolink_box(travel_cost_link, Color.RED, Color.BLUE) #, str(travel_cost[travel_cost_link]))
 	
 	if not visited.has(to):
 		return []
@@ -129,21 +141,17 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 		var neighbors := svo.neighbors_of(back_node)
 		var pathlength = path.size()
 		for n in neighbors:
+			if n == 1008:
+				print("1008 spotted")
+				print("1008 solid? %s" % svo.is_link_solid(n))
+				print("Expression: %f + %f = %f ? %f" % \
+					[travel_cost.get(n, INF),
+					_compute_cost(n, back_node, svo), 
+					travel_cost.get(n, INF) + _compute_cost(n, back_node, svo), 
+					travel_cost[back_node]])
 			if travel_cost.get(n, INF) + _compute_cost(n, back_node, svo) == travel_cost[back_node]:
 				path.append(n)
 				break
-		if path.size() == pathlength:
-			print("Find path loops forever")
-			#print("back node: %s" % SVOLink.get_format_string(back_node, svo))
-			#print("travel_cost backnode: %f" % travel_cost[back_node])
-			#for n in neighbors:
-				#(get_parent() as FlyingNavigation3D).draw_svolink_box(n, Color.AQUAMARINE)
-				#print(SVOLink.get_format_string(n, svo))
-				#print("%f + %f != %f" % [travel_cost[n], _compute_cost(n, back_node, svo), travel_cost[back_node]])
-			#
-			#print("Neighbors: \n%s" % str(Array(neighbors).map(func(svolink): 
-				#return SVOLink.get_format_string(svolink, svo))))
-			break
 	path.reverse()
 	return path
 
@@ -151,16 +159,11 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 ## @from, @to: SVOLink
 ## Calculate the cost between two connected voxels 
 ## Direction is from @from to @to
+# TODO: Is this size compensation factor working as expected?
 func _compute_cost(from: int, to: int, svo: SVO) -> float:
-	#var layer_f = SVOLink.layer(svolink_from)
-	#var layer_t = SVOLink.layer(svolink_to)
-	
-	#var grid_f = SVOLink.subgrid(svolink_from)
-	#var grid_t = SVOLink.subgrid(svolink_to)
-	
-	#return 0
-	# TODO: Fix that size compensation factor
-	return unit_cost# * (1 - SVOLink.layer(to) * size_compensation_factor)
+	if svo.is_subgrid_voxel(to):
+		return unit_cost
+	return unit_cost * (1 - (SVOLink.layer(to) + 2) * size_compensation_factor)
 
 
 ## Calculate the cost to travel from @svolink to @destination
@@ -182,24 +185,7 @@ func _convert_to_svolink(position: Vector3, extent: float, svo: SVO) -> int:
 
 func _euclidean(svolink1: int, svolink2: int, svo: SVO) -> float:
 	## TODO: Maybe distance_squared_to is a better choice?
-	return _node_center(svolink1, svo).distance_to(_node_center(svolink2, svo))
-
-
-## Calculate the center of the voxel
-## where 1 unit distance corresponds to side length of 1 subgrid voxel
-func _node_center(svolink: int, svo: SVO) -> Vector3:
-	var node = svo.node_from_link(svolink)
-	var layer = SVOLink.layer(svolink)
-	var corner_pos = Morton3.decode_vec3(node.morton)\
-			* (2 ** (layer+2))
-	
-	# In case layer 0 node has some solid voxels, the center
-	# is the center of the subgrid voxel, not of the node
-	if layer == 0 and node.first_child != 0:
-		return corner_pos + Morton3.decode_vec3(SVOLink.subgrid(svolink))\
-				+ Vector3(1,1,1)*0.5
-			
-	return corner_pos + Vector3(1,1,1) * (2 ** (layer+1))
+	return svo.get_center(svolink1).distance_to(svo.get_center(svolink2))
 
 
 func _manhattan(svolink1: int, svolink2: int, svo: SVO):

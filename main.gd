@@ -11,8 +11,9 @@ func _on_timer_timeout():
 	pass
 
 func _on_navigation_space_3d_finished():
-	#$NavigationSpace3D.draw_debug_boxes()
+	$NavigationSpace3D.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
+	#_get_svolink_test()
 	_find_path_test()
 	#_neighbor_draw_test()
 	pass
@@ -22,6 +23,7 @@ func _on_navigation_space_3d_finished():
 func _automated_test():
 	_test_debug_draw()
 	pass
+
 
 func _post_voxelization_svolink_globalpos_conversion_test():
 	var test_positions = [Vector3(1, 1, 1), Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
@@ -33,11 +35,20 @@ func _post_voxelization_svolink_globalpos_conversion_test():
 func _neighbor_draw_test():
 	var test_positions = [Vector3(0.75, -0.25, 0.75)]#Vector3(0.5, 0.5, 1.5)]#Vector3(-1, -1, -1.2)]#, Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
 	for test_position in test_positions:
-		var link = $NavigationSpace3D.get_svolink_of(test_position)
+		var link = 11904 # $NavigationSpace3D.get_svolink_of(test_position)
 		$NavigationSpace3D.draw_svolink_box(link, Color.GREEN)
 		for n in $NavigationSpace3D._svo.neighbors_of(link):
 			$NavigationSpace3D.draw_svolink_box(n, Color.BLUE, Color.PINK)
 
+
+func _get_svolink_test():
+	var test_positions = [Vector3(-1.4375, -0.4375, -0.9375), 
+						Vector3(-1.4375, -0.3125, -0.9375),
+						Vector3(-1.4375, -0.3125, -0.8125),
+						Vector3(-1.4375, -0.1875, -0.8125),
+						Vector3(-1.4375, -0.0625, -0.8125)]
+	for test_position in test_positions:
+		var link = $NavigationSpace3D.get_svolink_of(test_position)
 
 func _find_path_test():
 	print("Start find path")
@@ -47,14 +58,15 @@ func _find_path_test():
 	var path = $NavigationSpace3D.find_path(from, to)
 	#$NavigationSpace3D.draw_debug_boxes()
 	#$PathDebugDraw.multimesh.instance_count = path.size()
-	#for i in range(path.size()):
-		#$NavigationSpace3D.draw_svolink_box($NavigationSpace3D.get_svolink_of(path[i]))
+	
+	var svolink_path = Array(path).map(func(pos): return $NavigationSpace3D.get_svolink_of(pos))
+	
+	for svolink in svolink_path:
+		$NavigationSpace3D.draw_svolink_box(svolink)
 		
-	print("Path before convert SVO: %s" % str(path))
-	#print("Path after convert SVO: %s" % str(Array(path).map(func(pos): 
-		#return $NavigationSpace3D.get_svolink_of(pos))
-		#.map(func(svolink):
-			#return $NavigationSpace3D.get_global_position_of(svolink))))
+	#print("Path before convert SVO: %s" % str(path))
+	print("Vector3 path: %s" % str(path))
+	print("SVOLink path: %s" % str(svolink_path.map(func(l): return SVOLink.get_format_string(l, $NavigationSpace3D._svo))))
 	
 		#$PathDebugDraw.multimesh.set_instance_transform(i, Transform3D(Basis(), path[i]))
 	print("Done find path: %d points" % path.size())

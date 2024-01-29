@@ -363,6 +363,7 @@ func get_global_position_of(svolink: int) -> Vector3:
 ## @return_closest_node: determine what to return if navspace doesn't encloses @gposition
 ## if false, return SVOLink.NULL
 ## TODO: if true, return the closest node 
+## BUG!!!!!! Different gposition might result in same link!
 func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> int:
 	var local_pos = to_local(gposition) - _extent_origin
 	var extent = _extent_size.x
@@ -370,7 +371,7 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 	
 	# Points outside Navigation Space
 	## TODO: Return the closest node
-	if not aabb.has_point(position):
+	if not aabb.has_point(local_pos):
 		#print("Position: %v -> null" % position)
 		return SVOLink.NULL
 	
@@ -406,24 +407,12 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 	
 	# If code reaches here, it means we have descended down to layer 0 already
 	# If the layer 0 node is free space, return it
-	var node0 = _svo.node_from_offset(0, link_offset)
-	if node0.first_child == 0:
-		return SVOLink.from(link_layer, link_offset, 0)
+	if _svo.node_from_offset(0, link_offset).subgrid == SVO.SVONode.EMPTY_SUBGRID:
+		return SVOLink.from(0, link_offset, 0)
 	
 	# else, return the subgrid voxel that encloses @position
-	var subdivides = [aabb.size.x*0.25,
-					aabb.size.x*0.5, 
-					aabb.size.x*0.75]
-	var subgridv = Vector3i.ZERO
-	subgridv.x = subdivides.bsearch(position.x - aabb.position.x)
-	subgridv.y = subdivides.bsearch(position.y - aabb.position.y)
-	subgridv.z = subdivides.bsearch(position.z - aabb.position.z)
-	#print("Position: %v -> %s" % [position, 
-	#	Morton3.int_to_bin(SVOLink.from(layer, offset, Morton3.encode64v(subgridv)))])
-		
-	#navspace.draw_svolink_box(SVOLink.from(link_layer, link_offset, Morton3.encode64v(subgridv)))
-	var link = SVOLink.from(link_layer, link_offset, Morton3.encode64v(subgridv))
-	return link
+	var subgridv = (local_pos - aabb.position) * 4 / aabb.size
+	return SVOLink.from(0, link_offset, Morton3.encode64v(subgridv))
 
 ############## DEBUGS #######################
 
