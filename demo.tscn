@@ -1,0 +1,114 @@
+[gd_scene load_steps=16 format=3 uid="uid://dgo7fj4tmihlq"]
+
+[ext_resource type="Script" path="res://demo.gd" id="1_j05pj"]
+[ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://src/flight_navigation_3d.tscn" id="2_6cyyn"]
+[ext_resource type="Script" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="3_odj53"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_owu8f"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_mf4ld"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_u2ahw"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_2w2yn"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_tscoa"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_gt65f"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_y24ew"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_w63pk"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_i3mn7"]
+points = PackedVector3Array(0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_mmhx4"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kb1i8"]
+albedo_color = Color(1, 1, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_pw7g6"]
+material = SubResource("StandardMaterial3D_kb1i8")
+radius = 0.1
+height = 0.2
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_j05pj")
+
+[node name="AllKindsOfCollisionShapes" type="Node3D" parent="."]
+
+[node name="Sphere" type="RigidBody3D" parent="AllKindsOfCollisionShapes"]
+transform = Transform3D(0.300872, 0.662196, 0.686275, 0, 0.719619, -0.69437, -0.953664, 0.208917, 0.216513, 1.30032, 0.946098, -1.29822)
+gravity_scale = 0.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Sphere"]
+shape = SubResource("SphereShape3D_owu8f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Sphere"]
+mesh = SubResource("SphereMesh_mf4ld")
+
+[node name="Box" type="StaticBody3D" parent="AllKindsOfCollisionShapes"]
+transform = Transform3D(0.730537, 0.17074, 0.661184, 0.262361, 0.823747, -0.5026, -0.630462, 0.540637, 0.556982, -1.13867, 0, 0.51582)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Box"]
+shape = SubResource("BoxShape3D_u2ahw")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Box"]
+mesh = SubResource("BoxMesh_2w2yn")
+
+[node name="Capsule" type="Area3D" parent="AllKindsOfCollisionShapes"]
+transform = Transform3D(0.929165, -0.224951, -0.293342, 0, 0.793534, -0.608526, 0.369666, 0.565421, 0.737324, 0, -0.683882, -1.90184)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Capsule"]
+shape = SubResource("CapsuleShape3D_tscoa")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Capsule"]
+mesh = SubResource("CapsuleMesh_gt65f")
+
+[node name="Cylinder" type="AnimatableBody3D" parent="AllKindsOfCollisionShapes"]
+transform = Transform3D(1, 0, 0, 0, 0.822204, 0.569193, 0, -0.569193, 0.822204, 1.39317, 0.545422, 1.65847)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Cylinder"]
+shape = SubResource("CylinderShape3D_y24ew")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Cylinder"]
+mesh = SubResource("CylinderMesh_w63pk")
+
+[node name="ConvexBoxShape" type="CharacterBody3D" parent="AllKindsOfCollisionShapes"]
+transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0, 0, 0.0596905)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, -0.5, -0.5)
+shape = SubResource("ConvexPolygonShape3D_i3mn7")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
+mesh = SubResource("BoxMesh_mmhx4")
+
+[node name="FlightNavigation3D" parent="." instance=ExtResource("2_6cyyn")]
+max_depth = 6
+disable_depth_warning = true
+leaf_cube_size = 0.125
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 4, 3)
+script = ExtResource("3_odj53")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.1
+one_shot = true
+autostart = true
+
+[node name="Start" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, -1.9, -1.9)
+mesh = SubResource("SphereMesh_pw7g6")
+
+[node name="End" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9, 1.9, 1.9)
+mesh = SubResource("SphereMesh_pw7g6")
+
+[connection signal="finished" from="FlightNavigation3D" to="." method="_on_navigation_space_3d_finished"]
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

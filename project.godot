@@ -11,6 +11,6 @@ config_version=5
 [application]
 
 config/name="FlightNavigation3D"
-run/main_scene="res://main.tscn"
+run/main_scene="res://demo.tscn"
 config/features=PackedStringArray("4.2", "Forward Plus")
 config/icon="res://icon.svg"

@@ -10,9 +10,11 @@ func _init(comp := Comparator.LESS):
 	_heap = []
 	_size = 0
 
+
 ## Return the number of elements in the heap
 func size() -> int: 
 	return _size
+
 
 ## TODO: Process an array in-place
 static func from(array: Array, _comp := Comparator.LESS) -> PriorityQueue:
