@@ -11,7 +11,7 @@
 # e.g. 0.05s after _ready()
 @tool
 extends Area3D
-class_name FlyingNavigation3D
+class_name FlightNavigation3D
 
 ## Emitted when voxelize() or voxelize_async() finishes
 signal finished()

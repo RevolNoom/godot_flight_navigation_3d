@@ -1,5 +1,15 @@
 class_name SVOLink
+## A SVOLink is an int64 with the following layout:
+##
+## Layer | Offset | Subgrid
+## ====|======================================================|====== 
+## 4   |						54							  |  6	 bits
+## 
+## Layer: Which layer this node is in SVO
+## Offset: Which index in the layer array of SVO this node is 
+## Subgrid: Morton code of the subgrid voxel of the layer-0 node that this link is pointing to. 
 
+## Null SVOLink that doesn't point to any node/voxel
 const NULL: int = ~0
 
 ## WARNING: Not checking valid values 
@@ -30,10 +40,14 @@ static func set_offset(new_offset: int, link: int) -> int:
 static func set_subgrid(new_subgrid: int, link: int) -> int:
 	return (link & ~0b111111) | new_subgrid
 
-# @return true if they have different layer field values
-static func in_diff_layers(link1: int, link2: int) -> bool: 
-	return (link1^link2) & 0x0FFF_FFFF_FFFF_FFFF
-
+## Return true if they have same "layer" field values
+static func same_layer(link1: int, link2: int) -> bool: 
+	return not ((link1^link2) >> 60)
+	
+## Return true if they have different "layer" field values
+static func not_same_layer(link1: int, link2: int) -> bool: 
+	return (link1^link2) >> 60
+	
 ## Format: Layer MortonCode Subgrid
 static func get_format_string(svolink: int, svo: SVO) -> String:
 	#return "%d %s %s" % [

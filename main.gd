@@ -6,12 +6,12 @@ func _ready():
 	pass
 
 func _on_timer_timeout():
-	$NavigationSpace3D.voxelize_async()
-	#$NavigationSpace3D.voxelize()
+	$FlightNavigation3D.voxelize_async()
+	#$FlightNavigation3D.voxelize()
 	pass
 
 func _on_navigation_space_3d_finished():
-	$NavigationSpace3D.draw_debug_boxes()
+	$FlightNavigation3D.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
 	#_get_svolink_test()
 	_find_path_test()
@@ -28,17 +28,17 @@ func _automated_test():
 func _post_voxelization_svolink_globalpos_conversion_test():
 	var test_positions = [Vector3(1, 1, 1), Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
 	for test_position in test_positions:
-		var link = $NavigationSpace3D.get_svolink_of(test_position)
-		$NavigationSpace3D.draw_svolink_box(link)
+		var link = $FlightNavigation3D.get_svolink_of(test_position)
+		$FlightNavigation3D.draw_svolink_box(link)
 
 
 func _neighbor_draw_test():
 	var test_positions = [Vector3(0.75, -0.25, 0.75)]#Vector3(0.5, 0.5, 1.5)]#Vector3(-1, -1, -1.2)]#, Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
 	for test_position in test_positions:
-		var link = 11904 # $NavigationSpace3D.get_svolink_of(test_position)
-		$NavigationSpace3D.draw_svolink_box(link, Color.GREEN)
-		for n in $NavigationSpace3D._svo.neighbors_of(link):
-			$NavigationSpace3D.draw_svolink_box(n, Color.BLUE, Color.PINK)
+		var link = 11904 # $FlightNavigation3D.get_svolink_of(test_position)
+		$FlightNavigation3D.draw_svolink_box(link, Color.GREEN)
+		for n in $FlightNavigation3D._svo.neighbors_of(link):
+			$FlightNavigation3D.draw_svolink_box(n, Color.BLUE, Color.PINK)
 
 
 func _get_svolink_test():
@@ -48,32 +48,18 @@ func _get_svolink_test():
 						Vector3(-1.4375, -0.1875, -0.8125),
 						Vector3(-1.4375, -0.0625, -0.8125)]
 	for test_position in test_positions:
-		var link = $NavigationSpace3D.get_svolink_of(test_position)
+		var link = $FlightNavigation3D.get_svolink_of(test_position)
 
 func _find_path_test():
-	print("Start find path")
-	
-	var from = Vector3(-2, -2, -2)
-	var to = Vector3(2, 2, 2)
-	var path = $NavigationSpace3D.find_path(from, to)
-	#$NavigationSpace3D.draw_debug_boxes()
-	#$PathDebugDraw.multimesh.instance_count = path.size()
-	
-	var svolink_path = Array(path).map(func(pos): return $NavigationSpace3D.get_svolink_of(pos))
+	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
+	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
 	
 	for svolink in svolink_path:
-		$NavigationSpace3D.draw_svolink_box(svolink)
-		
-	#print("Path before convert SVO: %s" % str(path))
-	print("Vector3 path: %s" % str(path))
-	print("SVOLink path: %s" % str(svolink_path.map(func(l): return SVOLink.get_format_string(l, $NavigationSpace3D._svo))))
-	
-		#$PathDebugDraw.multimesh.set_instance_transform(i, Transform3D(Basis(), path[i]))
-	print("Done find path: %d points" % path.size())
+		$FlightNavigation3D.draw_svolink_box(svolink)
 	
 
 func _test_debug_draw():
-	var Ns: PackedScene = preload("res://navigation_space_3d.tscn")
+	var Ns: PackedScene = preload("res://flight_navigation_3d.tscn")
 	var ns = Ns.instantiate()
 	var max_depth = 5
 	ns.max_depth = max_depth

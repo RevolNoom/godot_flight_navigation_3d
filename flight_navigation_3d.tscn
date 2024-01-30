@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3 uid="uid://c1c25qj7uljje"]
 
-[ext_resource type="Script" path="res://navigation_space_3d.gd" id="1_3yis1"]
-[ext_resource type="Script" path="res://greedy_a_star.gd" id="2_nlqg2"]
+[ext_resource type="Script" path="res://flight_navigation_3d.gd" id="1_d4tlu"]
+[ext_resource type="Script" path="res://greedy_a_star.gd" id="2_bqkhc"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_vd4ml"]
 
@@ -14,7 +14,7 @@ size = Vector3(4, 4, 4)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hd38a"]
 transparency = 1
-albedo_color = Color(0, 0, 1, 0.196078)
+albedo_color = Color(1, 1, 1, 0.0392157)
 emission_enabled = true
 emission = Color(1, 1, 1, 1)
 
@@ -22,9 +22,9 @@ emission = Color(1, 1, 1, 1)
 material = SubResource("StandardMaterial3D_hd38a")
 size = Vector3(4, 4, 4)
 
-[node name="FlyingNavigation3D" type="Area3D"]
+[node name="FlightNavigation3D" type="Area3D"]
 collision_layer = 0
-script = ExtResource("1_3yis1")
+script = ExtResource("1_d4tlu")
 leaf_cube_size = 0.5
 
 [node name="Origin" type="Node3D" parent="."]
@@ -36,7 +36,6 @@ multimesh = SubResource("MultiMesh_nucqm")
 [node name="SVOLinkCubes" type="Node3D" parent="Origin"]
 
 [node name="Extent" type="CollisionShape3D" parent="."]
-visible = false
 shape = SubResource("BoxShape3D_nou3d")
 
 [node name="DebugVisual" type="MeshInstance3D" parent="Extent"]
@@ -44,7 +43,9 @@ mesh = SubResource("BoxMesh_27dsg")
 skeleton = NodePath("../..")
 
 [node name="Astar" type="Node" parent="."]
-script = ExtResource("2_nlqg2")
+script = ExtResource("2_bqkhc")
+distance_function = null
+use_size_compensation_factor = null
 
 [connection signal="body_shape_entered" from="." to="." method="_on_body_shape_entered"]
 [connection signal="body_shape_exited" from="." to="." method="_on_body_shape_exited"]

@@ -1,36 +1,25 @@
-[gd_scene load_steps=9 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=7 format=3 uid="uid://dgo7fj4tmihlq"]
 
-[ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://navigation_space_3d.tscn" id="1_6of4y"]
+[ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://flight_navigation_3d.tscn" id="1_6of4y"]
 [ext_resource type="Script" path="res://main.gd" id="1_54eij"]
 [ext_resource type="PackedScene" uid="uid://v4ygiu7dj4ur" path="res://cat_test.tscn" id="2_lqgnc"]
 [ext_resource type="Script" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="3_frfsx"]
 
-[sub_resource type="BoxMesh" id="BoxMesh_4xi1d"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kb1i8"]
+albedo_color = Color(1, 1, 0, 1)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a0dbp"]
-albedo_color = Color(1, 0, 0, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_prx7j"]
-material = SubResource("StandardMaterial3D_a0dbp")
-size = Vector3(0.1, 0.1, 0.1)
-
-[sub_resource type="MultiMesh" id="MultiMesh_gwf84"]
-transform_format = 1
-mesh = SubResource("BoxMesh_prx7j")
+[sub_resource type="SphereMesh" id="SphereMesh_pw7g6"]
+material = SubResource("StandardMaterial3D_kb1i8")
+radius = 0.1
+height = 0.2
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_54eij")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.39989, 0, 0)
-visible = false
-mesh = SubResource("BoxMesh_4xi1d")
-skeleton = NodePath("../NavigationSpace3D")
-
 [node name="Sketchfab_Scene" parent="." instance=ExtResource("2_lqgnc")]
 transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, -0.460151, -0.234849, -0.224)
 
-[node name="NavigationSpace3D" parent="." instance=ExtResource("1_6of4y")]
+[node name="FlightNavigation3D" parent="." instance=ExtResource("1_6of4y")]
 max_depth = 6
 disable_depth_warning = true
 leaf_cube_size = 0.125
@@ -43,12 +32,17 @@ script = ExtResource("3_frfsx")
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
 
 [node name="Timer" type="Timer" parent="."]
-wait_time = 0.1
+wait_time = 5.0
 one_shot = true
 autostart = true
 
-[node name="PathDebugDraw" type="MultiMeshInstance3D" parent="."]
-multimesh = SubResource("MultiMesh_gwf84")
+[node name="Start" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, -1.9, -1.9)
+mesh = SubResource("SphereMesh_pw7g6")
 
-[connection signal="finished" from="NavigationSpace3D" to="." method="_on_navigation_space_3d_finished"]
+[node name="End" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9, 1.9, 1.9)
+mesh = SubResource("SphereMesh_pw7g6")
+
+[connection signal="finished" from="FlightNavigation3D" to="." method="_on_navigation_space_3d_finished"]
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
