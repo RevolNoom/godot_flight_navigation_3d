@@ -28,7 +28,7 @@
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>344</x>
+      <x>432</x>
       <y>48</y>
       <w>80</w>
       <h>56</h>
@@ -39,7 +39,7 @@
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>624</x>
+      <x>712</x>
       <y>48</y>
       <w>80</w>
       <h>56</h>
@@ -51,7 +51,7 @@ Space</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>944</x>
+      <x>1032</x>
       <y>48</y>
       <w>80</w>
       <h>56</h>
@@ -62,7 +62,7 @@ Space</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>416</x>
+      <x>504</x>
       <y>48</y>
       <w>224</w>
       <h>32</h>
@@ -74,7 +74,7 @@ Space</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>624</x>
+      <x>712</x>
       <y>8</y>
       <w>96</w>
       <h>56</h>
@@ -87,7 +87,7 @@ Layer 1 nodes</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>696</x>
+      <x>784</x>
       <y>48</y>
       <w>264</w>
       <h>32</h>
@@ -99,7 +99,7 @@ Layer 1 nodes</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>592</x>
+      <x>680</x>
       <y>96</y>
       <w>144</w>
       <h>72</h>
@@ -111,7 +111,7 @@ Layer 1 nodes</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>696</x>
+      <x>784</x>
       <y>72</y>
       <w>264</w>
       <h>32</h>
@@ -123,7 +123,7 @@ Layer 1 nodes</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>944</x>
+      <x>1032</x>
       <y>0</y>
       <w>80</w>
       <h>64</h>
@@ -135,7 +135,7 @@ Layer 1 nodes</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>616</x>
+      <x>704</x>
       <y>232</y>
       <w>80</w>
       <h>56</h>
@@ -147,7 +147,7 @@ Space</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>936</x>
+      <x>1024</x>
       <y>232</y>
       <w>80</w>
       <h>56</h>
@@ -158,7 +158,7 @@ Space</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>408</x>
+      <x>496</x>
       <y>232</y>
       <w>224</w>
       <h>32</h>
@@ -170,7 +170,7 @@ Space</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>600</x>
+      <x>688</x>
       <y>192</y>
       <w>128</w>
       <h>56</h>
@@ -183,7 +183,7 @@ logical coordinates</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>688</x>
+      <x>776</x>
       <y>232</y>
       <w>264</w>
       <h>32</h>
@@ -195,7 +195,7 @@ logical coordinates</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>408</x>
+      <x>496</x>
       <y>256</y>
       <w>224</w>
       <h>32</h>
@@ -207,7 +207,7 @@ logical coordinates</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>688</x>
+      <x>776</x>
       <y>256</y>
       <w>264</w>
       <h>32</h>
@@ -219,7 +219,7 @@ logical coordinates</panel_attributes>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>936</x>
+      <x>1024</x>
       <y>184</y>
       <w>80</w>
       <h>64</h>
@@ -231,7 +231,7 @@ logical coordinates</panel_attributes>
   <element>
     <id>UMLActor</id>
     <coordinates>
-      <x>368</x>
+      <x>456</x>
       <y>216</y>
       <w>48</w>
       <h>88</h>
@@ -242,7 +242,7 @@ logical coordinates</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>504</x>
+      <x>592</x>
       <y>536</y>
       <w>136</w>
       <h>56</h>
@@ -253,29 +253,21 @@ logical coordinates</panel_attributes>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>120</x>
-      <y>648</y>
-      <w>352</w>
-      <h>296</h>
+      <x>416</x>
+      <y>784</y>
+      <w>104</w>
+      <h>64</h>
     </coordinates>
     <panel_attributes>SVO
 --
-The Sparse Voxel Octree that contains 
-solid/free state of space.
---
-+ node_from_offset(layer: int, offset: int): SVONode
-+ node_from_link(link: SVOLink): SVONode
-+ node_from_morton(layer: int, morton: Morton3): SVONode
 
-+ link_from_morton(layer: int, morton: Morton3): SVOLink
-
-+ neighbors_of(svolink: SVOLink) -&gt; Array[SVOLink]:</panel_attributes>
+</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>904</x>
+      <x>992</x>
       <y>536</y>
       <w>136</w>
       <h>56</h>
@@ -286,7 +278,7 @@ solid/free state of space.
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>504</x>
+      <x>592</x>
       <y>440</y>
       <w>136</w>
       <h>56</h>
@@ -297,18 +289,23 @@ solid/free state of space.
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>712</x>
-      <y>440</y>
-      <w>136</w>
-      <h>56</h>
+      <x>624</x>
+      <y>840</y>
+      <w>184</w>
+      <h>80</h>
     </coordinates>
-    <panel_attributes>SVONode</panel_attributes>
+    <panel_attributes>SVONode
+--
+Contains the position of the 
+node in space, and information
+about parent, neighbor, children
+or subgrid voxel state</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>584</x>
+      <x>672</x>
       <y>664</y>
       <w>136</w>
       <h>128</h>
@@ -319,7 +316,7 @@ solid/free state of space.
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>760</x>
+      <x>848</x>
       <y>664</y>
       <w>136</w>
       <h>128</h>

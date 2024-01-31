@@ -48,7 +48,7 @@ var _distance_function: Callable = euclidean
 @export var unit_cost: float = 1
 
 
-## @svo: A SVO contains collision information
+## @svo: An SVO contains voxel solid states
 ## @from: SVOLink
 ## @to: SVOLink
 ## @return: The path connecting @from and @to through the navigation space, as SVOLinks

@@ -1,16 +1,12 @@
-# Voxelize StaticBodies in the specified area
-# "monitoring" and "monitorable" must be kept on to detect StaticBody3D
-
 # TODO: Unify the use of "layer", "depth".
 # Some places mean SVO depth + 2 subgrid layers
 # Other places mean only SVO depth
-
-
-# WARNING: Do NOT call voxelize() or voxelize_async() in _ready(). 
-# Call it only after all the shapes have been registered by the physic engine
-# e.g. 0.05s after _ready()
 @tool
 extends Area3D
+## Voxelize [CollisionObject3D] that enters this area
+##
+## [b]Warning:[/b] [param monitoring] and [param monitorable] must be kept on 
+## to detect [StaticBody3D] and [Area3D]
 class_name FlightNavigation3D
 
 ## Emitted when voxelize() or voxelize_async() finishes
@@ -34,13 +30,11 @@ signal finished()
 ## times more memory consumption. Only supports 
 ## upto TreeAttribute.MAX_DEPTH layers. I reckon your computer
 ## can't handle more than that.
-@export_range(TreeAttribute.MIN_DEPTH, TreeAttribute.MAX_DEPTH)\
-		var max_depth: int = TreeAttribute.MIN_DEPTH:
+@export_range(2, TreeAttribute.MAX_DEPTH)\
+		var max_depth: int = 2:
 				set(value):
-						max_depth = clampi(value, 
-									TreeAttribute.MIN_DEPTH, 
-									TreeAttribute.MAX_DEPTH)
-						_update_information()
+						max_depth = clampi(value, 2, TreeAttribute.MAX_DEPTH)
+						leaf_cube_size = 0
 						notify_property_list_changed()
 
 
@@ -51,36 +45,37 @@ signal finished()
 		notify_property_list_changed()
 		
 
-## This value is READ-ONLY. Modifying it has no effect on the tree construction.
-@export var leaf_cube_size := 0.0:
-	get:
-		return _leaf_cube_size
-
+## [b]NOTE:[/b] This value is READ-ONLY. Modifying it has no effect on the construction of the tree.
+@export var leaf_cube_size : float = 0.0:
+	get: 
+		return _node_size(-2)
 
 func _ready():
 	$Extent/DebugVisual.mesh.size = $Extent.shape.size
 	_recalculate_cached_data()
-	_update_information()
 	
 
-## Expensive, should call only once
-## when all CollisionShapes are registered
-## WARNING: Do Not call it on _ready()!
-## This function blocks the main thread
+## Expensive, should call only once when all CollisionShapes are registered[br]
+## [br]
+## [b]WARNING:[/b] Do Not call on _ready(), because physic engine have not processed this node yet.
+## Try [method call_deferred] or set a [Timer] to wait for physics first.[br]
+## [br]
+## [b]NOTE:[/b] This function is computationally expensive,
+## which could freeze the game for a while.
 func voxelize():
 	_voxelize()
 	finished.emit()
 
-## Like voxelize(), but doesn't block the main thread
-## emit "finished" on complete
+
 var _background_voxelize_thread: Thread
+## Like [method voxelize], but doesn't block the main thread.
+## emit [signal finished] on complete
 func voxelize_async():
 	_background_voxelize_thread = Thread.new()
 	_background_voxelize_thread.start(_voxelize_async, Thread.PRIORITY_LOW)
 
-
-## @from, @to: Global Positions
-## @return: Path that connects @from and @to, each point represented in global coordinate
+## Return a path that connects [param from] and [param to][br]
+## [param from], [param to] are in global coordinate.[br]
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	var svolink_path: Array = $Astar.find_path(get_svolink_of(from), get_svolink_of(to), _svo)
 	return svolink_path.map(func (link) -> Vector3:
@@ -158,9 +153,9 @@ func _get_polygon_faces(collision_shape: CollisionShape3D) -> PackedVector3Array
 	#return _convert_to_local_transform_in_place(collision_shape, polymesh.get_faces())
 
 
-## Convert @out_triangles (in-place) from collision_shape's transform 
-## to NavigationSpace transform
-## Return reference to @out_triangles
+# Convert [param out_triangles] (in-place) from collision_shape's transform 
+# to [FlightNavigation3D]'s transform.[br]
+# Return reference to [param out_triangles]
 func _convert_to_local_transform_in_place(
 	collision_shape: CollisionShape3D, 
 	out_triangles: PackedVector3Array) -> PackedVector3Array:
@@ -173,10 +168,7 @@ func _convert_to_local_transform_in_place(
 		return out_triangles
 
 
-############## PRIVATE METHODS ###############
-
-## Return dictionary associating: 
-## Morton code of active nodes ~~~ Triangles overlapping it
+# Return dictionary associating Morton codes of active nodes with triangles overlapping them
 func _determine_act1nodes() -> Dictionary:
 	var act1node_triangles: Dictionary = {}
 	var node1_size = _node_size(1)
@@ -185,7 +177,7 @@ func _determine_act1nodes() -> Dictionary:
 		if collision_shape.shape is BoxShape3D:
 			faces = _get_box_faces(collision_shape) 
 		elif collision_shape.shape is ConvexPolygonShape3D:
-			printerr("ConvexPolygonShape3D is not supported")
+			printerr("[FlightNavigation3D]: ConvexPolygonShape3D is not yet supported for voxelization")
 			#faces = _get_polygon_faces(collision_shape)
 		elif collision_shape.shape is ConcavePolygonShape3D:
 			faces = _convert_to_local_transform_in_place(collision_shape, 
@@ -202,12 +194,10 @@ func _determine_act1nodes() -> Dictionary:
 			
 	return act1node_triangles
 
-
-## Return dictionary associating: 
-## Morton code of active nodes ~~~ Triangles overlapping it
-## @polygon is assumed to have length divisible by 3
-## Every 3 elements make up a triangle
-## Allocate one thread per triangle
+# Return dictionary of key - value: Active node morton code - Overlapping triangles.[br]
+# Overlapping triangles are serialized. Every 3 elements make up a triangle.[br]
+# [param polygon] is assumed to have length divisible by 3. Every 3 elements make up a triangle.[br]
+# [b]NOTE:[/b] This method allocates one thread per triangle
 func _voxelize_polygon(vox_size: float, polygon_faces: PackedVector3Array) -> Dictionary:
 	var result = {}
 	var threads: Array[Thread] = []
@@ -224,10 +214,8 @@ func _voxelize_polygon(vox_size: float, polygon_faces: PackedVector3Array) -> Di
 		_merge_triangle_overlap_node_dicts(result, thread.wait_to_finish())
 	return result
 
-## Return a dictionary 
-## Key: Morton of active nodes 
-## Values: Triangles overlapping it, 
-##	serialized into a PackedVector3Array. Every 3 makes a triangle
+
+# Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
 func _voxelize_triangle(vox_size: float, triangle: PackedVector3Array) -> Dictionary:
 	var result = {}
 	var tbt = TriangleBoxTest.new(triangle, Vector3(1,1,1) * vox_size)
@@ -244,14 +232,34 @@ func _voxelize_triangle(vox_size: float, triangle: PackedVector3Array) -> Dictio
 						result[vox_morton] = triangle
 	return result
 
+# Merge information of triangles overlapping a node from [param append] to [param base].[br]
+#
+# Both [param base] and [param append] are dictionaries of Key - Value: 
+# Morton code - Array of vertices, every 3 elements make a triangle.[br]
+#
+# [b]NOTE:[/b] Duplicated triangles are not removed from [param base].
+func _merge_triangle_overlap_node_dicts(base: Dictionary, append: Dictionary) -> void:
+	for key in append.keys():
+		if base.has(key):
+			base[key].append_array(append[key])
+		else:
+			base[key] = append[key].duplicate()
 
-## @size: The length in side of a voxel
-## @t_aabb: Triangle's AABB
-## @vox_bound: Clamp the result between 0 and vox_bound/size (exclusive)
-## @return: [begin, end) (end is exclusive)
-##	(end - begin) is non-negative
-##	begin and end are inside Navigation Space  
-##	Includes also voxels merely touched by t_aabb
+
+# Return two Vector3i as bounding box for a range of voxels that's intersection
+# between FlyingNavigation3D and [param t_aabb].[br]
+# 
+# The first vector (begin) contains the start voxel index (inclusive), 
+# the second vector (end) is the end index (exclusive). [br]
+#
+# (end - begin) is non-negative. [br]
+# 
+# The voxel range is inside FlyingNavigation3D area.[br]
+#
+# The result includes also voxels merely touched by t_aabb.[br]
+# [param size] is the side length of a voxel.[br]
+# [param t_aabb] is the triangle's AABB.[br]
+# [param vox_bound] clamps the result between 0 and [param vox_bound]/[param size] (exclusive)
 func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB, vox_bound: Vector3) -> Array[Vector3i]:
 	# Begin & End
 	var b = t_aabb.position/size
@@ -274,12 +282,9 @@ func _voxels_overlapped_by_aabb(size: float, t_aabb: AABB, vox_bound: Vector3) -
 	return [b, e]
 
 
-## Allocate each node1 with 1 thread
-## For each thread, sequentially test overlap each triangle with
-## each of 8 node0 child
-## For each node0 child overlapped by triangle, launch a thread to 
-## test overlap for subgrid
-## Join all subgrid tests before starting with the next triangle
+# Allocate each layer-1 node with 1 thread.[br]
+# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
+# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
 func _voxelize_tree(svo: SVO, act1node_triangles: Dictionary):
 	var a1t_keys = act1node_triangles.keys()
 	var threads: Array[Thread] = []
@@ -295,13 +300,8 @@ func _voxelize_tree(svo: SVO, act1node_triangles: Dictionary):
 	for t in threads:
 		t.wait_to_finish()
 
-## Sequentially test overlap each triangle with
-## each of 8 node0 child
-## For each node0 child overlapped by triangle, launch a thread to 
-## test overlap for subgrid
-## Join all subgrid tests before starting with the next triangle
+
 func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3Array):
-	#print("Voxing 0:   %s" % Morton.int_to_bin(node1_morton))
 	var node0size = _node_size(0)
 	var node1size = _node_size(1) 
 	
@@ -315,25 +315,33 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 		node0pos[m] = node1pos + Morton3.decode_vec3(m) * node0size
 		
 	for i in range(0, triangles.size(), 3):
-		var threads: Array[Thread] = []
 		var triangle = triangles.slice(i, i+3)
-		
-		# Node layer 0 - Triangle Test
-		var tbt0 = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
-		
-		# Leaf voxel - Triangle Test
-		var tbtl = TriangleBoxTest.new(triangle, Vector3(1,1,1) * leaf_cube_size)
-		#print("Leaf cube: %f" % _leaf_cube_size)
-		
+		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
+		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * leaf_cube_size)
 		for m in range(8):
-			if tbt0.overlap_voxel(node0pos[m]):
-				threads.push_back(Thread.new())
-				threads.back().start(
-					_voxelize_tree_leaves.bind(tbtl, node0s[m], node0pos[m]),
-					Thread.PRIORITY_LOW)
-						
-		for thread in threads:
-			thread.wait_to_finish()
+			if triangle_node0_test.overlap_voxel(node0pos[m]):
+					_voxelize_tree_leaves(triangle_voxel_test, node0s[m], node0pos[m])
+		# Note: I think one thread per subgrid is overkill
+		# I have a feeling that creating too many threads might cause
+		# adverse effect than boosting performance
+		#var threads: Array[Thread] = []
+		#var triangle = triangles.slice(i, i+3)
+		#
+		## Node layer 0 - Triangle Test
+		#var tbt0 = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
+		#
+		## Leaf voxel - Triangle Test
+		#var tbtl = TriangleBoxTest.new(triangle, Vector3(1,1,1) * leaf_cube_size)
+		#
+		#for m in range(8):
+			#if tbt0.overlap_voxel(node0pos[m]):
+				#threads.push_back(Thread.new())
+				#threads.back().start(
+					#_voxelize_tree_leaves.bind(tbtl, node0s[m], node0pos[m]),
+					#Thread.PRIORITY_LOW)
+						#
+		#for thread in threads:
+			#thread.wait_to_finish()
 
 
 func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: Vector3):
@@ -357,15 +365,11 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 	node0.first_child = node0_solid_state
 
 
-## Convert SVO Logical Position -> Game World Position
-## @return: center of the node with @svolink in @svo.
-## If @svolink is in layer 0...
-## +) And it's empty, return center of the layer-0 node
-## +) And it has some solid blocks, return center of the leaf voxel
+# Return global position of center of the node or subgrid voxel identified as [param svolink]
 func get_global_position_of(svolink: int) -> Vector3:
 	var layer = SVOLink.layer(svolink)
 	var node = _svo.node_from_link(svolink)
-	if layer == 0 and node.first_child != 0:
+	if _svo.is_subgrid_voxel(svolink):
 		var voxel_morton = (node.morton << 6) | SVOLink.subgrid(svolink)
 		return (Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) * leaf_cube_size\
 				+ _extent_origin
@@ -374,15 +378,11 @@ func get_global_position_of(svolink: int) -> Vector3:
 			+ _extent_origin
 
 
-## Convert Game World Position -> SVO Logical Position
-## @return: SVOLink of the smallest node/leaf in @svo that encloses @gposition
-##
-## @gposition: Global position that needs conversion to svolink
-##
-## @return_closest_node: determine what to return if navspace doesn't encloses @gposition
-## if false, return SVOLink.NULL
-## TODO: if true, return the closest node 
-## BUG!!!!!! Different gposition might result in same link!
+#TODO: @return_closest_node: determine what to return if navspace doesn't encloses @gposition
+# if false, return SVOLink.NULL
+# if true, return the closest node 
+## Return [SVOLink] of the smallest node/voxel at [param gposition].[br]
+## [param gposition]: Global position that needs conversion to [SVOLink].[br]
 func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> int:
 	var local_pos = to_local(gposition) - _extent_origin
 	var extent = _extent_size.x
@@ -435,7 +435,10 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 
 ############## DEBUGS #######################
 
-## @text: null for default value of svolink format string
+## Draw a box represents the space occupied by an [SVONode] identified as [param svolink].[br]
+##
+## Gives [param text] a custom value to insert a label in the center of the box.
+## null for default value of [method SVOLink.get_format_string].[br]
 func draw_svolink_box(svolink: int, 
 		node_color: Color = Color.RED, 
 		leaf_color: Color = Color.GREEN,
@@ -512,19 +515,6 @@ func _collect_cubes(
 			var pos = node_pos + offset
 			cube_pos[i].push_back(pos)
 
-## Merge information of triangles overlapping a node, from @append to @base
-## Both @base and @append are dictionarys with Keys: SVONode's Morton code,
-## Values: PackedVector3Array of Vertices. Every 3 elements make a triangle
-## Return: @base will contain all informations from append. Duplicates are 
-## possible, if @append appears more than once 
-func _merge_triangle_overlap_node_dicts(base: Dictionary, append: Dictionary) -> void:
-	for key in append.keys():
-		if base.has(key):
-			base[key].append_array(append[key])
-		else:
-			base[key] = append[key].duplicate()
-	# Since @base is already a reference, no need to return anything here
-
 
 ############## CONFIG WARNINGS ##############
 
@@ -558,26 +548,27 @@ func _on_property_list_changed():
 ##############
 
 func _node_size(layer: int) -> float:
-	return leaf_cube_size * (1 << (2 + layer))
+	return _extent_size.x * (2.0 ** (-max_depth + 1 + layer))
 
 
 enum TreeAttribute{
-	LEAF_LAYERS = 2,
-	MIN_DEPTH = 4,
-	DANGEROUS_DRAW_DEPTH = 8,
+	DANGEROUS_DRAW_DEPTH = 7,
 	DANGEROUS_MAX_DEPTH = DANGEROUS_DRAW_DEPTH + 2,
-	MAX_DEPTH = 14,
+	MAX_DEPTH = 16,
 }
 
 var _svo: SVO
 
-var _leaf_cube_size: float = 1.0
+# The most (x, y, z) negative corner of $Extent. It's cached here to be used in threads.
 var _extent_origin := Vector3()
+
+# $Extent.shape.size. It's cached here to be used in threads.
 var _extent_size:= Vector3()
+
+# $Origin.global_transform.inverse(). It's cached here to be used in threads.
 var _origin_global_transform_inv: Transform3D
 
 func _recalculate_cached_data():
-	_leaf_cube_size = $Extent.shape.size.x / 2**(max_depth-1)
 	$Origin.position = - $Extent.shape.size/2
 	_extent_origin = $Origin.position
 	_extent_size = $Extent.shape.size
@@ -586,12 +577,6 @@ func _recalculate_cached_data():
 	
 func _on_extent_property_list_changed():
 	_recalculate_cached_data()
-	_update_information()
-
-
-func _update_information():
-	if get_child_count() > 0:
-		_leaf_cube_size = $Extent.shape.size.x / 2**(max_depth-1)
 
 
 # Contains the collision shapes currently overlapping

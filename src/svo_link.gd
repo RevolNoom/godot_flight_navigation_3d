@@ -1,53 +1,77 @@
-class_name SVOLink
-## A SVOLink is an int64 with the following layout:
+## Identifier to an [SVO.SVONode] in [SVO]
 ##
-## Layer | Offset | Subgrid
-## ====|======================================================|====== 
-## 4   |						54							  |  6	 bits
-## 
-## Layer: Which layer this node is in SVO
-## Offset: Which index in the layer array of SVO this node is 
-## Subgrid: Morton code of the subgrid voxel of the layer-0 node that this link is pointing to. 
+## An SVOLink is an int64. This class provides methods to manipulate an int64
+## as SVOLink to save memory (as Godot by design extends classes from Object, which
+## consumes more memory). SVOLink has the following layout:[br]
+## [br]
+## [method layer] - 4 most significant bits: Which layer this node is in[br]
+## [method offset] - 54 middle bits: Which index in the layer array this node is [br]
+## [method subgrid] - 6 least significant bits: Morton code of the subgrid voxel of the layer-0 node that this link points to.[br]
+class_name SVOLink
 
 ## Null SVOLink that doesn't point to any node/voxel
 const NULL: int = ~0
+const SUBGRID_MASK: int = 0x3F
+const OFFSET_MASK: int = 0xFFFF_FFFF_FFFF_C0
+const LAYER_MASK: int = ~(SUBGRID_MASK | OFFSET_MASK)
 
-## WARNING: Not checking valid values 
+
+## Create a new SVOLink[br]
+##
+## [b]Warning:[/b] This function will truncate parameters' values if they fall
+## out of permitted field range.
 static func from(svo_layer: int, array_offset: int, subgrid_idx: int = 0) -> int:
-	return (svo_layer << 60) | (array_offset << 6) | subgrid_idx 
+	return (svo_layer << 60)\
+			| ((array_offset << 6) & OFFSET_MASK)\
+			| (subgrid_idx & SUBGRID_MASK)
 
-## 4 leftmost bits
+
+## Return the layer this node is in
 static func layer(link: int) -> int:
 	return link >> 60
 
-## The rest
+
+## Return the index in the [SVO]'s layer array this node is
 static func offset(link: int) -> int:
 	return (link << 4) >> 10
 
-## 6 rightmost bits
+
+## Return the morton code of the subgrid voxel
 static func subgrid(link: int) -> int:
-	return link & 0x3F
+	return link & SUBGRID_MASK
 
-## WARNING: Not checking for over 4-bit values
+
+## Return a copy of [SVOLink] with the layer value of [param link] set as [param new_layer][br]
+##
+## [b]Warning:[/b] This function will truncate [param link] bits >= 2^4 
 static func set_layer(new_layer: int, link: int) -> int:
-	return (link & 0xFFF_FFFF_FFFF_FFFF) | (new_layer << 60)
+	return (link & ~LAYER_MASK) | (new_layer << 60)
 
-## WARNING: Not checking for over 54-bit values
+## Return a copy of [SVOLink] with the offset value of [param link] set as [param new_offset][br]
+##
+## [b]Warning:[/b] This function will truncate [param new_offset] bits >= 2^54 
 static func set_offset(new_offset: int, link: int) -> int:
-	return (link & ~0x0FFF_FFFF_FFFF_FFC0) | (new_offset << 6)
+	return (link & ~OFFSET_MASK) | ((new_offset << 6) & OFFSET_MASK)
 
-## WARNING: Not checking for over 6-bit values
+
+## Return a copy of [SVOLink] with the subgrid value of [param link] set as [param new_subgrid][br]
+##
+## [b]Warning:[/b] This function will truncate [param new_subgrid] bits >= 2^6
 static func set_subgrid(new_subgrid: int, link: int) -> int:
-	return (link & ~0b111111) | new_subgrid
+	return (link & ~SUBGRID_MASK) | (new_subgrid & SUBGRID_MASK)
 
-## Return true if they have same "layer" field values
+
+## Return true if [param link1] have same [method layer] field as [param link2] values
 static func same_layer(link1: int, link2: int) -> bool: 
-	return not ((link1^link2) >> 60)
-	
-## Return true if they have different "layer" field values
+	return not not_same_layer(link1, link2)
+
+
+## Return true if [param link1] have different [method layer] field as [param link2] values
 static func not_same_layer(link1: int, link2: int) -> bool: 
-	return (link1^link2) >> 60
-	
+	return (link1^link2) & LAYER_MASK
+
+
+## This is a debug function. Don't mind it.[br]
 ## Format: Layer MortonCode Subgrid
 static func get_format_string(svolink: int, svo: SVO) -> String:
 	#return "%d %s %s" % [

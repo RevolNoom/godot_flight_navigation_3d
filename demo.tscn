@@ -86,9 +86,7 @@ shape = SubResource("ConvexPolygonShape3D_i3mn7")
 mesh = SubResource("BoxMesh_mmhx4")
 
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_6cyyn")]
-max_depth = 6
 disable_depth_warning = true
-leaf_cube_size = 0.125
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 4, 3)

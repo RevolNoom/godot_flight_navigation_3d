@@ -14,7 +14,7 @@ func _on_navigation_space_3d_finished():
 	$FlightNavigation3D.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
 	#_get_svolink_test()
-	_find_path_test()
+	#_find_path_test()
 	#_neighbor_draw_test()
 	pass
 
@@ -64,6 +64,6 @@ func _test_debug_draw():
 	var ns = Ns.instantiate()
 	var max_depth = 5
 	ns.max_depth = max_depth
-	ns._svo = SVO._get_debug_svo(max_depth)
+	ns._svo = SVO.get_debug_svo(max_depth)
 	add_child(ns)
 	ns.draw_debug_boxes()
