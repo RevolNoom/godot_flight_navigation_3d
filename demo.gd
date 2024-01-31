@@ -14,7 +14,7 @@ func _on_navigation_space_3d_finished():
 	$FlightNavigation3D.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
 	#_get_svolink_test()
-	#_find_path_test()
+	_find_path_test()
 	#_neighbor_draw_test()
 	pass
 

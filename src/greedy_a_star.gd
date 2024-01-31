@@ -67,7 +67,7 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 	# pop() returns element with smallest TCE
 	const TotalCostEstimated = 0
 	const SvoLink = 1
-	var frontier:= PriorityQueue.new(
+	var frontier:= PriorityQueue.new([],
 		func (u1, u2) -> bool:
 			return u1[TotalCostEstimated] > u2[TotalCostEstimated])
 	frontier.push([INF, from])
