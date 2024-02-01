@@ -1,66 +1,56 @@
 @tool
-extends Node
+extends FlightPathfinder
 class_name GreedyAStar
 
-## TODO: Support Face Centers in the future?
-#@export_enum("Face Centers", "Voxel Centers") var endpoints = "Voxel Centers":
-#	set(value):
-#		endpoints = "Voxel Centers"
-#		endpoints = value
-#		if endpoints == "Face Centers":
-#			_endpoints = _face_centers
-#		else:
-#			_endpoints = _node_centers
-#var _endpoints: Callable
+## [b]TODO:[/b] Support Face Centers in the future.[br]
+## A Callable that determines which endpoints are used to calculate distance
+## between two voxels/nodes 
+@export_enum("Face Centers", "Voxel Centers") var endpoints = "Voxel Centers":
+	set(value):
+		endpoints = "Voxel Centers"
+		endpoints = value
+		if endpoints == "Face Centers":
+			_get_endpoints = get_closest_faces
+		else:
+			_get_endpoints = get_centers
 
+
+# Signature: func(svolink1, svolink2, svo) -> [Vector3, Vector3].
+var _get_endpoints: Callable
+
+
+var _get_distance: Callable = FlightPathfinder.euclidean
 ## Function used to estimate cost between a voxel and destination
-## And used to calculate adjacent voxels cost, if @use_unit_cost is disabled
-## TODO: Support Manhattan in the future
-
-var _distance_function: Callable = euclidean
+## And used to calculate adjacent voxels cost, if [member use_unit_cost] is disabled
 @export_enum("Euclidean", "Manhattan") var distance_function = "Euclidean":
 	set(value):
 		distance_function = value
 		if distance_function == "Euclidean":
-			_distance_function = euclidean
+			_get_distance = FlightPathfinder.euclidean
 		else:
-			_distance_function = manhattan
+			_get_distance = FlightPathfinder.manhattan
 
 
 ## Bias weight. The higher it is, the more A* is biased toward estimation,
-## prefer exploring nodes it thinks are closer to the goal
+## prefers exploring nodes it thinks are closer to the goal
 ## BUG: Setting w=2 makes the game freeze
-@export var w: float = 1
+@export var w: float = 1.0
 
-## The bigger the node, the less it costs to move through it.
-## The factor is a function: (Node layer, SVO Depth) -> float(0, 1],
-## where minimum value is reached when link points to the root node
-## and maximum value 1 is reached when link points to a subgrid voxel
+## The bigger the node, the less it costs to move through it.[br]
+## The factor is a function: (Node layer, SVO Depth) -> float(0, 1][br]
+## Minimum value is reached when a link points to the root node.[br]
+## Maximum value 1 is reached when a link points to a subgrid voxel.[br]
 @export var use_size_compensation_factor: bool = true
 
-## If true, the cost between two voxels is unit_cost no matter their sizes
-## Otherwise, use distance function to calculate
+## If true, the cost between two voxels is [member unit_cost] no matter their sizes.
+## Otherwise, use [member distance_function] to calculate.
 ## TODO: Actually make it works
 @export var use_unit_cost: bool = true
 
-## No matter how big the node is, travelling
-## through it has the same cost
-@export var unit_cost: float = 1
+## Unit cost used when [member use_unit_cost] is true.
+@export var unit_cost: float = 1.0
 
-
-## @svo: An SVO contains voxel solid states
-## @from: SVOLink
-## @to: SVOLink
-## @return: The path connecting @from and @to through the navigation space, as SVOLinks
-func find_path(from: int, to: int, svo: SVO) -> PackedInt64Array:
-	return _greedy_a_star(from, to, svo)
-
-
-## @from, @to: SVOLink
-## Return an array of SVOLinks represents a 
-## connected path between @from and @to
-## Return empty array if path not found
-func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
+func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	# The Priority Queue of nodes to search
 	# Element: [TotalCostEstimated, SVOLink]
 	# Sorted by TCE. TCE = f(x) = g(x) + h(x).
@@ -70,113 +60,82 @@ func _greedy_a_star(from: int, to: int, svo: SVO) -> PackedInt64Array:
 	var frontier:= PriorityQueue.new([],
 		func (u1, u2) -> bool:
 			return u1[TotalCostEstimated] > u2[TotalCostEstimated])
-	frontier.push([INF, from])
+	frontier.push([INF, start])
 	
 	# travel_cost[node] returns the current cost to travel
 	# from starting point to node
 	# Key - Value: SVOLink - Real Cost
-	var travel_cost: Dictionary = {from: 0}
+	var travel_cost: Dictionary = {start: 0}
 	
-	# Nodes already visited and cannot be visited anymore
-	# Key: SVOLink. Value doesn't matter, but recommended to be null for less memory usage?
-	var visited: Dictionary = {}
+	# breadcrumb[i] = j means j is the closest route found 
+	# from @start to @destination to i
+	var breadcrumb: Dictionary = {start: SVOLink.NULL}
 	
 	while frontier.size() > 0:
-		#print("frontier size: %d" % frontier.size())
 		# Get the next most promising node that we haven't visited to examine
-		var best_node
-		while frontier.size() > 0:
-			best_node = frontier.pop()
-			if not visited.has(best_node[SvoLink]):
-				break
-				
-		# In case we have exhausted all frontier nodes but no unvisited node is found
-		# That means there's no path to destination
-		if visited.has(best_node[SvoLink]):
+		var best_node = frontier.pop()
+		var best_node_link = best_node[SvoLink]
+		
+		#get_parent().draw_svolink_box(best_node_link, Color.GREEN, Color.GREEN, "")
+		if best_node_link == destination:
 			break
 		
-		# Mark node as visited
-		visited[best_node[SvoLink]] = null
-		
-		var bn_neighbors := svo.neighbors_of(best_node[SvoLink])
+		#print(best_node[TotalCostEstimated])
+		var bn_neighbors := svo.neighbors_of(best_node_link)
 		
 		for neighbor in bn_neighbors:
 			# Ignore obstacles
 			if svo.is_link_solid(neighbor):
 				travel_cost[neighbor] = INF
-				visited[neighbor] = null
 				continue
 			
-			var neighbor_cost_of_current_visit = travel_cost[best_node[SvoLink]] \
-					+ _compute_cost(best_node[SvoLink], neighbor, svo)
+			var neighbor_cost_of_current_visit = travel_cost[best_node_link] \
+					+ compute_cost(best_node_link, neighbor, svo)
 			
 			if neighbor_cost_of_current_visit < travel_cost.get(neighbor, INF):
 				travel_cost[neighbor] = neighbor_cost_of_current_visit
-				if not visited.has(neighbor):
-					frontier.push([neighbor_cost_of_current_visit\
-						+ _estimate_cost(neighbor, to, svo)\
-						, neighbor])
-			if neighbor == to:
-				visited[neighbor] = null
-				break
-		# The destination has been reached. Return the path now
-		if visited.has(to):
-			break
-			
-	if not visited.has(to):
+				breadcrumb[neighbor] = best_node_link
+				#get_parent().draw_svolink_box(neighbor, Color.GRAY, Color.GRAY, "")
+				frontier.push([neighbor_cost_of_current_visit\
+					+ estimate_cost(neighbor, destination, svo)\
+					, neighbor])
+			print()
+	
+	if not travel_cost.has(destination):
 		return []
 	
-	var path: PackedInt64Array = [to]
-	while path[path.size()-1] != from:
-		var back_node := path[path.size()-1]
-		var neighbors := svo.neighbors_of(back_node)
-		for n in neighbors:
-			if travel_cost.get(n, INF) + _compute_cost(n, back_node, svo) == travel_cost[back_node]:
-				path.append(n)
-				break
+	#for debug_link in [17649, 17653, 17873]:
+		#get_parent().draw_svolink_box(debug_link, Color.PEACH_PUFF, Color.PEACH_PUFF, str(travel_cost[debug_link]))
+	
+	var path: PackedInt64Array = [destination]
+	while path[path.size()-1] != start:
+		path.push_back(breadcrumb[path[path.size()-1]])
+		#var back_node := path[path.size()-1]
+		#var neighbors := svo.neighbors_of(back_node)
+		#for n in neighbors:
+			#if travel_cost.get(n, INF) + compute_cost(n, back_node, svo) == travel_cost[back_node]:
+				#path.append(n)
+				#break
 	path.reverse()
+	
+	#for debug_link in travel_cost.keys():
+		#get_parent().draw_svolink_box(debug_link, Color.RED, Color.BLUE, str(travel_cost[debug_link]))
+		
 	return path
 
 
-## @from, @to: SVOLink
-## Calculate the cost between two connected voxels 
-## Direction is from @from to @to
-# TODO: Is this size compensation factor working as expected?
-func _compute_cost(_from: int, to: int, svo: SVO) -> float:
-	if svo.is_subgrid_voxel(to) || not use_size_compensation_factor:
-		return unit_cost
-	return unit_cost * _compute_size_compensation_factor(SVOLink.layer(to), svo.depth)
+func _compute_cost(start: int, destination: int, svo: SVO) -> float:
+	var cost := 0.0
+	if use_unit_cost:
+		cost = unit_cost
+	else:
+		cost = _get_distance.callv(_get_endpoints.call(start, destination, svo))
+	
+	if svo.is_subgrid_voxel(destination) || not use_size_compensation_factor:
+		return cost
+	return cost * compute_size_compensation_factor(SVOLink.layer(destination), svo.depth)
 
 
-## @node_layer: layer this node is in. Is -2 if it's a subgrid voxel 
-func _compute_size_compensation_factor(node_layer: int, svo_depth: int):
-	return 1 - (node_layer + 2.0) / (svo_depth + 2.0)
-
-
-## Calculate the cost to travel from @svolink to @destination
-func _estimate_cost(svolink_from: int, svolink_to: int, svo: SVO) -> float:
-	return w * _distance_function.call(svolink_from, svolink_to, svo)
-
-
-## Return the Euclidean distance between two nodes/voxels 
-## where 1 unit corresponds to 1 subgrid voxel side length
-func euclidean(svolink1: int, svolink2: int, svo: SVO) -> float:
-	## TODO: Maybe distance_squared_to is a better choice?
-	return svo.get_center(svolink1).distance_to(svo.get_center(svolink2))
-
-
-## Return the Manhattan distance between two nodes/voxels 
-## where 1 unit corresponds to 1 subgrid voxel side length
-func manhattan(svolink1: int, svolink2: int, svo: SVO) -> int:
-	var manhattan_diff = (svo.get_center(svolink1) - svo.get_center(svolink2)).abs()
-	return manhattan_diff.x + manhattan_diff.y + manhattan_diff.z
-
-
-func _on_property_list_changed():
-	update_configuration_warnings()
-
-
-func _get_configuration_warnings():
-	if get_parent() == null or not get_parent() is FlightNavigation3D:
-		return ["Must be a child of FlightNavigation3D"]
-	return []
+func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
+	return w * _get_distance.callv(_get_endpoints.call(start, destination, svo)) \
+			* compute_size_compensation_factor(SVOLink.layer(start), svo.depth)

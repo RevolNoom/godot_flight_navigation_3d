@@ -30,9 +30,14 @@ func is_empty() -> bool:
 	return _size == 0
 
 
-## Return the number of elements in the heap
+## Return the number of elements in the PriorityQueue
 func size() -> int: 
 	return _size
+
+
+## Remove all elements from the PriorityQueue
+func clear() -> void:
+	_size = 0
 
 
 ## Pop all elements in the queue into an Array

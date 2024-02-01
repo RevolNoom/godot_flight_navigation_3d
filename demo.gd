@@ -14,8 +14,9 @@ func _on_navigation_space_3d_finished():
 	$FlightNavigation3D.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
 	#_get_svolink_test()
-	_find_path_test()
 	#_neighbor_draw_test()
+	
+	call_deferred("_find_path_test")
 	pass
 
 ######## TEST #############
@@ -35,20 +36,20 @@ func _post_voxelization_svolink_globalpos_conversion_test():
 func _neighbor_draw_test():
 	var test_positions = [Vector3(0.75, -0.25, 0.75)]#Vector3(0.5, 0.5, 1.5)]#Vector3(-1, -1, -1.2)]#, Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
 	for test_position in test_positions:
-		var link = 11904 # $FlightNavigation3D.get_svolink_of(test_position)
+		var link = 17906 # $FlightNavigation3D.get_svolink_of(test_position)
 		$FlightNavigation3D.draw_svolink_box(link, Color.GREEN)
 		for n in $FlightNavigation3D._svo.neighbors_of(link):
 			$FlightNavigation3D.draw_svolink_box(n, Color.BLUE, Color.PINK)
 
 
-func _get_svolink_test():
-	var test_positions = [Vector3(-1.4375, -0.4375, -0.9375), 
-						Vector3(-1.4375, -0.3125, -0.9375),
-						Vector3(-1.4375, -0.3125, -0.8125),
-						Vector3(-1.4375, -0.1875, -0.8125),
-						Vector3(-1.4375, -0.0625, -0.8125)]
-	for test_position in test_positions:
-		var link = $FlightNavigation3D.get_svolink_of(test_position)
+#func _get_svolink_test():
+	#var test_positions = [Vector3(-1.4375, -0.4375, -0.9375), 
+						#Vector3(-1.4375, -0.3125, -0.9375),
+						#Vector3(-1.4375, -0.3125, -0.8125),
+						#Vector3(-1.4375, -0.1875, -0.8125),
+						#Vector3(-1.4375, -0.0625, -0.8125)]
+	#for test_position in test_positions:
+		#var link = $FlightNavigation3D.get_svolink_of(test_position)
 
 
 func _find_path_test():

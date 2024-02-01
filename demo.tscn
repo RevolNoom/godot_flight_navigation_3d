@@ -38,11 +38,10 @@ script = ExtResource("1_j05pj")
 
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_6cyyn")]
 max_depth = 4
-disable_depth_warning = true
 leaf_cube_size = 0.125
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 3, 4, 3)
+transform = Transform3D(0.503759, 0.61083, -0.61083, 4.14086e-08, 0.707107, 0.707107, 0.863844, -0.356211, 0.356211, -4.04345, 1.9299, 0.645518)
 script = ExtResource("3_odj53")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
@@ -102,6 +101,7 @@ mesh = SubResource("CylinderMesh_w63pk")
 
 [node name="ConvexBoxShape" type="CharacterBody3D" parent="AllKindsOfCollisionShapes"]
 transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0, 0, 0.0596905)
+visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, -0.5, -0.5)

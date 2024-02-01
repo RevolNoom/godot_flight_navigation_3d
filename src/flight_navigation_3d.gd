@@ -1,12 +1,9 @@
-# TODO: Unify the use of "layer", "depth".
-# Some places mean SVO depth + 2 subgrid layers
-# Other places mean only SVO depth
-@tool
-extends Area3D
 ## Voxelize [CollisionObject3D] that enters this area
 ##
 ## [b]Warning:[/b] [param monitoring] and [param monitorable] must be kept on 
 ## to detect [StaticBody3D] and [Area3D]
+@tool
+extends Area3D
 class_name FlightNavigation3D
 
 ## Emitted when voxelize() or voxelize_async() finishes
@@ -25,30 +22,36 @@ signal finished()
 ## TODO: Bake geometry & save to files
 #@export_file() var bakedFile: String = ""
 
+## Set the max depth of rasterization process.[br]
+##
 ## Higher depth rasterizes collision shapes in more details,
-## but also consumes more memory. Each layer adds roughly 8 
-## times more memory consumption. Only supports 
-## upto TreeAttribute.MAX_DEPTH layers. I reckon your computer
-## can't handle more than that.
-@export_range(2, TreeAttribute.MAX_DEPTH)\
+## but also consumes more memory.[br]
+##
+## Each layer adds roughly 8 times more memory consumption.[br]
+##
+## [b]WARNING:[/b] Try to use a tree as shallow as possible to avoid crashing the game.
+@export_range(2, 16)\
 		var max_depth: int = 2:
 				set(value):
-						max_depth = clampi(value, 2, TreeAttribute.MAX_DEPTH)
+						max_depth = clampi(value, 2, 16)
 						leaf_cube_size = 0
 						notify_property_list_changed()
 
 
-## Disable editor warnings when max_depth is too big
-@export var disable_depth_warning := false:
-	set(value):
-		disable_depth_warning = value
-		notify_property_list_changed()
-		
+## Node with pathfinding algorithm used for [method find_path]
+@export_node_path("FlightPathfinder") var pathfinder
 
-## [b]NOTE:[/b] This value is READ-ONLY. Modifying it has no effect on the construction of the tree.
+
+## [b]NOTE:[/b] This value is readonly.
+## Modifying it has no effect on the construction of the tree.[br]
+##
+## An indication of how small the finest voxel is going to be.[br]
+## [b]TODO:[/b] Create a small MeshInstance box in the corner of the voxelize
+## area for illustration
 @export var leaf_cube_size : float = 0.0:
 	get: 
 		return _node_size(-2)
+
 
 func _ready():
 	$Extent/DebugVisual.mesh.size = $Extent.shape.size
@@ -77,7 +80,7 @@ func voxelize_async():
 ## Return a path that connects [param from] and [param to][br]
 ## [param from], [param to] are in global coordinate.[br]
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
-	var svolink_path: Array = $Astar.find_path(get_svolink_of(from), get_svolink_of(to), _svo)
+	var svolink_path: Array = (get_node(pathfinder) as FlightPathfinder).find_path(get_svolink_of(from), get_svolink_of(to), _svo)
 	return svolink_path.map(func (link) -> Vector3:
 		return get_global_position_of(link))
 
@@ -146,9 +149,9 @@ func _get_capsule_faces(collision_shape: CollisionShape3D) -> PackedVector3Array
 	return _convert_to_local_transform_in_place(collision_shape, arr_mesh.get_faces())
 
 
-## TODO: There's no class or method of Godot that I know of that can create
+## [b]TODO:[/b] There's no class or method of Godot that I know of that can create
 ## an ArrayMesh from a ConvexPolygonShape3D
-func _get_polygon_faces(collision_shape: CollisionShape3D) -> PackedVector3Array:
+func _get_polygon_faces(_collision_shape: CollisionShape3D) -> PackedVector3Array:
 	return []
 	#return _convert_to_local_transform_in_place(collision_shape, polymesh.get_faces())
 
@@ -436,13 +439,15 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 ############## DEBUGS #######################
 
 ## Draw a box represents the space occupied by an [SVONode] identified as [param svolink].[br]
+## 
+## Return a reference to the box. [br] 
 ##
 ## Gives [param text] a custom value to insert a label in the center of the box.
 ## null for default value of [method SVOLink.get_format_string].[br]
 func draw_svolink_box(svolink: int, 
 		node_color: Color = Color.RED, 
 		leaf_color: Color = Color.GREEN,
-		text = null):
+		text = null) -> MeshInstance3D:
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
 	var label = Label3D.new()
@@ -466,8 +471,8 @@ func draw_svolink_box(svolink: int,
 	
 	$Origin/SVOLinkCubes.add_child(cube)
 	cube.global_position = get_global_position_of(svolink) #+ Vector3(1, 0, 0)
-	#print("cube pos: %v" % [cube.position])
-
+	return cube
+	
 
 ## BUG: When SVO is passed empty act1nodes for construction, SVO consists
 ## of only 1 giant voxel
@@ -532,13 +537,6 @@ func _get_configuration_warnings():
 	if not monitoring:
 		warnings.push_back("'monitoring' must be turned on to detect bodies and areas.")
 		
-	if disable_depth_warning:
-		return warnings
-
-	if max_depth >= TreeAttribute.DANGEROUS_DRAW_DEPTH:
-		warnings.push_back("Calling draw_debug_boxes() might crash at this tree depth.")
-	if max_depth >= TreeAttribute.DANGEROUS_MAX_DEPTH:
-		warnings.push_back("Can your machine really handle a voxel tree this deep and big?")
 	return warnings
 
 
@@ -549,13 +547,6 @@ func _on_property_list_changed():
 
 func _node_size(layer: int) -> float:
 	return _extent_size.x * (2.0 ** (-max_depth + 1 + layer))
-
-
-enum TreeAttribute{
-	DANGEROUS_DRAW_DEPTH = 7,
-	DANGEROUS_MAX_DEPTH = DANGEROUS_DRAW_DEPTH + 2,
-	MAX_DEPTH = 16,
-}
 
 var _svo: SVO
 
@@ -597,13 +588,13 @@ func _on_body_shape_exited(_body_rid, body, body_shape_index, _local_shape_index
 
 # On multithreading call, we can't access the scene tree through get_children()
 # As such, the overlapping CollisionShape3Ds must be monitored at all times
-func _on_area_shape_entered(area_rid, area, area_shape_index, local_shape_index):
+func _on_area_shape_entered(_area_rid, area, area_shape_index, _local_shape_index):
 	_on_shape_entered(area, area_shape_index)
 
 
 # On multithreading call, we can't access the scene tree through get_children()
 # As such, the overlapping CollisionShape3Ds must be monitored at all times
-func _on_area_shape_exited(area_rid, area, area_shape_index, local_shape_index):
+func _on_area_shape_exited(_area_rid, area, area_shape_index, _local_shape_index):
 	_on_shape_exited(area, area_shape_index)
 
 

@@ -72,16 +72,12 @@ func link_from_morton(layer: int, morton: int) -> int:
 ## [param return: Array of neighbors' SVOLinks
 func neighbors_of(svolink: int) -> PackedInt64Array:
 	var node = node_from_link(svolink)
-	var layer = SVOLink.layer(svolink)
-	
 	var neighbors: PackedInt64Array = []
 	
 	# Get neighbors of subgrid voxel
 	# TODO: Refactor to a separate method
 	if is_subgrid_voxel(svolink):
 		var subgrid = SVOLink.subgrid(svolink)
-		var m = Morton3.decode_vec3i(subgrid)
-		
 		# [Face: Neighbor in which direction,
 		# subgrid: Subgrid value of the voxel neighbor we're looking for]
 		for neighbor in [
@@ -122,15 +118,7 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 					[Face.Z_POS, node.zn]]:
 			if nb[1] == SVOLink.NULL:
 				continue
-			
-			# If neighbor is a bigger node
-			# then it already makes up the whole surface we are looking at
-			# neighbor cannot be a smaller node, because the construction of SVO
-			# sets up links between same level nodes
-			# Thus, one method call works on both cases
-			var neighbor_layer = SVOLink.layer(nb[1])
-			var surf_vox = _smallest_voxels_on_surface(nb[0], nb[1])
-			neighbors.append_array(surf_vox)
+			neighbors.append_array(_smallest_voxels_on_surface(nb[0], nb[1]))
 			
 	return neighbors
 
@@ -171,14 +159,37 @@ func get_center(svolink: int) -> Vector3:
 	return corner_pos + Vector3(1,1,1) * 0.5 * node_size 
 
 
+## Save SVO as binary data to [param filepath].[br]
+##
+## An SVO binary data file has the following format:[br]
+## [br]
+## HEADER - Act1Nodes - Subgrids [br]
+## [br]
+## [b]HEADER:[/b][br]
+## + 8-byte magic string "SVO_DATA".[br]
+## + Version number (int32).[br]
+## + Number of active layer-1 nodes (int64).[br]
+## [br]
+## [b]Act1Nodes:[/b][br]
+## An array of Morton codes of nodes in layer 1, with length specified in HEADER.
+## Each morton code is an int64.[br]
+## [br]
+## [b]Subgrids:[/b][br]
+## Array contains all of layer-0 [member SVONode.subgrid], serialized.[br]
+## Length equals 8 times the length of Act1Nodes.[br]
+## Each subgrid is an int64.[br]
+## [br]
+## [b]Version history:[/b][br]
+## - Version 1: First Specification
+## [b]TODO:[/b]
+func save_to(filepath: String, version: int = 1) -> void:
+	pass
 
-## TODO:
-func from_file(_filename: String):
-	pass
-	
-## TODO:
-func to_file(_filename: String):
-	pass
+
+## [b]TODO:[/b]
+static func load_from(filename: String) -> SVO:
+	return SVO.new(0, [])
+
 
 # Allocate memory for each layer in bulk[br]
 # [param act1nodes]: Layer 1 nodes' Morton codes
@@ -349,9 +360,10 @@ func _ask_parent_for_neighbor(
 		| (child_neighbor & 0b111))
 
 
-## Return all subgrid voxels which has morton code coordinate
-## equals to some of [param v]'s x, y, z components.[br]
-## [param v]'s component is -1 if you want to disable checking that component.
+# Return all subgrid voxels which has morton code coordinate
+# equals to some of [param v]'s x, y, z components.[br]
+#
+# [param v]'s component is -1 if you want to disable checking that component.
 static func _get_subgrid_voxels_where_component_equals(v: Vector3i) -> PackedInt64Array:
 	var result: PackedInt64Array = []
 	for i in range(64):
@@ -375,8 +387,10 @@ static var _face_subgrid: Array[PackedInt64Array] = [
 ]
 
 
-## Return all highest-resolution voxels that make up the face of node identified as [param svolink]
-## [param svolink]: link to a node (not a subgrid voxel!)
+# Return all highest-resolution voxels that make up the face of node 
+# identified as [param svolink][br]
+#
+# [param svolink]: link to a node (not a subgrid voxel!)
 func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 	if svolink == SVOLink.NULL:
 		return []
@@ -437,7 +451,7 @@ func _mortons_same_parent(m1: int, m2: int) -> bool:
 # Type: Array[Array[SVONode]] [br]
 # The i-th element is an array of all nodes on the i-th layer of the tree. [br]
 # [member _nodes][depth-1] contains only one node (root) [br]
-# [member _nodes][0] is array of all bottom-most nodes
+# [member _nodes][0] is array of all bottom-most nodes.[br]
 var _nodes: Array = []
 
 
@@ -459,10 +473,10 @@ enum Face
 }
 
 
-## A node in Sparse Voxel Octree.
+## A node in Sparse Voxel Octree.[br]
 ##
 ## An SVONode contains information about position in space, neighbors,
-## parent, children, and subgrid voxels solid state, with some helper methods
+## parent, children, and subgrid voxels solid state, with some helper methods.[br]
 class SVONode:
 	enum{
 		## No voxel is solid
@@ -471,32 +485,32 @@ class SVONode:
 		SOLID_SUBGRID = ~0,
 	}
 	
-	## Morton3 index of this node. Defines where it is in space
+	## Morton3 index of this node. Defines where it is in space[br]
 	var morton: int
 	
-	## SVOLink of parent node
+	## SVOLink of parent node.[br]
 	var parent: int 
 	
-	## For layer-0 node, [member SVONode.first_child] [b]IS[b] [member SVONode.subgrid][br]
+	## For layer-0 node, [member SVONode.first_child] [b]IS[b] [member SVONode.subgrid].[br]
 	##
 	## For layer i > 0, [member SVO._nodes][i-1][[member SVONode.first_child]] is [SVOLink] to its first child in [class SVO],
-	## [member SVO._nodes][layer-1][[member SVONode.first_child]+1] is 2nd... upto +7 (8th child)
+	## [member SVO._nodes][layer-1][[member SVONode.first_child]+1] is 2nd... upto +7 (8th child).[br]
 	var first_child: int 
 	
 	## [b]NOTE: FOR LAYER-0 NODES ONLY[/b][br]
-	## Alias for [member first_child], each bit corresponds to solid state of a voxel
+	## Alias for [member first_child], each bit corresponds to solid state of a voxel.[br]
 	var subgrid: int:
 		get:
 			return first_child
 		set(value):
 			first_child = value
 	
-	var xn: int ## SVOLink to neighbor on negative x direction
-	var xp: int ## SVOLink to neighbor on positive y direction
-	var yn: int ## SVOLink to neighbor on negative z direction
-	var yp: int ## SVOLink to neighbor on positive x direction
-	var zn: int ## SVOLink to neighbor on negative y direction
-	var zp: int ## SVOLink to neighbor on positive z direction
+	var xn: int ## SVOLink to neighbor on negative x direction.[br]
+	var xp: int ## SVOLink to neighbor on positive y direction.[br]
+	var yn: int ## SVOLink to neighbor on negative z direction.[br]
+	var yp: int ## SVOLink to neighbor on positive x direction.[br]
+	var zn: int ## SVOLink to neighbor on negative y direction.[br]
+	var zp: int ## SVOLink to neighbor on positive z direction.[br]
 	
 	func _init():
 		morton = SVOLink.NULL
@@ -509,7 +523,7 @@ class SVONode:
 		zn = SVOLink.NULL
 		zp = SVOLink.NULL
 	
-	## Return an SVOLink to the neighbor on this node's [param face] 
+	## Return an SVOLink to the neighbor on this node's [param face].[br]
 	func neighbor(face: Face) -> int:
 		match face:
 			Face.X_NEG:
@@ -525,14 +539,16 @@ class SVONode:
 			_: #Face.Z_POS:
 				return zp
 	
-	## [b]NOTE: For layer-0 nodes only[/b][br]
-	## Return true if subgrid voxel at [param subgrid_index] is solid[br]
+	## [b]NOTE:[/b] For layer-0 nodes only.[br]
+	##
+	## Return true if subgrid voxel at [param subgrid_index] is solid.[br]
+	##
 	## [param subgrid_index]: bit position 0-63 (inclusive), corresponds to [method SVOLink.subgrid]
 	func is_solid(subgrid_index: int) -> bool:
 		return subgrid & (1 << subgrid_index)
 	
-	## [b]NOTE: NOT for layer-0 nodes [/b][br]
-	## Return true if this node has no children.
+	## [b]NOTE:[/b] NOT for layer-0 nodes.[br]
+	## Return true if this node has no children.[br]
 	func has_no_child() -> bool:
 		return first_child == SVOLink.NULL
 	
@@ -607,3 +623,4 @@ static func get_debug_svo(layer: int) -> SVO:
 				or (n0pos.z == layer0_side_length - 1 and vpos.z == 3):
 					node0.subgrid |= 1<<i
 	return svo
+
