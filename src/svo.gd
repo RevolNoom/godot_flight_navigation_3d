@@ -1,39 +1,113 @@
-## The Sparse Voxel Octree
+## Sparse Voxel Octree is a data structure used to contain solid state of 
+## volumes in 3D space.
 ##
-## Sparse Voxel Octree contains solid/free state of space in a tightly-packed, 
-## tightly-coupled manner. Thus, adding/removing nodes cannot be done iteratively.
-## You must create a new one to reflect that update.
+## Sparse Voxel Octree contains solid/free state of space. It has the following features:[br]
+## [br]
+## - Tightly packed: Each layer contains only nodes that has some solid volume, and
+## they are serialized in increasing Morton order.[br]
+##
+## - Tightly-coupled: Each node contains [SVOLink] to other neighbor nodes in tree
+## for fast traversal between nodes. [br]
+## [br]
+## [b]WARNING:[/b] Because of it being tightly-coupled, adding/removing nodes 
+## cannot be done without catastrophically breaking this connectivity.
+## You should create a new [SVO] to accomodate that update instead
+@tool
+extends Resource
 class_name SVO
 
-## Return the depth of the tree, excluding the subgrid levels.
-var depth: int:
-	get:
-		return _nodes.size()
 
-## [param layers]: Depth of the tree[br]
-## [param act1nodes]: List of unique morton codes of active nodes in layer 1. 
-func _init(layers: int, act1nodes: PackedInt64Array):
-	# Handle case when there's nothing in space
+## The depth of the tree, excluding the subgrid levels.[br]
+##
+## Setting this value will clear all layers and require re-voxelization 
+## for fail-safe reason.[br]
+##
+## Higher depth rasterizes collision shapes in more details,
+## but also consumes more memory. Each layer adds at most 
+## 8 times more memory consumption.[br]
+##
+## [b]WARNING:[/b] Try to use a tree as shallow as possible to avoid crashing the game.[br]
+@export_range(2, 16) var depth: int = 2:
+	get:
+		return layers.size()
+	set(new_depth):
+		if new_depth != clamp(new_depth, 2, 16):
+			printerr("New depth must be in range(2, 16).")
+			return
+		layers.resize(new_depth)
+		for i in range(layers.size()):
+			layers[i] = []
+		emit_changed()
+
+
+## Type: [Array][[Array][[SVONode]]] [br]
+## The i-th element is an array of all nodes on the i-th layer of the tree. [br]
+## [member layers][depth-1][0] is the tree root. [br]
+## [member layers][0] is array of all bottom-most nodes.[br]
+##
+## [b]WARNING:[/b] If you don't know what you are doing, don't edit this.[br] 
+## [b]NOTE:[/b] It's safe to modify [member SVONode.subgrid] (voxel solid state).
+## But since [SVO] is intended to be generated from meshes, it's generally not
+## a good idea to modify its content directly.[br] 
+@export var layers: Array = []
+
+
+func _init():
+	depth = 2
+	construct_tree([])
+
+
+## [param depth]: Depth of the tree[br]
+## [param act1nodes]: List of unique morton codes of active nodes in layer 1.[br]
+## [param subgrid_states]: List of [member SVONode.subgrid] that contains subgrid
+## voxel solid state per layer-0 node. Must be empty or have length 8-time longer
+## than [param act1nodes]. If left empty, all subgrids are initialized empty.[br]
+static func create_new(new_depth: int = 2, act1nodes: PackedInt64Array = [], subgrid_states: PackedInt64Array = []) -> SVO:
+	var svo = SVO.new()
+	svo.depth = new_depth
+	svo.construct_tree(act1nodes)
+	if subgrid_states.size() != svo.layers[0].size():
+		svo._initialize_layer0()
+	else:
+		svo.set_solid_states(subgrid_states)
+	return svo
+	
+
+## See [method create_new].[br]
+func construct_tree(act1nodes: PackedInt64Array):
 	if act1nodes.size() == 0:
-		printerr("SVO construction: No active nodes found. Did you forget to put some objects in space, or turn on NavSpace/Object physic flags?")
-		_nodes = [[SVONode.new()]]
-		_nodes[0][0].morton = 0
-		_nodes[0][0].subgrid = SVONode.EMPTY_SUBGRID
+		layers[-1] = [SVONode.new()]
+		layers[-1][0].morton = 0
+		layers[-1][0].first_child = SVOLink.NULL
 		return
-		
-	for i in range(layers):
-		_nodes.push_back([])
 
 	_construct_bottom_up(act1nodes)
 	_fill_neighbor_top_down()
+	_initialize_layer0()
+
+
+## Return [constant @GlobalScope.OK] if all subgrids are set,
+## else [constant @GlobalScope.FAILED] if they are not.[br]
+## Subgrids are not set when they don't have same size as layers[0]
+func set_solid_states(subgrid_states: PackedInt64Array) -> Error:
+	if subgrid_states.is_empty() or subgrid_states.size() != layers[0].size():
+		return FAILED
+	for i in range(subgrid_states.size()):
+		layers[0][i].subgrid = subgrid_states[i]
+	return OK
+
+
+func _initialize_layer0() -> void:
+	for node in layers[0]:
+		node.subgrid = SVONode.EMPTY_SUBGRID
 
 
 ## Return the node at [param offset] in SVO's [param layer],
 ## or null if either [param layer] or [param offset] doesn't exist
 func node_from_offset(layer: int, offset: int) -> SVONode:
-	if _nodes.size() <= layer or _nodes[layer].size() < offset:
+	if layers.size() <= layer or layers[layer].size() < offset:
 		return null
-	return _nodes[layer][offset]
+	return layers[layer][offset]
 	
 	
 ## Return the node identified as [param svolink]
@@ -55,14 +129,14 @@ func node_from_morton(layer: int, morton: int) -> SVONode:
 ## Find node with [param morton] code in SVO's [param layer].[br]
 ## Return [SVOLink] to the node if it exists, [member SVOLink.NULL] otherwise.
 func link_from_morton(layer: int, morton: int) -> int:
-	if _nodes.size() <= layer:
+	if layers.size() <= layer:
 		return SVOLink.NULL
 	var m_node = SVONode.new()
 	m_node.morton = morton
-	var offset = _nodes[layer].bsearch_custom(m_node, 
+	var offset = layers[layer].bsearch_custom(m_node, 
 			func(node1: SVONode, node2: SVONode):
 				return node1.morton < node2.morton)
-	if offset >= _nodes[layer].size() or _nodes[layer][offset].morton != morton:
+	if offset >= layers[layer].size() or layers[layer][offset].morton != morton:
 		return SVOLink.NULL
 	return SVOLink.from(layer, offset)
 
@@ -159,107 +233,72 @@ func get_center(svolink: int) -> Vector3:
 	return corner_pos + Vector3(1,1,1) * 0.5 * node_size 
 
 
-## Save SVO as binary data to [param filepath].[br]
-##
-## An SVO binary data file has the following format:[br]
-## [br]
-## HEADER - Act1Nodes - Subgrids [br]
-## [br]
-## [b]HEADER:[/b][br]
-## + 8-byte magic string "SVO_DATA".[br]
-## + Version number (int32).[br]
-## + Number of active layer-1 nodes (int64).[br]
-## [br]
-## [b]Act1Nodes:[/b][br]
-## An array of Morton codes of nodes in layer 1, with length specified in HEADER.
-## Each morton code is an int64.[br]
-## [br]
-## [b]Subgrids:[/b][br]
-## Array contains all of layer-0 [member SVONode.subgrid], serialized.[br]
-## Length equals 8 times the length of Act1Nodes.[br]
-## Each subgrid is an int64.[br]
-## [br]
-## [b]Version history:[/b][br]
-## - Version 1: First Specification
-## [b]TODO:[/b]
-func save_to(filepath: String, version: int = 1) -> void:
-	pass
-
-
-## [b]TODO:[/b]
-static func load_from(filename: String) -> SVO:
-	return SVO.new(0, [])
-
-
-# Allocate memory for each layer in bulk[br]
-# [param act1nodes]: Layer 1 nodes' Morton codes
+# Allocate memory for each layer in bulk.[br]
+# [param act1nodes]: Layer 1 nodes' Morton codes[br]
 func _construct_bottom_up(act1nodes: PackedInt64Array) -> void:
 	act1nodes.sort()
 	
 	## Init layer 0
-	_nodes[0].resize(act1nodes.size() * 8)
-	_nodes[0] = _nodes[0].map(func(_v): return SVONode.new())
-	## Set all subgrid voxels as free space
-	for node in _nodes[0]:
-		node.subgrid = SVONode.EMPTY_SUBGRID
+	layers[0].resize(act1nodes.size() * 8)
+	layers[0] = layers[0].map(func(_v): return SVONode.new())
 	
-	var active_nodes = act1nodes
+	var activelayers = act1nodes
 	
 	# Init layer 1 upward
-	for layer in range(1, _nodes.size()):
+	for layer in range(1, layers.size()):
 		## Fill children's morton code 
-		for i in range(0, active_nodes.size()):
+		for i in range(0, activelayers.size()):
 			for child in range(8):
-				_nodes[layer-1][i*8+child].morton\
-					= (active_nodes[i] << 3) | child
+				layers[layer-1][i*8+child].morton\
+					= (activelayers[i] << 3) | child
 		
 						
-		var parent_idx = active_nodes.duplicate()
+		var parent_idx = activelayers.duplicate()
 		parent_idx[0] = 0
 		
 		# ROOT NODE CASE
-		if layer == _nodes.size()-1:
-			_nodes[layer] = [SVONode.new()]
-			_nodes[layer][0].morton = 0
+		if layer == layers.size()-1:
+			layers[layer] = [SVONode.new()]
+			layers[layer][0].morton = 0
 		else:
 			for i in range(1, parent_idx.size()):
 				parent_idx[i] = parent_idx[i-1]\
-					+ int(not _mortons_same_parent(active_nodes[i-1], active_nodes[i]))
+					+ int(not _mortons_same_parent(activelayers[i-1], activelayers[i]))
 		
 			
 			## Allocate memory for current layer
 			var current_layer_size = (parent_idx[parent_idx.size()-1] + 1) * 8
-			_nodes[layer].resize(current_layer_size)
-			_nodes[layer] = _nodes[layer].map(func(_v): return SVONode.new())
+			layers[layer].resize(current_layer_size)
+			layers[layer] = layers[layer].map(func(_v): return SVONode.new())
 
 		# Fill parent/children index
-		for i in range(0, active_nodes.size()):
-			var j = 8*parent_idx[i] + (active_nodes[i] & 0b111)
+		for i in range(0, activelayers.size()):
+			var j = 8*parent_idx[i] + (activelayers[i] & 0b111)
 			# Fill child idx for current layer
-			_nodes[layer][j].first_child\
+			layers[layer][j].first_child\
 					= SVOLink.from(layer-1, 8*i)
 			
 			# Fill parent idx for children
 			var link_to_parent = SVOLink.from(layer, j)
 			for child in range(8):
-				_nodes[layer-1][8*i + child].parent = link_to_parent
+				layers[layer-1][8*i + child].parent = link_to_parent
 		
 		## Prepare for the next layer construction
-		active_nodes = _get_parent_mortons(active_nodes)
+		activelayers = _get_parent_mortons(activelayers)
 	
 	#SVO._comprehensive_test(self)
 
-## Return array of all [param active_nodes]' parents' morton codes.[br]
-## [param active_nodes]: Sorted Array that contains only uniques of some nodes' morton codes.
-func _get_parent_mortons(active_nodes: PackedInt64Array) -> PackedInt64Array:
-	#print("Child mortons: %s" % str(active_nodes))
-	if active_nodes.size() == 0:
+## Return array of all [param activelayers]' parents' morton codes.[br]
+## [param activelayers]: Sorted Array that contains only uniques of some nodes' morton codes.
+func _get_parent_mortons(activelayers: PackedInt64Array) -> PackedInt64Array:
+	#print("Child mortons: %s" % str(activelayers))
+	if activelayers.size() == 0:
 		return []
 		
-	var result: PackedInt64Array = [active_nodes[0] >> 3]
-	result.resize(active_nodes.size())
+	var result: PackedInt64Array = [activelayers[0] >> 3]
+	result.resize(activelayers.size())
 	result.resize(1)
-	for morton in active_nodes:
+	for morton in activelayers:
 		var parent_code = morton>>3
 		if result[result.size()-1] != parent_code:
 			result.push_back(parent_code)
@@ -273,10 +312,10 @@ func _get_parent_mortons(active_nodes: PackedInt64Array) -> PackedInt64Array:
 # per neighbor direction (-x, +x, -y,...) 
 func _fill_neighbor_top_down() -> void:
 	## Setup root node links
-	_nodes[_nodes.size()-1][0].first_child = SVOLink.from(_nodes.size()-2, 0)
+	layers[layers.size()-1][0].first_child = SVOLink.from(layers.size()-2, 0)
 	
-	for layer in range(_nodes.size()-2, -1, -1):
-		var this_layer = _nodes[layer]
+	for layer in range(layers.size()-2, -1, -1):
+		var this_layer = layers[layer]
 		for i in range(this_layer.size()):
 			var this_node = this_layer[i]
 			
@@ -448,12 +487,6 @@ func _mortons_same_parent(m1: int, m2: int) -> bool:
 	return (m1^m2) >> 3 == 0
 
 
-# Type: Array[Array[SVONode]] [br]
-# The i-th element is an array of all nodes on the i-th layer of the tree. [br]
-# [member _nodes][depth-1] contains only one node (root) [br]
-# [member _nodes][0] is array of all bottom-most nodes.[br]
-var _nodes: Array = []
-
 
 ## The faces of an SVONode
 enum Face
@@ -486,31 +519,31 @@ class SVONode:
 	}
 	
 	## Morton3 index of this node. Defines where it is in space[br]
-	var morton: int
+	@export var morton: int
 	
 	## SVOLink of parent node.[br]
-	var parent: int 
+	@export var parent: int 
 	
 	## For layer-0 node, [member SVONode.first_child] [b]IS[b] [member SVONode.subgrid].[br]
 	##
-	## For layer i > 0, [member SVO._nodes][i-1][[member SVONode.first_child]] is [SVOLink] to its first child in [class SVO],
-	## [member SVO._nodes][layer-1][[member SVONode.first_child]+1] is 2nd... upto +7 (8th child).[br]
-	var first_child: int 
+	## For layer i > 0, [member SVO.layers][i-1][[member SVONode.first_child]] is [SVOLink] to its first child in [class SVO],
+	## [member SVO.layers][layer-1][[member SVONode.first_child]+1] is 2nd... upto +7 (8th child).[br]
+	@export var first_child: int 
 	
 	## [b]NOTE: FOR LAYER-0 NODES ONLY[/b][br]
 	## Alias for [member first_child], each bit corresponds to solid state of a voxel.[br]
-	var subgrid: int:
+	@export var subgrid: int:
 		get:
 			return first_child
 		set(value):
 			first_child = value
 	
-	var xn: int ## SVOLink to neighbor on negative x direction.[br]
-	var xp: int ## SVOLink to neighbor on positive y direction.[br]
-	var yn: int ## SVOLink to neighbor on negative z direction.[br]
-	var yp: int ## SVOLink to neighbor on positive x direction.[br]
-	var zn: int ## SVOLink to neighbor on negative y direction.[br]
-	var zp: int ## SVOLink to neighbor on positive z direction.[br]
+	@export var xn: int ## SVOLink to neighbor on negative x direction.[br]
+	@export var xp: int ## SVOLink to neighbor on positive y direction.[br]
+	@export var yn: int ## SVOLink to neighbor on negative z direction.[br]
+	@export var yp: int ## SVOLink to neighbor on positive x direction.[br]
+	@export var zn: int ## SVOLink to neighbor on negative y direction.[br]
+	@export var zp: int ## SVOLink to neighbor on positive z direction.[br]
 	
 	func _init():
 		morton = SVOLink.NULL
@@ -563,9 +596,9 @@ static func _comprehensive_test(svo: SVO) -> void:
 static func _test_for_orphan(svo: SVO) -> void:
 	print("Testing SVO for orphan")
 	var orphan_found = 0
-	for i in range(svo._nodes.size()-1):	# -1 to omit root node
-		for j in range(svo._nodes[i].size()):
-			if svo._nodes[i][j].parent == SVOLink.NULL:
+	for i in range(svo.layers.size()-1):	# -1 to omit root node
+		for j in range(svo.layers[i].size()):
+			if svo.layers[i][j].parent == SVOLink.NULL:
 				orphan_found += 1
 				printerr("NULL parent: Layer %d Node %d" % [i, j])
 	var err_str = "Completed with %d orphan%s found" \
@@ -579,9 +612,9 @@ static func _test_for_orphan(svo: SVO) -> void:
 static func _test_for_null_morton(svo: SVO):
 	print("Testing SVO for null morton")
 	var unnamed = 0
-	for i in range(svo._nodes.size()):	# -1 to omit root node
-		for j in range(svo._nodes[i].size()):
-			if svo._nodes[i][j].morton == SVOLink.NULL:
+	for i in range(svo.layers.size()):	# -1 to omit root node
+		for j in range(svo.layers[i].size()):
+			if svo.layers[i][j].morton == SVOLink.NULL:
 				unnamed += 1
 				printerr("NULL morton: Layer %d Node %d" % [i, j])
 	var err_str = "Completed with %d null mortons%s found" \
@@ -603,10 +636,10 @@ static func get_debug_svo(layer: int) -> SVO:
 		or node1.z in [0, layer1_side_length - 1]:
 			act1nodes.append(i)
 			
-	var svo:= SVO.new(layer, act1nodes)
+	var svo:= SVO.create_new(layer, act1nodes)
 	
 	var layer0_side_length = 2 ** (layer-3)
-	for node0 in svo._nodes[0]:
+	for node0 in svo.layers[0]:
 		node0 = node0 as SVO.SVONode
 		var n0pos := Morton3.decode_vec3i(node0.morton)
 		if n0pos.x in [0, layer0_side_length - 1]\

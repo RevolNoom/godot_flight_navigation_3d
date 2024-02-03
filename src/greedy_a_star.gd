@@ -7,19 +7,16 @@ class_name GreedyAStar
 ## between two voxels/nodes 
 @export_enum("Face Centers", "Voxel Centers") var endpoints = "Voxel Centers":
 	set(value):
-		endpoints = "Voxel Centers"
 		endpoints = value
 		if endpoints == "Face Centers":
-			_get_endpoints = get_closest_faces
+			_get_endpoints = FlightPathfinder.get_closest_faces
 		else:
-			_get_endpoints = get_centers
-
+			_get_endpoints = FlightPathfinder.get_centers
 
 # Signature: func(svolink1, svolink2, svo) -> [Vector3, Vector3].
-var _get_endpoints: Callable
+var _get_endpoints: Callable = FlightPathfinder.get_centers
 
 
-var _get_distance: Callable = FlightPathfinder.euclidean
 ## Function used to estimate cost between a voxel and destination
 ## And used to calculate adjacent voxels cost, if [member use_unit_cost] is disabled
 @export_enum("Euclidean", "Manhattan") var distance_function = "Euclidean":
@@ -29,6 +26,9 @@ var _get_distance: Callable = FlightPathfinder.euclidean
 			_get_distance = FlightPathfinder.euclidean
 		else:
 			_get_distance = FlightPathfinder.manhattan
+
+# Signature: func(Vector3, Vector3) -> float
+var _get_distance: Callable = FlightPathfinder.euclidean
 
 
 ## Bias weight. The higher it is, the more A* is biased toward estimation,
@@ -49,6 +49,10 @@ var _get_distance: Callable = FlightPathfinder.euclidean
 
 ## Unit cost used when [member use_unit_cost] is true.
 @export var unit_cost: float = 1.0
+
+func _ready():
+	endpoints = endpoints
+	distance_function = distance_function
 
 func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	# The Priority Queue of nodes to search
@@ -71,10 +75,28 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	# from @start to @destination to i
 	var breadcrumb: Dictionary = {start: SVOLink.NULL}
 	
+	
+	#var test:= PriorityQueue.new(
+	#[[21.4326663970947, 114], [21.9248672485352, 128], [22.7359443664551, 100], [22.070911026001, 102], [23.2495037078857, 70], [22.7359443664551, 82], [23.2936111450195, 96], [23.2936111450195, 80], [23.8808933258057, 66], [22.6454082489014, 98], [22.6454082489014, 84], [22.0242858886719, 112], [22.070911026001, 86], [23.8808933258057, 68], [21.9248672485352, 256], [21.4326663970947, 116], [24.4956069946289, 64]]
+		#
+		#,
+		#func (u1, u2) -> bool:
+			#return u1[TotalCostEstimated] > u2[TotalCostEstimated])
+	#
+	#while not test.is_empty():
+		#print(test.pop()[0])
+	#return []
 	while frontier.size() > 0:
 		# Get the next most promising node that we haven't visited to examine
 		var best_node = frontier.pop()
 		var best_node_link = best_node[SvoLink]
+		
+		#print("%s" % str(frontier.to_array()))
+		#print()
+		#if best_node_link in [3331, 3363]:
+			#print("best: %d, f: %f" % [best_node_link, best_node[TotalCostEstimated]])
+		#print("best: %d, f: %f" % [best_node_link, best_node[TotalCostEstimated]])
+		#OS.delay_msec(5)
 		
 		#get_parent().draw_svolink_box(best_node_link, Color.GREEN, Color.GREEN, "")
 		if best_node_link == destination:
@@ -99,23 +121,24 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 				frontier.push([neighbor_cost_of_current_visit\
 					+ estimate_cost(neighbor, destination, svo)\
 					, neighbor])
-			print()
+			#print()
 	
 	if not travel_cost.has(destination):
 		return []
 	
-	#for debug_link in [17649, 17653, 17873]:
+	#for debug_link in [3335]:
+		#print("%d cost: %f" %[debug_link, travel_cost[debug_link]])
 		#get_parent().draw_svolink_box(debug_link, Color.PEACH_PUFF, Color.PEACH_PUFF, str(travel_cost[debug_link]))
-	
+		#for neighbor in svo.neighbors_of(debug_link):
+			##print("Neighbor %d cost: %f" %[neighbor, travel_cost[neighbor]])
+			#var est = estimate_cost(neighbor, destination, svo)
+			#get_parent().draw_svolink_box(neighbor, Color.ORANGE_RED, Color.ORANGE_RED, 
+				#SVOLink.get_format_string(neighbor, svo) + "\n" + str(travel_cost[neighbor]) + "\n" + str(est))
+		
+		
 	var path: PackedInt64Array = [destination]
-	while path[path.size()-1] != start:
-		path.push_back(breadcrumb[path[path.size()-1]])
-		#var back_node := path[path.size()-1]
-		#var neighbors := svo.neighbors_of(back_node)
-		#for n in neighbors:
-			#if travel_cost.get(n, INF) + compute_cost(n, back_node, svo) == travel_cost[back_node]:
-				#path.append(n)
-				#break
+	while path[-1] != start:
+		path.push_back(breadcrumb[path[-1]])
 	path.reverse()
 	
 	#for debug_link in travel_cost.keys():
@@ -131,11 +154,11 @@ func _compute_cost(start: int, destination: int, svo: SVO) -> float:
 	else:
 		cost = _get_distance.callv(_get_endpoints.call(start, destination, svo))
 	
-	if svo.is_subgrid_voxel(destination) || not use_size_compensation_factor:
-		return cost
-	return cost * compute_size_compensation_factor(SVOLink.layer(destination), svo.depth)
+	if use_size_compensation_factor:
+		return cost * compute_size_compensation_factor(SVOLink.layer(destination), svo.depth)
+	return cost
 
 
 func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
-	return w * _get_distance.callv(_get_endpoints.call(start, destination, svo)) \
-			* compute_size_compensation_factor(SVOLink.layer(start), svo.depth)
+	return w * _get_distance.callv(_get_endpoints.call(start, destination, svo))# \
+			#* compute_size_compensation_factor(SVOLink.layer(start), svo.depth)

@@ -21,7 +21,7 @@ func _init(initial_values: Array = [], comp := Comparator.LESS):
 	_comp = comp
 	_heap = initial_values.duplicate()
 	_size = _heap.size()
-	for i in range(_heap.size()):
+	for i in range(_size):
 		_bubble_up(i)
 
 
@@ -40,13 +40,14 @@ func clear() -> void:
 	_size = 0
 
 
-## Pop all elements in the queue into an Array
-func flush() -> Array:
+## Return all elements in the queue sorted by [member _comp] as an Array 
+func to_array() -> Array:
 	var result = []
 	result.resize(_size)
 	result.resize(0)
-	while not is_empty():
-		result.push_back(pop())
+	var duplicate_queue = PriorityQueue.new(_heap.slice(0, _size), _comp)
+	for i in range(_size):
+		result.push_back(duplicate_queue.pop())
 	return result
 	
 
@@ -94,6 +95,7 @@ func _right(idx: int) -> int:
 func _parent(idx: int) -> int:
 	return (idx - 2 + idx%2)>>1
 
+
 # Swap two elements at index [param i] and [param j] in the PriorityQueue
 func _swap(i: int, j: int):
 	var tmp = _heap[i]
@@ -110,7 +112,7 @@ func _slide_down(idx: int):
 	var greatest_child = l 
 	var r = _right(idx)
 	if r < _size:
-		greatest_child = r if _heap[l] < _heap[r] else l
+		greatest_child = r if _comp.call(_heap[l], _heap[r]) else l
 	if _comp.call(_heap[idx], _heap[greatest_child]):
 		_swap(idx, greatest_child)
 		_slide_down(greatest_child)
@@ -127,6 +129,7 @@ func _bubble_up(idx: int):
 		
 	_swap(idx, parent)
 	_bubble_up(parent)
+
 
 var _heap: Array = []
 # A Callable used to compare elements in pqueue 

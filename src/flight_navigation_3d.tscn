@@ -1,7 +1,13 @@
-[gd_scene load_steps=8 format=3 uid="uid://c1c25qj7uljje"]
+[gd_scene load_steps=10 format=3 uid="uid://c1c25qj7uljje"]
 
 [ext_resource type="Script" path="res://src/flight_navigation_3d.gd" id="1_d4tlu"]
 [ext_resource type="Script" path="res://src/greedy_a_star.gd" id="2_bqkhc"]
+[ext_resource type="Script" path="res://src/svo.gd" id="2_ryaqs"]
+
+[sub_resource type="Resource" id="Resource_t4yrx"]
+script = ExtResource("2_ryaqs")
+depth = 5
+layers = [[], [], [], [], []]
 
 [sub_resource type="BoxMesh" id="BoxMesh_vd4ml"]
 
@@ -25,8 +31,9 @@ size = Vector3(4, 4, 4)
 [node name="FlightNavigation3D" type="Area3D"]
 collision_layer = 0
 script = ExtResource("1_d4tlu")
+svo = SubResource("Resource_t4yrx")
 pathfinder = NodePath("GreedyAstar")
-leaf_cube_size = 0.5
+leaf_cube_size = 0.0625
 
 [node name="Origin" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, -2, -2)
