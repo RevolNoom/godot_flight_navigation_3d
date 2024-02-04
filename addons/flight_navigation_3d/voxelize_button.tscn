@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3 uid="uid://l8c3uvqv2t4m"]
+
+[ext_resource type="Script" path="res://addons/flight_navigation_3d/voxelize_button.gd" id="1_3cbmt"]
+
+[node name="VoxelizeButton" type="Button"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Voxelize"
+flat = true
+script = ExtResource("1_3cbmt")
+
+[node name="PleaseWaitDialog" type="AcceptDialog" parent="."]
+ok_button_text = "I'm waiting"
+dialog_text = "Voxelizing. Please wait... 
+A new dialog will popup on completion."
+
+[node name="OnCompleteDialog" type="AcceptDialog" parent="."]
+ok_button_text = "Thanks"
+dialog_text = "Voxelization completed!"

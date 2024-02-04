@@ -42,13 +42,11 @@ func _on_svo_changed():
 @export_node_path("FlightPathfinder") var pathfinder
 
 
-## [b]NOTE:[/b] This value is readonly.
-## Modifying it has no effect on the construction of the tree.[br]
-##
+@export_group("Read-only Informations")
 ## An indication of how small the finest voxel is going to be.[br]
 ## [b]TODO:[/b] Create a small MeshInstance box in the corner of the voxelize
 ## area for illustration
-@export var leaf_cube_size : float = 0.0:
+@export var leaf_cube_size : float:
 	get: 
 		return _leaf_cube_size
 var _leaf_cube_size: float = 0.0
@@ -61,8 +59,9 @@ func _ready():
 
 ## Expensive, should call only once when all CollisionShapes are registered[br]
 ## [br]
-## [b]WARNING:[/b] Do Not call on _ready(), because physic engine have not processed this node yet.
-## Try [method call_deferred] or set a [Timer] to wait for physics first.[br]
+## [b]WARNING:[/b] Do Not call on _ready(), because physic engine have not
+## processed this node to gather overlapping collision objects yet.
+## Try [method call_deferred] or set a [Timer] to wait for physics.[br]
 ## [br]
 ## [b]NOTE:[/b] This function is computationally expensive,
 ## which could freeze the game for a while.
@@ -74,9 +73,10 @@ func voxelize():
 var _background_voxelize_thread: Thread
 ## Like [method voxelize], but doesn't block the main thread.
 ## emit [signal finished] on complete
-func voxelize_async():
+func voxelize_async() -> Thread:
 	_background_voxelize_thread = Thread.new()
 	_background_voxelize_thread.start(_voxelize_async, Thread.PRIORITY_LOW)
+	return _background_voxelize_thread
 
 
 ## Return a path that connects [param from] and [param to][br]

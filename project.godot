@@ -13,4 +13,8 @@ config_version=5
 config/name="FlightNavigation3D"
 run/main_scene="res://demo.tscn"
 config/features=PackedStringArray("4.2", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/flight_navigation_3d/plugin.cfg")

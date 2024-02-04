@@ -6,8 +6,9 @@
 
 [sub_resource type="Resource" id="Resource_t4yrx"]
 script = ExtResource("2_ryaqs")
-depth = 5
-layers = [[], [], [], [], []]
+depth = 7
+layers = [[], [], [], [], [], [], [Object(RefCounted,"script":null,"morton":0,"parent":-1,"first_child":-1,"subgrid":-1,"xn":-1,"xp":-1,"yn":-1,"yp":-1,"zn":-1,"zp":-1)
+]]
 
 [sub_resource type="BoxMesh" id="BoxMesh_vd4ml"]
 
@@ -33,7 +34,7 @@ collision_layer = 0
 script = ExtResource("1_d4tlu")
 svo = SubResource("Resource_t4yrx")
 pathfinder = NodePath("GreedyAstar")
-leaf_cube_size = 0.0625
+leaf_cube_size = 0.015625
 
 [node name="Origin" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, -2, -2)

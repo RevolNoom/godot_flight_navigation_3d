@@ -141,9 +141,8 @@ func link_from_morton(layer: int, morton: int) -> int:
 	return SVOLink.from(layer, offset)
 
 
-## Return neighbor nodes' links of node with [param svolink
-## [param svolink: The node whose neighbors need to be found
-## [param return: Array of neighbors' SVOLinks
+## Return array of neighbors' [SVOLink]s.[br]
+## [param svolink]: The node whose neighbors need to be found.[br]
 func neighbors_of(svolink: int) -> PackedInt64Array:
 	var node = node_from_link(svolink)
 	var neighbors: PackedInt64Array = []
@@ -192,7 +191,8 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 					[Face.Z_POS, node.zn]]:
 			if nb[1] == SVOLink.NULL:
 				continue
-			neighbors.append_array(_smallest_voxels_on_surface(nb[0], nb[1]))
+			var smos = _smallest_voxels_on_surface(nb[0], nb[1])
+			neighbors.append_array(smos)
 			
 	return neighbors
 
@@ -452,8 +452,8 @@ func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 	if node.has_no_child():
 		return [svolink]
 
-	# This vector holds index of 4 children on [param face
-	var children_on_face: Vector4i = Vector4i.ONE * node.first_child
+	# This vector holds index of 4 children on [param face]
+	var children_on_face: PackedInt64Array = [node.first_child, node.first_child, node.first_child, node.first_child]
 	var children_indexes: Vector4i
 	match face:
 		Face.X_NEG:
@@ -471,12 +471,12 @@ func _smallest_voxels_on_surface(face: Face, svolink: int) -> PackedInt64Array:
 	
 	# Multiply by 64 to shift all bits in indexes by 6 bits, 
 	# to ignore "subgrid" in SVOLink 
-	children_on_face += children_indexes * 64
+	children_indexes *= 64
 	
-	return (_smallest_voxels_on_surface(face, children_on_face.x)\
-		+  _smallest_voxels_on_surface(face, children_on_face.y))\
-		+  (_smallest_voxels_on_surface(face, children_on_face.z)\
-		+  _smallest_voxels_on_surface(face, children_on_face.w))
+	return (_smallest_voxels_on_surface(face, children_on_face[0] + children_indexes.x)\
+		+  _smallest_voxels_on_surface(face, children_on_face[1] + children_indexes.y))\
+		+  (_smallest_voxels_on_surface(face, children_on_face[2] + children_indexes.z)\
+		+  _smallest_voxels_on_surface(face, children_on_face[3] + children_indexes.w))
 
 
 # Return true if svo nodes with codes m1 and m2 have the same parent
