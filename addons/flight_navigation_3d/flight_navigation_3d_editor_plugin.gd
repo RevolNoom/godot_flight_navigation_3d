@@ -20,9 +20,16 @@ var voxelize_thread: Thread
 func _on_voxelize_pressed():
 	voxelize_thread = flight_navigation_3d_scene.voxelize_async()
 	voxelize_button.show_please_wait()
+	flight_navigation_3d_scene.finished.connect(_on_voxelization_completed)
+
+
+func _on_voxelization_completed():
+	if voxelize_button.please_wait_dialog:
+		voxelize_button.please_wait_dialog.hide()
+	flight_navigation_3d_scene.finished.disconnect(_on_voxelization_completed)
+	voxelize_thread.wait_to_finish()
 	voxelize_button.show_on_complete()
-	
-	
+
 
 # Show the Voxelize button only if the editor is focusing on a [FlightNavigation3D]
 func _on_selection_changed():

@@ -1,10 +1,13 @@
 @tool
 extends Button
 
+@onready var please_wait_dialog = $PleaseWaitDialog
+@onready var on_complete_dialog = $OnCompleteDialog
+
 func show_please_wait() -> void:
-	$PleaseWaitDialog.position = get_viewport().get_visible_rect().get_center()
-	$PleaseWaitDialog.popup()
+	please_wait_dialog.move_to_center()
+	please_wait_dialog.popup()
 
 func show_on_complete() -> void:
-	$OnCompleteDialog.position = get_viewport().get_visible_rect().get_center()
-	$OnCompleteDialog.popup()
+	on_complete_dialog.move_to_center()
+	on_complete_dialog.popup()

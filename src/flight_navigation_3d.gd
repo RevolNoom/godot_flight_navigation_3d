@@ -52,6 +52,9 @@ func _on_svo_changed():
 var _leaf_cube_size: float = 0.0
 
 func _ready():
+	# Activate physic engine to voxelize in editor mode
+	if Engine.is_editor_hint():
+		PhysicsServer3D.set_active(true)
 	$Extent/DebugVisual.mesh.size = $Extent.shape.size
 	_recalculate_cached_data()
 	update_configuration_warnings()
@@ -95,6 +98,7 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 func _voxelize():
 	var act1node_triangles = _determine_act1nodes()
 	var act1nodes = act1node_triangles.keys()
+	print("Act1node size: %d" %act1nodes.size())
 	svo.construct_tree(act1nodes)
 	if not act1node_triangles.is_empty():
 		_voxelize_tree(svo, act1node_triangles)

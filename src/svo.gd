@@ -49,6 +49,8 @@ class_name SVO
 ## [b]NOTE:[/b] It's safe to modify [member SVONode.subgrid] (voxel solid state).
 ## But since [SVO] is intended to be generated from meshes, it's generally not
 ## a good idea to modify its content directly.[br] 
+## [b]NOTE:[/b] UI for this property is not updated right away after voxelization.
+## You must click on it to see updated values
 @export var layers: Array = []
 
 
