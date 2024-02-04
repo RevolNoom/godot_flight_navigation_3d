@@ -1,23 +1,24 @@
 extends Node3D
 
 func _ready():
-	ResourceSaver.add_resource_format_saver(SVODataSaver.new())
+	_find_path_test()
+	#ResourceSaver.add_resource_format_saver(SVODataSaver.new())
 	#FlyingNavigation3D.automated_test()
 	#PriorityQueue._automated_test()
 	pass
 
 func _on_timer_timeout():
-	$FlightNavigation3D.voxelize_async()
+	#$FlightNavigation3D.voxelize_async()
 	#$FlightNavigation3D.voxelize()
 	pass
 
 func _on_navigation_space_3d_finished():
-	$FlightNavigation3D.draw_debug_boxes()
+	#$FlightNavigation3D.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
 	#_get_svolink_test()
 	#_neighbor_draw_test()
 	
-	call_deferred("_find_path_test")
+	#call_deferred("_find_path_test")
 	pass
 
 ######## TEST #############

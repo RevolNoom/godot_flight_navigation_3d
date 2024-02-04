@@ -17,7 +17,15 @@ func _enter_tree():
 
 
 var voxelize_thread: Thread
+var physics_server_prior_state: bool = false
 func _on_voxelize_pressed():
+	# Activate physic engine to let FlightNavigation3D catches some 
+	# objects to voxelize
+	PhysicsServer3D.set_active(true)
+	get_tree().create_timer(0.2).timeout.connect(_on_voxelize_timer_timeout)
+
+
+func _on_voxelize_timer_timeout():
 	voxelize_thread = flight_navigation_3d_scene.voxelize_async()
 	voxelize_button.show_please_wait()
 	flight_navigation_3d_scene.finished.connect(_on_voxelization_completed)
@@ -26,6 +34,10 @@ func _on_voxelize_pressed():
 func _on_voxelization_completed():
 	if voxelize_button.please_wait_dialog:
 		voxelize_button.please_wait_dialog.hide()
+		
+	# Deactivate physic engine after we're done
+	PhysicsServer3D.set_active(false)
+	
 	flight_navigation_3d_scene.finished.disconnect(_on_voxelization_completed)
 	voxelize_thread.wait_to_finish()
 	voxelize_button.show_on_complete()

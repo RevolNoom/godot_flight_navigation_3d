@@ -25,6 +25,19 @@ A* algorithm for path finding.
 ## How To Use
 
 /TODO/
+### Warning
+
+To be able to voxelize a map right in the editor, PhysicsServer3D is set active
+for the FlightNavigation3D to detect overlapping bodies and areas. It could cause
+you editor-wide problems, like objects set afloat in the scene suddenly drop to the 
+ground. 
+
+There are some ways you can try to work around this problem:
+	
+- Make sure you don't save the ill-affected scenes if it happens.
+- Try to open only the scene of map you need to voxelize and nothing else.
+- Disable Project > Project Settings > Plugins > FlightNavigation3D
+ 
 
 ### Write your own pathfinding algorithm
 
