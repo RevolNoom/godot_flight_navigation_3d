@@ -1,24 +1,29 @@
 extends Node3D
 
 func _ready():
-	_find_path_test()
+	#_find_path_test()
 	#ResourceSaver.add_resource_format_saver(SVODataSaver.new())
 	#FlyingNavigation3D.automated_test()
 	#PriorityQueue._automated_test()
 	pass
 
+@onready var flight_nav = $FlightNavigation3D
+
+var thread: Thread
 func _on_timer_timeout():
-	#$FlightNavigation3D.voxelize_async()
-	#$FlightNavigation3D.voxelize()
+	#thread = $FlightNavigation3D.voxelize_async(6, _on_navigation_space_3d_finished)
+	$FlightNavigation3D.voxelize(6)
+	$FlightNavigation3D.draw_debug_boxes()
+	call_deferred("_find_path_test")
 	pass
 
-func _on_navigation_space_3d_finished():
-	#$FlightNavigation3D.draw_debug_boxes()
+func _on_navigation_space_3d_finished(svo: SVO):
+	flight_nav.draw_debug_boxes()
 	#_post_voxelization_svolink_globalpos_conversion_test()
 	#_get_svolink_test()
 	#_neighbor_draw_test()
 	
-	#call_deferred("_find_path_test")
+	call_deferred("_find_path_test")
 	pass
 
 ######## TEST #############
@@ -57,7 +62,7 @@ func _neighbor_draw_test():
 func _find_path_test():
 	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
 	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
-	
+	print("Path: %s" % [str(svolink_path)])
 	for svolink in svolink_path:
 		$FlightNavigation3D.draw_svolink_box(svolink)
 	#print(svolink_path.map(func(svolink): return SVOLink.get_format_string(svolink, $FlightNavigation3D.svo)))

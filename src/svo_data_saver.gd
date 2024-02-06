@@ -28,9 +28,7 @@ class_name SVODataSaver
 const VERSION_NUMBER: int = 1
 
 func _get_recognized_extensions(resource: Resource) -> PackedStringArray:
-	if resource is SVO:
-		return ["res"]
-	return []
+	return ["svo"]
 
 
 func _recognize(resource: Resource) -> bool:
@@ -57,14 +55,14 @@ func _save(resource: Resource, path: String, flags: int) -> Error:
 	
 	file.store_32(VERSION_NUMBER)
 	file.store_32(svo.depth)
-	file.store_64(svo.layer[1].size())
+	file.store_64(svo.layers[1].size())
 	
-	var act1nodes: PackedInt64Array = (svo._nodes[1] as Array[SVO.SVONode]).map(
+	var act1nodes: PackedInt64Array = (svo.layers[1] as Array[SVONode]).map(
 		func(node): return node.morton)
 	for act1node in act1nodes:
 		file.store_64(act1node)
 	
-	var subgrids: PackedInt64Array = (svo._nodes[0] as Array[SVO.SVONode]).map(
+	var subgrids: PackedInt64Array = (svo.layers[0] as Array[SVONode]).map(
 		func(node): return node.subgrid)
 	for subgrid in subgrids:
 		file.store_64(subgrid)

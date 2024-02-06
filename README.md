@@ -36,7 +36,6 @@ There are some ways you can try to work around this problem:
 	
 - Make sure you don't save the ill-affected scenes if it happens.
 - Try to open only the scene of map you need to voxelize and nothing else.
-- Disable Project > Project Settings > Plugins > FlightNavigation3D
  
 
 ### Write your own pathfinding algorithm

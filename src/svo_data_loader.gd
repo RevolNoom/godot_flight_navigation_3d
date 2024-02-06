@@ -7,8 +7,19 @@ class_name SVODataLoader
 
 
 func _get_recognized_extensions() -> PackedStringArray:
-	return ["res"]
+	return ["svo"]
 
+func _handles_type(type: StringName) -> bool:
+	return type == "Resource"
+
+func _get_resource_type(path: String) -> String:
+	if path.get_extension() == "svo":
+		return "Resource" 
+	return ""
+	
+func _recognize_path(path: String, type: StringName) -> bool:
+	return path.get_extension() == "svo" and type in ["Resource", "SVO"]
+		
 
 ## Return [SVO] on success, [constant @GlobalScope.FAILED] on error
 func _load(path: String, original_path: String, use_sub_threads: bool, cache_mode: int) -> Variant:

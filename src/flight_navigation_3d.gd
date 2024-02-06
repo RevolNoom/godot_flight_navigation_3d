@@ -6,8 +6,8 @@
 extends Area3D
 class_name FlightNavigation3D
 
-## Emitted when voxelize() or voxelize_async() finishes
-signal finished()
+# Emitted when voxelize() or voxelize_async() finishes
+#signal finished()
 
 # TODO: Specialize Triangle-box overlap test for these cases:
 # - One-voxel thick bounding box
@@ -34,9 +34,11 @@ signal finished()
 			_on_svo_changed()
 		update_configuration_warnings()
 
+
 func _on_svo_changed():
 	if svo != null:
-		_leaf_cube_size = _node_size(-2)
+		_leaf_cube_size = _node_size(-2, svo.depth)
+
 
 ## Node with pathfinding algorithm used for [method find_path]
 @export_node_path("FlightPathfinder") var pathfinder
@@ -48,7 +50,8 @@ func _on_svo_changed():
 ## area for illustration
 @export var leaf_cube_size : float:
 	get: 
-		return _leaf_cube_size
+		return 0 if svo == null else _node_size(-2, svo.depth)
+		#return _leaf_cube_size
 var _leaf_cube_size: float = 0.0
 
 func _ready():
@@ -56,7 +59,8 @@ func _ready():
 	_recalculate_cached_data()
 	update_configuration_warnings()
 	
-
+## Voxelize and return a reference to [SVO] after assigning it to [member svo]
+##
 ## Expensive, should call only once when all CollisionShapes are registered[br]
 ## [br]
 ## [b]WARNING:[/b] Do Not call on _ready(), because physic engine have not
@@ -64,22 +68,25 @@ func _ready():
 ## Try [method call_deferred] or set a [Timer] to wait for physics.[br]
 ## [br]
 ## [b]NOTE:[/b] This function is computationally expensive,
-## which could freeze the game for a while.
-func voxelize():
-	_voxelize()
-	finished.emit()
+## which could freeze the game for a while.[br]
+func voxelize(depth: int) -> SVO:
+	svo = _voxelize(depth)
+	return svo
 
 
-var _background_voxelize_thread: Thread
-## Like [method voxelize], but doesn't block the main thread.
-## emit [signal finished] on complete
-func voxelize_async() -> Thread:
-	_background_voxelize_thread = Thread.new()
-	_background_voxelize_thread.start(_voxelize_async, Thread.PRIORITY_LOW)
-	return _background_voxelize_thread
+## Like [method voxelize], but doesn't block the main thread.[br]
+## [param on_complete_callback] is a [Callable] of signature: [code]func(svo: SVO) -> void[/code].
+## It is called after voxelization is completed.[br]
+## Return the thread. This thread needs to be saved until completion.[br]
+func voxelize_async(depth: int, on_complete_callback: Callable) -> Thread:
+	var voxelize_thread = Thread.new()
+	voxelize_thread.start(
+			_voxelize_async.bind(depth, on_complete_callback), 
+			Thread.PRIORITY_LOW)
+	return voxelize_thread
 
 
-## Return a path that connects [param from] and [param to][br]
+## Return a path that connects [param from] and [param to].[br]
 ## [param from], [param to] are in global coordinate.[br]
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	var svolink_path: Array = (get_node(pathfinder) as FlightPathfinder).find_path(get_svolink_of(from), get_svolink_of(to), svo)
@@ -92,17 +99,21 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 #################################
 
-func _voxelize():
-	var act1node_triangles = _determine_act1nodes()
+func _voxelize(depth: int) -> SVO:
+	var act1node_triangles = _determine_act1nodes(depth)
 	var act1nodes = act1node_triangles.keys()
-	#print("Act1node size: %d" %act1nodes.size())
-	svo.construct_tree(act1nodes)
+	print("Act1node size: %d" %act1nodes.size())
+	var new_svo = SVO.create_new(depth, act1nodes)
+	print("svo layer 0: %d" % new_svo.layers[0].size())
 	if not act1node_triangles.is_empty():
-		_voxelize_tree(svo, act1node_triangles)
+		_voxelize_tree(new_svo, act1node_triangles)
+	return new_svo
 
-func _voxelize_async():
-	_voxelize()
-	call_deferred("emit_signal", "finished")
+
+func _voxelize_async(depth: int, on_complete_call_back: Callable):
+	svo = _voxelize(depth)
+	on_complete_call_back.call_deferred(svo)
+
 
 ############################
 
@@ -176,9 +187,9 @@ func _convert_to_local_transform_in_place(
 
 
 # Return dictionary associating Morton codes of active nodes with triangles overlapping them
-func _determine_act1nodes() -> Dictionary:
+func _determine_act1nodes(depth: int) -> Dictionary:
 	var act1node_triangles: Dictionary = {}
-	var node1_size = _node_size(1)
+	var node1_size = _node_size(1, depth)
 	for collision_shape in _overlapping_shapes:
 		var faces = []
 		if collision_shape.shape is BoxShape3D:
@@ -309,11 +320,11 @@ func _voxelize_tree(svo_input: SVO, act1node_triangles: Dictionary):
 
 
 func _voxelize_tree_node0(svo_input: SVO, node1_morton: int, triangles: PackedVector3Array):
-	var node0size = _node_size(0)
-	var node1size = _node_size(1) 
+	var node0size = _node_size(0, svo_input.depth)
+	var node1size = _node_size(1, svo_input.depth) 
 	
 	var node1pos = Morton3.decode_vec3(node1_morton) * node1size
-	var node0s: Array[SVO.SVONode] = []
+	var node0s: Array[SVONode] = []
 	node0s.resize(8)
 	var node0pos: PackedVector3Array = []
 	node0pos.resize(8)
@@ -321,50 +332,36 @@ func _voxelize_tree_node0(svo_input: SVO, node1_morton: int, triangles: PackedVe
 		node0s[m] = svo_input.node_from_morton(0, (node1_morton << 3) | m)
 		node0pos[m] = node1pos + Morton3.decode_vec3(m) * node0size
 		
+	# This is leaf_cube_size, but overridden for svo_input
+	var voxel_size = _node_size(-2, svo_input.depth)
 	for i in range(0, triangles.size(), 3):
 		var triangle = triangles.slice(i, i+3)
-		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
-		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * leaf_cube_size)
+		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * node0size)
+		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * voxel_size)
 		for m in range(8):
 			if triangle_node0_test.overlap_voxel(node0pos[m]):
-					_voxelize_tree_leaves(triangle_voxel_test, node0s[m], node0pos[m])
-		# Note: I think one thread per subgrid is overkill
-		# I have a feeling that creating too many threads might cause
-		# adverse effect than boosting performance
-		#var threads: Array[Thread] = []
-		#var triangle = triangles.slice(i, i+3)
-		#
-		## Node layer 0 - Triangle Test
-		#var tbt0 = TriangleBoxTest.new(triangle, Vector3(1,1,1) * _node_size(0))
-		#
-		## Leaf voxel - Triangle Test
-		#var tbtl = TriangleBoxTest.new(triangle, Vector3(1,1,1) * leaf_cube_size)
-		#
-		#for m in range(8):
-			#if tbt0.overlap_voxel(node0pos[m]):
-				#threads.push_back(Thread.new())
-				#threads.back().start(
-					#_voxelize_tree_leaves.bind(tbtl, node0s[m], node0pos[m]),
-					#Thread.PRIORITY_LOW)
-						#
-		#for thread in threads:
-			#thread.wait_to_finish()
+					_voxelize_tree_leaves(triangle_voxel_test, svo_input, node0s[m], node0pos[m])
 
 
-func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: Vector3):
+func _voxelize_tree_leaves(tbtl: TriangleBoxTest, svo_input: SVO, node0: SVONode, node0pos: Vector3):
 	var node0_solid_state: int = node0.subgrid
 	
-	var node0size = Vector3.ONE * _node_size(0)
+	var node0size = Vector3.ONE * _node_size(0, svo_input.depth)
+	
 	var node0aabb = AABB(node0pos, node0size)
 	var intersection = tbtl.aabb.intersection(node0aabb)
 	intersection.position -= node0pos
-	var vox_range = _voxels_overlapped_by_aabb(leaf_cube_size, intersection, node0size)
+	
+	# This is leaf_cube_size, but overridden for svo_input
+	var voxel_size = _node_size(-2, svo_input.depth)
+	
+	var vox_range = _voxels_overlapped_by_aabb(voxel_size, intersection, node0size)
 	
 	for x in range(vox_range[0].x, vox_range[1].x):
 		for y in range(vox_range[0].y, vox_range[1].y):
 			for z in range(vox_range[0].z, vox_range[1].z):
 				var morton = Morton3.encode64(x,y,z)
-				var vox_offset = Vector3(x,y,z) * leaf_cube_size
+				var vox_offset = Vector3(x,y,z) * voxel_size
 				var leaf_pos = node0pos+vox_offset
 				if (node0_solid_state & (1 << morton) == 0)\
 					and tbtl.overlap_voxel(leaf_pos):
@@ -372,7 +369,8 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, node0: SVO.SVONode, node0pos: 
 	node0.subgrid = node0_solid_state
 
 
-# Return global position of center of the node or subgrid voxel identified as [param svolink]
+## Return global position of center of the node or subgrid voxel identified as [param svolink].[br]
+## [member svo] must not be null.[br]
 func get_global_position_of(svolink: int) -> Vector3:
 	var layer = SVOLink.layer(svolink)
 	var node = svo.node_from_link(svolink)
@@ -381,7 +379,7 @@ func get_global_position_of(svolink: int) -> Vector3:
 		return (Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) * leaf_cube_size\
 				+ _extent_origin
 		
-	return (Morton3.decode_vec3(node.morton) + Vector3.ONE*0.5) * _node_size(layer)\
+	return (Morton3.decode_vec3(node.morton) + Vector3.ONE*0.5) * _node_size(layer, svo.depth)\
 			+ _extent_origin
 
 
@@ -433,7 +431,7 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 	
 	# If code reaches here, it means we have descended down to layer 0 already
 	# If the layer 0 node is free space, return it
-	if svo.node_from_offset(0, link_offset).subgrid == SVO.SVONode.EMPTY_SUBGRID:
+	if svo.node_from_offset(0, link_offset).subgrid == SVONode.Subgrid.EMPTY:
 		return SVOLink.from(0, link_offset, 0)
 	
 	# else, return the subgrid voxel that encloses @position
@@ -448,6 +446,8 @@ func get_svolink_of(gposition: Vector3, return_closest_node: bool = false) -> in
 ##
 ## Gives [param text] a custom value to insert a label in the center of the box.
 ## null for default value of [method SVOLink.get_format_string].[br]
+##
+## [b]NOTE:[/b]: [member svo] must not be null.[br]
 func draw_svolink_box(svolink: int, 
 		node_color: Color = Color.RED, 
 		leaf_color: Color = Color.GREEN,
@@ -468,9 +468,9 @@ func draw_svolink_box(svolink: int,
 		cube.mesh.material.albedo_color = leaf_color
 		label.pixel_size = leaf_cube_size / 400
 	else:
-		cube.mesh.size = Vector3.ONE * _node_size(layer)
+		cube.mesh.size = Vector3.ONE * _node_size(layer, svo.depth)
 		cube.mesh.material.albedo_color = node_color
-		label.pixel_size = _node_size(layer) / 400
+		label.pixel_size = _node_size(layer, svo.depth) / 400
 	cube.mesh.material.albedo_color.a = 0.2
 	
 	$Origin/SVOLinkCubes.add_child(cube)
@@ -478,13 +478,11 @@ func draw_svolink_box(svolink: int,
 	return cube
 	
 
-## BUG: When SVO is passed empty act1nodes for construction, SVO consists
-## of only 1 giant voxel
-## This function incorrectly draws 1 subgrid voxel instead of the whole big space
+## Draw all subgrid voxels in the svo.[br]
 func draw_debug_boxes():
 	for cube in $Origin/DebugCubes.get_children():
 		cube.queue_free()
-	var node0_size = _node_size(0)
+	var node0_size = _node_size(0, svo.depth)
 	
 	var threads: Array[Thread] = []
 	threads.resize(svo.layers[0].size())
@@ -510,10 +508,11 @@ func draw_debug_boxes():
 	for i in range(all_pos.size()):
 		$Origin/DebugCubes.multimesh.set_instance_transform(i, 
 			Transform3D(Basis(), all_pos[i]))
+	print("all_pos size: %d" %all_pos.size())
 
 
 func _collect_cubes(
-	node0: SVO.SVONode, 
+	node0: SVONode, 
 	cube_pos: Array[PackedVector3Array],
 	i: int,
 	node0_size: float):
@@ -555,8 +554,8 @@ func _on_property_list_changed():
 
 ##############
 
-func _node_size(layer: int) -> float:
-	return _extent_size.x * (2.0 ** (-svo.depth + 1 + layer))
+func _node_size(layer: int, depth: int) -> float:
+	return _extent_size.x * (2.0 ** (-depth + 1 + layer))
 
 # The most (x, y, z) negative corner of $Extent. It's cached here to be used in threads.
 var _extent_origin := Vector3()
