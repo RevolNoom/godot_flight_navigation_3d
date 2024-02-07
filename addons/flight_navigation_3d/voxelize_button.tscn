@@ -66,7 +66,9 @@ popup/item_14/id = 16
 
 [node name="WarningDialog" type="ConfirmationDialog" parent="."]
 ok_button_text = "I understand"
-dialog_text = "If you continue, PhysicsServer3D will be set active temporarily.
+dialog_text = "WARNING: This is work in progress, not yet usable.
+
+If you continue, PhysicsServer3D will be set active temporarily.
 
 It could cause you editor-wide problems 
 

@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://demo.gd" id="1_j05pj"]
 [ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://src/flight_navigation_3d.tscn" id="2_6cyyn"]
-[ext_resource type="Script" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="3_odj53"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kb1i8"]
 albedo_color = Color(1, 1, 0, 1)
@@ -31,6 +30,8 @@ height = 0.2
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_i3mn7"]
 points = PackedVector3Array(0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_1bjku"]
+
 [sub_resource type="BoxMesh" id="BoxMesh_mmhx4"]
 
 [node name="Main" type="Node3D"]
@@ -39,8 +40,8 @@ script = ExtResource("1_j05pj")
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_6cyyn")]
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.503759, 0.61083, -0.61083, 4.14086e-08, 0.707107, 0.707107, 0.863844, -0.356211, 0.356211, -4.04345, 1.9299, 0.645518)
-script = ExtResource("3_odj53")
+transform = Transform3D(0.289032, 0.404581, -0.867626, 0, 0.906308, 0.422618, 0.957319, -0.12215, 0.261952, -4.043, 2, 0.646)
+visible = false
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
@@ -52,10 +53,12 @@ autostart = true
 
 [node name="Start" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, -1.9, -1.9)
+visible = false
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="End" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9, 1.9, 1.9)
+visible = false
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="AllKindsOfCollisionShapes" type="Node3D" parent="."]
@@ -99,13 +102,17 @@ mesh = SubResource("CylinderMesh_w63pk")
 
 [node name="ConvexBoxShape" type="CharacterBody3D" parent="AllKindsOfCollisionShapes"]
 transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0, 0, 0.0596905)
-visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, -0.5, -0.5)
 shape = SubResource("ConvexPolygonShape3D_i3mn7")
 
+[node name="CollisionShape3D2" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
+shape = SubResource("BoxShape3D_1bjku")
+
 [node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
 mesh = SubResource("BoxMesh_mmhx4")
 
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+
+[editable path="FlightNavigation3D"]

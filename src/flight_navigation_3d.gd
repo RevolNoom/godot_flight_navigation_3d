@@ -102,9 +102,7 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 func _voxelize(depth: int) -> SVO:
 	var act1node_triangles = _determine_act1nodes(depth)
 	var act1nodes = act1node_triangles.keys()
-	print("Act1node size: %d" %act1nodes.size())
 	var new_svo = SVO.create_new(depth, act1nodes)
-	print("svo layer 0: %d" % new_svo.layers[0].size())
 	if not act1node_triangles.is_empty():
 		_voxelize_tree(new_svo, act1node_triangles)
 	return new_svo
@@ -508,7 +506,6 @@ func draw_debug_boxes():
 	for i in range(all_pos.size()):
 		$Origin/DebugCubes.multimesh.set_instance_transform(i, 
 			Transform3D(Basis(), all_pos[i]))
-	print("all_pos size: %d" %all_pos.size())
 
 
 func _collect_cubes(
