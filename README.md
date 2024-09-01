@@ -23,6 +23,7 @@ A* algorithm for path finding.
 	+ CapsuleShape3D
 	+ CylinderShape3D
 	+ ConcavePolygonShape3D
+	+ ConvexPolygonShape3D
 
 ## How To Use
 
@@ -93,23 +94,13 @@ implementation for ResourceFormatSaver/Loader encounters error).
 
 - GPU voxelization (? uhhhh I'll figure this out later).
 
-- Add supports for more collision shape:
-	+ ConvexPolygonShape3D
-	
-		Currently there's no trivial way in Godot to convert ConvexPolygonShape3D's
-		set of points into an ArrayMesh to get triangles
-		
-	+ HeightMap3D
-	+ SeparationRay3D
-	+ WorldBoundaryShape3D
-
 ## Credits
 
 - Schwarz, M., Seidel, H.-P. 2010. Fast parallel surface and solid voxelization on GPUs. ACM Transactions on Graphics, 29, 6 (Proceedings of SIGGRAPH Asia 2010), Article 179: http://research.michael-schwarz.com/publ/2010/vox/
 
 - 3D Flight Navigation Using Sparse Voxel Octrees, Daniel Brewer: https://www.gameaipro.com/GameAIPro3/GameAIPro3_Chapter21_3D_Flight_Navigation_Using_Sparse_Voxel_Octrees.pdf
 
-- Forceflow's code on triangle/box test, without whom I would have been stuck,
+- Forceflow's code on triangle/box test, without whose work I would have been stuck,
 	jerking hair out of my head wondering why my overlap test doesn't work:
 	https://github.com/Forceflow/cuda_voxelizer/blob/main/src/cpu_voxelizer.cpp
 

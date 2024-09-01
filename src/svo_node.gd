@@ -95,4 +95,3 @@ func is_solid(subgrid_index: int) -> bool:
 ## Return true if this node has no children.[br]
 func has_no_child() -> bool:
 	return first_child == SVOLink.NULL
-

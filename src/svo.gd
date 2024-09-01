@@ -546,4 +546,3 @@ static func get_debug_svo(layer: int) -> SVO:
 				or (n0pos.z == layer0_side_length - 1 and vpos.z == 3):
 					node0.subgrid |= 1<<i
 	return svo
-

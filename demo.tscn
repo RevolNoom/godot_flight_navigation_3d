@@ -40,8 +40,7 @@ script = ExtResource("1_j05pj")
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_6cyyn")]
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.289032, 0.404581, -0.867626, 0, 0.906308, 0.422618, 0.957319, -0.12215, 0.261952, -4.043, 2, 0.646)
-visible = false
+transform = Transform3D(-0.738699, -0.322985, 0.591612, 0.00995162, 0.872394, 0.488702, -0.673962, 0.366891, -0.641222, 4.39076, 2.49727, -3.36855)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)

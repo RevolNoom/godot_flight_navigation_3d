@@ -23,6 +23,7 @@ func _on_navigation_space_3d_finished(svo: SVO):
 	#_get_svolink_test()
 	#_neighbor_draw_test()
 	
+	
 	call_deferred("_find_path_test")
 	pass
 
