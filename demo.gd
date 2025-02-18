@@ -1,31 +1,17 @@
 extends Node3D
 
-func _ready():
-	#_find_path_test()
-	#ResourceSaver.add_resource_format_saver(SVODataSaver.new())
-	#FlyingNavigation3D.automated_test()
-	#PriorityQueue._automated_test()
-	pass
-
 @onready var flight_nav = $FlightNavigation3D
 
-var thread: Thread
-func _on_timer_timeout():
-	#thread = $FlightNavigation3D.voxelize_async(6, _on_navigation_space_3d_finished)
-	$FlightNavigation3D.voxelize(6)
-	$FlightNavigation3D.draw_debug_boxes()
-	call_deferred("_find_path_test")
-	pass
+func _ready() -> void:
+	await get_tree().create_timer(1).timeout
+	await deferred_build_nav()
 
-func _on_navigation_space_3d_finished(svo: SVO):
-	flight_nav.draw_debug_boxes()
-	#_post_voxelization_svolink_globalpos_conversion_test()
-	#_get_svolink_test()
-	#_neighbor_draw_test()
-	
-	
-	call_deferred("_find_path_test")
-	pass
+func deferred_build_nav():
+	var params = {
+		"depth": 9,
+	}
+	await $FlightNavigation3D.build_navigation_data(params)
+	$FlightNavigation3D.draw_debug_boxes()
 
 ######## TEST #############
 
@@ -33,13 +19,11 @@ func _automated_test():
 	_test_debug_draw()
 	pass
 
-
 func _post_voxelization_svolink_globalpos_conversion_test():
 	var test_positions = [Vector3(1, 1, 1), Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
 	for test_position in test_positions:
 		var link = $FlightNavigation3D.get_svolink_of(test_position)
 		$FlightNavigation3D.draw_svolink_box(link)
-
 
 func _neighbor_draw_test():
 	var test_positions = [Vector3(0.75, -0.25, 0.75)]#Vector3(0.5, 0.5, 1.5)]#Vector3(-1, -1, -1.2)]#, Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]

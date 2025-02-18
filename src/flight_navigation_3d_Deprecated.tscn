@@ -1,0 +1,31 @@
+[gd_scene load_steps=6 format=3 uid="uid://c1c25qj7uljje"]
+
+[ext_resource type="Script" uid="uid://weueyxrkq5ik" path="res://src/flight_navigation_3d_Deprecated.gd" id="1_0l0sn"]
+[ext_resource type="Script" uid="uid://cyw1k83kcjw56" path="res://src/greedy_a_star.gd" id="2_6okhl"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e3o65"]
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.0980392)
+
+[sub_resource type="BoxMesh" id="BoxMesh_vd4ml"]
+
+[sub_resource type="MultiMesh" id="MultiMesh_nucqm"]
+transform_format = 1
+mesh = SubResource("BoxMesh_vd4ml")
+
+[node name="FlightNavigation3D" type="MeshInstance3D"]
+material_override = SubResource("StandardMaterial3D_e3o65")
+script = ExtResource("1_0l0sn")
+
+[node name="Origin" type="Node3D" parent="."]
+
+[node name="DebugCubes" type="MultiMeshInstance3D" parent="Origin"]
+multimesh = SubResource("MultiMesh_nucqm")
+
+[node name="SVOLinkCubes" type="Node3D" parent="Origin"]
+
+[node name="GreedyAstar" type="Node" parent="."]
+script = ExtResource("2_6okhl")
+endpoints = null
+
+[connection signal="property_list_changed" from="." to="." method="_on_property_list_changed"]

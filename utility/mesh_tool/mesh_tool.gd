@@ -209,7 +209,6 @@ static func _make_edge(v1: Vector3, v2: Vector3) -> PackedVector3Array:
 	return [v2, v1]
 
 
-
 static var __clockwise_order_surface_normal_direction = \
 	-1 if Vector3(1, 0, 0).cross(Vector3(0, 1, 0)) == Vector3(0, 0, 1) else 1
 	
@@ -231,7 +230,7 @@ static func calculate_center_of_mass(vertices: PackedVector3Array):
 static func set_vertices_in_clockwise_order(faces: PackedVector3Array):
 	if faces.size() == 0:
 		return
-	return MeshTool.set_vertices_in_clockwise_order_with_calculate_center_of_mass(
+	MeshTool.set_vertices_in_clockwise_order_with_calculate_center_of_mass(
 		faces, MeshTool.calculate_center_of_mass(faces))
 
 
@@ -249,3 +248,68 @@ static func set_vertices_in_clockwise_order_with_calculate_center_of_mass(
 			var temp = faces[start_idx+1]
 			faces[start_idx+1] = faces[start_idx+2]
 			faces[start_idx+2] = temp
+
+
+## [param] local_aabb: AABB of a VisualInstance3D, comes from get_aabb(). 
+## Usually is in local coordinate of that Node.[br]
+##
+## [param] global_transform: global transform of that VisualInstance3D.[br]
+static func convert_local_aabb_to_global(local_aabb: AABB, global_transform: Transform3D) -> AABB:
+	var global_aabb = local_aabb
+	global_aabb.position *= global_transform
+	global_aabb.end *= global_transform
+	return global_aabb
+
+static func print_faces(faces: PackedVector3Array):
+	var faces_str = ""
+	for i in range(0, faces.size(), 3):
+		faces_str += "\t%v, %v, %v,\n\n" % [faces[i], faces[i+1], faces[i+2]]
+	print("[\n%s\n]" % faces_str)
+
+## Clean up generated faces from CSG shapes by doing these things:[br]
+## - Remove all faces with 2 or more vertices identical to each other [br]
+## - Remove all faces with 3 vertices lie on the same line[br]
+## - [NOT YET SUPPORTED] Remove identical faces (same set of 3 points)[br]
+static func normalize_faces(faces: PackedVector3Array) -> PackedVector3Array:
+	#print("Before remove: %d faces" % [faces.size()/3])
+	var result: PackedVector3Array = []
+	result.resize(faces.size())
+	result.resize(0)
+	for i in range(0, faces.size(), 3):
+		var p0 = faces[i]
+		var p1 = faces[i+1]
+		var p2 = faces[i+2]
+		var line_direction = p1-p0
+		if line_direction == Vector3.ZERO\
+			or p2 == p1\
+			or p2 == p0:
+			continue # 2 identical vertices
+		var t = (p2-p0)/line_direction
+		if t.x == t.y and t.y == t.z:
+			continue # 3 vertices on a line
+		result.append_array([p0, p1, p2])
+	#print("After remove: %d faces" % [result.size()/3])
+	return result
+
+static func create_array_mesh_from_faces(faces: PackedVector3Array) -> ArrayMesh:
+	var arrays = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = faces
+	
+	var array_mesh = ArrayMesh.new()
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return array_mesh
+
+## TODO: NOT YET TESTED
+## TODO: Need to be in tree for get_debug_mesh to work after SceneTree.process_frame signal
+#static func create_convex_mesh_from_points(points: PackedVector3Array) -> ArrayMesh:
+	#var convex_polygon_3d = ConvexPolygonShape3D.new()
+	#convex_polygon_3d.points = points
+	#convex_polygon_3d.get_debug_mesh().get_faces()
+	#var array_mesh = ArrayMesh.new()
+	## Initialize the mesh
+	#var arrays = []
+	#arrays.resize(Mesh.ARRAY_MAX)
+	#arrays[Mesh.ARRAY_VERTEX] = shape.get_debug_mesh().get_faces()
+	#array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	#pass

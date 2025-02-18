@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://b0fdgf5nd6csp"]
+
+[ext_resource type="Script" uid="uid://cq5hm85kg14hr" path="res://src/voxelization_target.gd" id="1_eebs0"]
+
+[node name="VoxelizationTarget" type="Node3D" groups=["voxelization_target"]]
+process_mode = 4
+physics_interpolation_mode = 2
+visible = false
+script = ExtResource("1_eebs0")
+voxelization_mask = 1

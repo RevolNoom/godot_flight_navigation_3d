@@ -25,7 +25,6 @@ class_name SVO
 	get:
 		return layers.size()
 
-
 ## Type: [Array][[Array][[SVONode]]] [br]
 ## The i-th element is an array of all nodes on the i-th layer of the tree. [br]
 ## [member layers][depth-1][0] is the tree root. [br]
@@ -37,12 +36,10 @@ class_name SVO
 ## a good idea to modify its content directly.[br] 
 ## [b]NOTE:[/b] UI for this property is not updated right away after voxelization.
 ## You must click on it to see updated values
-@export var layers: Array = []
-
+@export var layers: Array[Array] = []
 
 func _init():
 	_construct_tree(1, [])
-
 
 ## [param depth]: Depth of the tree.[br]
 ##
@@ -254,7 +251,6 @@ func _construct_bottom_up(act1nodes: PackedInt64Array) -> void:
 				parent_idx[i] = parent_idx[i-1]\
 					+ int(not _mortons_same_parent(activelayers[i-1], activelayers[i]))
 		
-			
 			## Allocate memory for current layer
 			var current_layer_size = (parent_idx[parent_idx.size()-1] + 1) * 8
 			layers[layer].resize(current_layer_size)

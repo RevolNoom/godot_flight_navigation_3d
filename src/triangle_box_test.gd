@@ -62,9 +62,11 @@ func _init(v: PackedVector3Array, dp: Vector3):
 ## which is a prerequisite. Do that test first to get potential overlapping voxels
 ## and then feed them here.
 func overlap_voxel(p: Vector3) -> bool:
-	var po = _plane_overlaps(p)
-	var p2o = _projection_2d_overlaps(p)
-	return po and p2o
+	#var po = _plane_overlaps(p)
+	#var p2o = _projection_2d_overlaps(p)
+	#return po and p2o
+	# Use this version for faster performance (short-circuit).
+	return _plane_overlaps(p) and _projection_2d_overlaps(p)
 
 
 ## Return true if triangle's plane overlaps voxel at position [param p].[br]
@@ -104,12 +106,16 @@ var _ne_yz: PackedVector2Array = [null, null, null]
 ## Edges normal projections on zx.
 var _ne_zx: PackedVector2Array = [null, null, null]
 
+## 01/02/2025: Note to self: Calculate with float32 and store results into float64
+## will cause bug on float precision. Happens in cases where triangles lie in
+## x/y/z plane.
+
 ## Edges projected distances(?) on xy.
-var _de_xy: PackedFloat64Array = [null, null, null]
+var _de_xy: PackedFloat32Array = [null, null, null]
 ## Edges projected distances(?) on yz.
-var _de_yz: PackedFloat64Array = [null, null, null]
+var _de_yz: PackedFloat32Array = [null, null, null]
 ## Edges projected distances(?) on xz.
-var _de_xz: PackedFloat64Array = [null, null, null]
+var _de_xz: PackedFloat32Array = [null, null, null]
 
 
 static func _automated_test():

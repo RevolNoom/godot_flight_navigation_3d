@@ -1,57 +1,92 @@
-[gd_scene load_steps=2 format=3 uid="uid://l8c3uvqv2t4m"]
+[gd_scene load_steps=5 format=3 uid="uid://l8c3uvqv2t4m"]
 
-[ext_resource type="Script" path="res://addons/flight_navigation_3d/voxelize_button.gd" id="1_3cbmt"]
+[ext_resource type="Script" uid="uid://c2qeljeekftmy" path="res://addons/flight_navigation_3d/voxelize_button.gd" id="1_3cbmt"]
+[ext_resource type="StyleBox" uid="uid://bo1bjxxbjq8nc" path="res://addons/flight_navigation_3d/style_box_texture.tres" id="2_pjx2v"]
 
-[node name="VoxelizeButton" type="Control"]
-custom_minimum_size = Vector2(160, 30)
-layout_mode = 3
-anchors_preset = 0
+[sub_resource type="ImageTexture" id="ImageTexture_sxx6n"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b1wo6"]
+texture = SubResource("ImageTexture_sxx6n")
+modulate_color = Color(0.741176, 0, 0, 1)
+
+[node name="VoxelizeButton" type="Button"]
+custom_minimum_size = Vector2(100, 30)
 offset_right = 100.0
+offset_bottom = 31.0
+size_flags_horizontal = 3
+text = "Voxelize"
 script = ExtResource("1_3cbmt")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
-layout_mode = 1
+[node name="ProgressDialog" type="Window" parent="."]
+mode = 1
+title = "Progress Log"
+initial_position = 2
+size = Vector2i(319, 106)
+visible = false
+
+[node name="Log" type="Label" parent="ProgressDialog"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+autowrap_mode = 2
 
-[node name="Button" type="Button" parent="HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Voxelize"
+[node name="VoxelizationInformation" type="Window" parent="."]
+title = "Voxelization Information"
+initial_position = 2
+size = Vector2i(500, 500)
+visible = false
 
-[node name="Label" type="Label" parent="HBoxContainer"]
-layout_mode = 2
-text = "Depth: "
+[node name="MarginContainer" type="MarginContainer" parent="VoxelizationInformation"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
-[node name="DepthChoice" type="MenuButton" parent="HBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="VoxelizationInformation/MarginContainer"]
 layout_mode = 2
-text = "2"
+
+[node name="Depth" type="VBoxContainer" parent="VoxelizationInformation/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+
+[node name="Depth" type="Label" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth"]
+layout_mode = 2
+text = "Depth/Resolution"
+
+[node name="DepthChoice" type="MenuButton" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth"]
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+theme_override_styles/normal = ExtResource("2_pjx2v")
+text = "7 (256x256x256) (recommended)"
 flat = false
+alignment = 0
 item_count = 15
-popup/item_0/text = "2"
+popup/item_0/text = "2 (8x8x8)"
 popup/item_0/id = 2
-popup/item_1/text = "3"
+popup/item_1/text = "3 (16x16x16)"
 popup/item_1/id = 3
-popup/item_2/text = "4"
+popup/item_2/text = "4 (32x32x32)"
 popup/item_2/id = 4
-popup/item_3/text = "5"
+popup/item_3/text = "5 (64x64x64)"
 popup/item_3/id = 5
-popup/item_4/text = "6"
+popup/item_4/text = "6 (128x128x128)"
 popup/item_4/id = 6
-popup/item_5/text = "7"
+popup/item_5/text = "7 (256x256x256) (recommended)"
 popup/item_5/id = 7
-popup/item_6/text = "8"
+popup/item_6/text = "8 (512x512x512)"
 popup/item_6/id = 8
-popup/item_7/text = "9"
+popup/item_7/text = "9 (1024x1024x1024) (may crash)"
 popup/item_7/id = 9
-popup/item_8/text = "10"
+popup/item_8/text = "10 (2048x2048x2048) (may crash)"
 popup/item_8/id = 10
-popup/item_9/text = "11"
+popup/item_9/text = "11 (4096x4096x4096)"
 popup/item_9/id = 11
 popup/item_10/text = "12"
 popup/item_10/id = 12
@@ -64,35 +99,42 @@ popup/item_13/id = 15
 popup/item_14/text = "16"
 popup/item_14/id = 16
 
-[node name="WarningDialog" type="ConfirmationDialog" parent="."]
-ok_button_text = "I understand"
-dialog_text = "WARNING: This is work in progress, not yet usable.
+[node name="Format" type="VBoxContainer" parent="VoxelizationInformation/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 
-If you continue, PhysicsServer3D will be set active temporarily.
+[node name="Format" type="Label" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Format"]
+layout_mode = 2
+text = "Resource file format:"
 
-It could cause you editor-wide problems 
+[node name="FormatChoice" type="MenuButton" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Format"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/normal = ExtResource("2_pjx2v")
+text = ".res (binary) (recommended)"
+flat = false
+alignment = 0
+text_overrun_behavior = 3
+clip_text = true
+item_count = 2
+popup/item_0/text = ".res (binary) (recommended)"
+popup/item_0/id = 0
+popup/item_1/text = ".tres (text)"
+popup/item_1/id = 1
 
-such as objects set afloat in the scene suddenly drop to the ground. 
+[node name="Padding" type="Control" parent="VoxelizationInformation/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
 
-To workaround this problem, consider doing the following things:
+[node name="ConfirmVoxelize" type="Button" parent="VoxelizationInformation/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(100, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxTexture_b1wo6")
+text = "Start Voxelization"
 
-- Open only one scene which you need to voxelize and nothing else.
-
-- Make sure you don't save the ill-affected scene, if any.
-"
-
-[node name="PleaseWaitDialog" type="AcceptDialog" parent="."]
-ok_button_text = "I'm waiting"
-dialog_text = "Voxelizing. Please wait... 
-A new dialog will popup on completion."
-
-[node name="OnCompleteDialog" type="AcceptDialog" parent="."]
-ok_button_text = "Thanks"
-dialog_text = "Voxelization completed!"
-
-[node name="OnSaveSVOErrorDialog" type="AcceptDialog" parent="."]
-ok_button_text = "No way! D:"
-dialog_text = "Can't save SVO resource. Please check console for errors."
-
-[connection signal="pressed" from="HBoxContainer/Button" to="." method="_on_button_pressed"]
-[connection signal="confirmed" from="WarningDialog" to="." method="_on_warning_dialog_confirmed"]
+[connection signal="pressed" from="." to="." method="_on_pressed"]
+[connection signal="close_requested" from="ProgressDialog" to="." method="_on_progress_dialog_close_requested"]
+[connection signal="close_requested" from="VoxelizationInformation" to="." method="_on_voxelization_information_close_requested"]
+[connection signal="pressed" from="VoxelizationInformation/MarginContainer/VBoxContainer/ConfirmVoxelize" to="." method="_on_confirm_voxelize_pressed"]

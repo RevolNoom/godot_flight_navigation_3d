@@ -73,7 +73,7 @@ static func not_same_layer(link1: int, link2: int) -> bool:
 
 ## This is a debug function. Don't mind it.[br]
 ## Format: Layer MortonCode Subgrid
-static func get_format_string(svolink: int, svo: SVO) -> String:
+static func get_format_string(svolink: int, svo: SVO_V3) -> String:
 	#return "%d %s %s" % [
 		#SVOLink.layer(svolink),
 			#Morton3.decode_vec3i(svo.node_from_link(svolink).morton), 
@@ -82,7 +82,19 @@ static func get_format_string(svolink: int, svo: SVO) -> String:
 	# This function is used for debug anyway, so I modify it to my needs 
 	return "%d %s %s\n%d" % [
 		SVOLink.layer(svolink),
-			Morton3.decode_vec3i(svo.node_from_link(svolink).morton), 
+			SVOLink.offset(svolink),
+			#Morton3.decode_vec3i(it.morton), 
 			Morton3.decode_vec3i(SVOLink.subgrid(svolink)), 
 			svolink]
 	
+## This is a debug function. Don't mind it.[br]
+static func get_binary_string(svolink: int) -> String:
+	var result = ""
+	for i in range(63, -1, -1):
+		if svolink & (1<<i):
+			result += "1"
+		else:
+			result += "0"
+	result = result.insert(58, "|")
+	result = result.insert(4, "|")
+	return result

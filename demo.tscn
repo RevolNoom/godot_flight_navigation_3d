@@ -1,7 +1,22 @@
-[gd_scene load_steps=16 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=25 format=3 uid="uid://dgo7fj4tmihlq"]
 
-[ext_resource type="Script" path="res://demo.gd" id="1_j05pj"]
-[ext_resource type="PackedScene" uid="uid://c1c25qj7uljje" path="res://src/flight_navigation_3d.tscn" id="2_6cyyn"]
+[ext_resource type="Script" uid="uid://d11cyhx2in52c" path="res://demo.gd" id="1_j05pj"]
+[ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_0bhed"]
+[ext_resource type="Script" uid="uid://bb6ejyrqomja3" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="2_c6xj6"]
+[ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="3_m0rpm"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m0rpm"]
+sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+ground_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+
+[sub_resource type="Sky" id="Sky_c6xj6"]
+sky_material = SubResource("ProceduralSkyMaterial_m0rpm")
+
+[sub_resource type="Environment" id="Environment_6bw2v"]
+background_mode = 2
+sky = SubResource("Sky_c6xj6")
+tonemap_mode = 2
+glow_enabled = true
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kb1i8"]
 albedo_color = Color(1, 1, 0, 1)
@@ -10,6 +25,18 @@ albedo_color = Color(1, 1, 0, 1)
 material = SubResource("StandardMaterial3D_kb1i8")
 radius = 0.1
 height = 0.2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c6xj6"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_6bw2v"]
+material = SubResource("StandardMaterial3D_c6xj6")
+radius = 0.03
+height = 0.06
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_c6xj6"]
+points = PackedVector3Array(1.451, 1.002, 1.5, 1.5, 1.5, 1.5, 1.5, 1, 1.5, 1.46, 1.02, 1.499)
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_c6xj6"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_owu8f"]
 
@@ -37,10 +64,12 @@ points = PackedVector3Array(0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1
 [node name="Main" type="Node3D"]
 script = ExtResource("1_j05pj")
 
-[node name="FlightNavigation3D" parent="." instance=ExtResource("2_6cyyn")]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_6bw2v")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(-0.738699, -0.322985, 0.591612, 0.00995162, 0.872394, 0.488702, -0.673962, 0.366891, -0.641222, 4.39076, 2.49727, -3.36855)
+script = ExtResource("2_c6xj6")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
@@ -60,58 +89,103 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9, 1.9, 1.9)
 visible = false
 mesh = SubResource("SphereMesh_pw7g6")
 
-[node name="AllKindsOfCollisionShapes" type="Node3D" parent="."]
+[node name="CSGCombiner3D" type="CSGCombiner3D" parent="."]
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 1.5, 1.5, 1.5)
+visible = false
+operation = 1
+calculate_tangents = false
 
-[node name="Sphere" type="RigidBody3D" parent="AllKindsOfCollisionShapes"]
-transform = Transform3D(0.300872, 0.662196, 0.686275, 0, 0.719619, -0.694369, -0.953665, 0.208916, 0.216513, 1.30032, 0.946098, -1.29822)
+[node name="CSGSphere3D" type="CSGSphere3D" parent="CSGCombiner3D"]
+calculate_tangents = false
+smooth_faces = false
+
+[node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
+size = Vector3(3, 3, 3)
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="FlightNavigation3D"]
+mesh = SubResource("SphereMesh_6bw2v")
+
+[node name="VoxelizationTargets" type="Node3D" parent="."]
+visible = false
+
+[node name="SingleTriangle" type="StaticBody3D" parent="VoxelizationTargets"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/SingleTriangle"]
+shape = SubResource("ConvexPolygonShape3D_c6xj6")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/SingleTriangle" instance=ExtResource("3_m0rpm")]
+
+[node name="ArrayMesh" type="MeshInstance3D" parent="VoxelizationTargets"]
+mesh = SubResource("ArrayMesh_c6xj6")
+
+[node name="Sphere" type="RigidBody3D" parent="VoxelizationTargets"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, 1.5)
 gravity_scale = 0.0
+freeze = true
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Sphere"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Sphere"]
 shape = SubResource("SphereShape3D_owu8f")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Sphere"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Sphere"]
 mesh = SubResource("SphereMesh_mf4ld")
 
-[node name="Box" type="StaticBody3D" parent="AllKindsOfCollisionShapes"]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Sphere" instance=ExtResource("3_m0rpm")]
+
+[node name="StaticBody3D" type="StaticBody3D" parent="VoxelizationTargets"]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/StaticBody3D"]
+shape = SubResource("ConvexPolygonShape3D_c6xj6")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/StaticBody3D" instance=ExtResource("3_m0rpm")]
+
+[node name="Box" type="StaticBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.730537, 0.17074, 0.661184, 0.262361, 0.823747, -0.5026, -0.630462, 0.540637, 0.556982, -1.13867, 0, 0.51582)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Box"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box"]
 shape = SubResource("BoxShape3D_u2ahw")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Box"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="Capsule" type="Area3D" parent="AllKindsOfCollisionShapes"]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("3_m0rpm")]
+
+[node name="Capsule" type="Area3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.929165, -0.224951, -0.293342, 0, 0.793534, -0.608526, 0.369666, 0.565421, 0.737324, 0, -0.683882, -1.90184)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Capsule"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Capsule"]
 shape = SubResource("CapsuleShape3D_tscoa")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Capsule"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Capsule"]
 mesh = SubResource("CapsuleMesh_gt65f")
 
-[node name="Cylinder" type="AnimatableBody3D" parent="AllKindsOfCollisionShapes"]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Capsule" instance=ExtResource("3_m0rpm")]
+
+[node name="Cylinder" type="AnimatableBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(1, 0, 0, 0, 0.822204, 0.569193, 0, -0.569193, 0.822204, 1.39317, 0.545422, 1.65847)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/Cylinder"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Cylinder"]
 shape = SubResource("CylinderShape3D_y24ew")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/Cylinder"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Cylinder"]
 mesh = SubResource("CylinderMesh_w63pk")
 
-[node name="ConvexBoxShape" type="CharacterBody3D" parent="AllKindsOfCollisionShapes"]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Cylinder" instance=ExtResource("3_m0rpm")]
+
+[node name="ConvexBoxShape" type="CharacterBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0, 0, 0.0596905)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/ConvexBoxShape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, -0.5, -0.5)
 shape = SubResource("ConvexPolygonShape3D_i3mn7")
 
-[node name="CollisionShape3D2" type="CollisionShape3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
+[node name="CollisionShape3D2" type="CollisionShape3D" parent="VoxelizationTargets/ConvexBoxShape"]
 shape = SubResource("BoxShape3D_1bjku")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="AllKindsOfCollisionShapes/ConvexBoxShape"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/ConvexBoxShape"]
 mesh = SubResource("BoxMesh_mmhx4")
 
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/ConvexBoxShape" instance=ExtResource("3_m0rpm")]
 
-[editable path="FlightNavigation3D"]
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
