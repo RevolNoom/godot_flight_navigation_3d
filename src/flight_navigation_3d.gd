@@ -1,14 +1,11 @@
 ## Voxelize all FlightNavigationTarget inside this area
 @tool
+@warning_ignore_start("integer_division")
 extends CSGBox3D
 class_name FlightNavigation3D
 
 # Signals to log progress on editor popup
-signal progress_get_all_flight_navigation_targets_start()
-signal progress_get_all_flight_navigation_targets_end(number_of_targets: int)
-
-signal progress_build_mesh_start()
-signal progress_build_mesh_end(mesh: ArrayMesh)
+signal logging(message: String)
 
 #signal progress__end(number_of: int)
 
@@ -25,20 +22,23 @@ signal progress_build_mesh_end(mesh: ArrayMesh)
 
 ## parameters:[br]
 ## - int depth: number of layers this SVO has (not counting leaf layers)
-func build_navigation_data(parameters: Dictionary):
-	var triangles = await prepare_triangles()
+func build_navigation_data(parameters: FlightNavigation3DParameter):
+	var triangles = await prepare_triangles(parameters)
 	svo = voxelize(triangles, parameters)
-	print("Done build navigation data: ", svo)
 	
 
 #region Prepare Triagles
 
 ## Return an array of 3*number_of_triangle Vector3.
 ## Each 3 consecutive vectors make up a triangle, in clockwise order
-func prepare_triangles() -> PackedVector3Array:
+func prepare_triangles(parameters: FlightNavigation3DParameter) -> PackedVector3Array:
 	var target_array = get_all_flight_navigation_targets()
 	var triangles = await build_mesh(target_array)
-	#triangles = MeshTool.normalize_faces(triangles)
+	
+	if parameters.cull_slivers:
+		logging.emit("Start cull_slivers: %d triangles" % [triangles.size()/3])
+		triangles = MeshTool.cull_slivers(triangles)
+		logging.emit("End cull_slivers: %d triangles left" % [triangles.size()/3])
 	
 	$MeshInstance3D.mesh = MeshTool.create_array_mesh_from_faces(triangles)
 	
@@ -53,20 +53,20 @@ func prepare_triangles() -> PackedVector3Array:
 	
 	
 func get_all_flight_navigation_targets() -> Array[VoxelizationTarget]:
-	progress_get_all_flight_navigation_targets_start.emit()
+	logging.emit("Start get_all_flight_navigation_targets")
 	var target_array = get_tree().get_nodes_in_group("voxelization_target") 
 	var result: Array[VoxelizationTarget] = []
 	result.resize(target_array.size())
 	result.resize(0)
 	for target in target_array:
-		#print("Target: %s. Class: %s" % [target.get_path(), target.get_class()])
 		if target.voxelization_mask & voxelization_mask != 0:
 			result.push_back(target as VoxelizationTarget)
-	progress_get_all_flight_navigation_targets_end.emit(target_array.size())
+	logging.emit("End get_all_flight_navigation_targets: %d targets" % target_array.size())
 	return result
 
 
 func build_mesh(target_array: Array[VoxelizationTarget]) -> PackedVector3Array:
+	logging.emit("Start build_mesh")
 	var union_voxelization_target_shapes = CSGCombiner3D.new()
 	union_voxelization_target_shapes.operation = CSGShape3D.OPERATION_INTERSECTION
 	# The combiner must be added as child first, so that its children could have
@@ -84,20 +84,20 @@ func build_mesh(target_array: Array[VoxelizationTarget]) -> PackedVector3Array:
 	await get_tree().process_frame
 	var mesh = bake_static_mesh()
 	var faces = mesh.get_faces()
-	#var mesh = bake_collision_shape().get_faces()
 	remove_child(union_voxelization_target_shapes)
 	union_voxelization_target_shapes.free()
+	logging.emit("End build_mesh")
 	return faces
 
 #endregion
 
 #region Voxelize Triangles
-func voxelize(triangles: PackedVector3Array, parameters: Dictionary) -> SVO_V3:
+func voxelize(triangles: PackedVector3Array, parameters: FlightNavigation3DParameter) -> SVO_V3:
 	var act1node_triangles = determine_act1nodes(triangles, parameters)
 	var act1nodes = act1node_triangles.keys()
 	var new_svo = SVO_V3.create_new(parameters.depth, act1nodes)
 	if not act1node_triangles.is_empty():
-		_voxelize_tree(new_svo, act1node_triangles)
+		_voxelize_tree(parameters, new_svo, act1node_triangles)
 	return new_svo
 	
 # Return dictionary of key - value: Active node morton code - Overlapping triangles.[br]
@@ -106,28 +106,27 @@ func voxelize(triangles: PackedVector3Array, parameters: Dictionary) -> SVO_V3:
 # [b]NOTE:[/b] This method allocates one thread per triangle
 func determine_act1nodes(
 	triangles: PackedVector3Array,
-	parameters: Dictionary) -> Dictionary[int, PackedVector3Array]:
+	parameters: FlightNavigation3DParameter) -> Dictionary[int, PackedVector3Array]:
 	# Mapping between active layer 1 node, and the triangles overlap it
 	var act1node_triangles: Dictionary[int, PackedVector3Array] = {}
 	var node1_size = _node_size(1, parameters.depth)
 	
-	var threads: Array[Thread] = []
-	@warning_ignore("integer_division")
-	threads.resize(triangles.size() / 3)
-	threads.resize(0)
-	for i in range(0, triangles.size(), 3):
-		threads.push_back(Thread.new())
-		threads.back().start(
-			voxelize_triangle.bind(node1_size, triangles.slice(i, i+3)), 
-			Thread.PRIORITY_LOW)
-			
-	for thread in threads:
-		_merge_triangle_overlap_node_dicts(act1node_triangles, thread.wait_to_finish())
-	
-	# Debug (without threading):
-	#for i in range(0, triangles.size(), 3):
-		#_merge_triangle_overlap_node_dicts(act1node_triangles, 
-			#voxelize_triangle(node1_size, triangles.slice(i, i+3)))
+	if parameters.multithreading:
+		var threads: Array[Thread] = []
+		threads.resize(triangles.size() / 3)
+		threads.resize(0)
+		for i in range(0, triangles.size(), 3):
+			threads.push_back(Thread.new())
+			threads.back().start(
+				voxelize_triangle.bind(node1_size, triangles.slice(i, i+3)), 
+				Thread.PRIORITY_LOW)
+				
+		for thread in threads:
+			_merge_triangle_overlap_node_dicts(act1node_triangles, thread.wait_to_finish())
+	else:
+		for i in range(0, triangles.size(), 3):
+			_merge_triangle_overlap_node_dicts(act1node_triangles, 
+				voxelize_triangle(node1_size, triangles.slice(i, i+3)))
 		 
 	return act1node_triangles
 	
@@ -153,9 +152,6 @@ func voxelize_triangle(
 	triangle: PackedVector3Array) -> Dictionary[int, PackedVector3Array]:
 	var result: Dictionary[int, PackedVector3Array] = {}
 	var tbt = TriangleBoxTest.new(triangle, Vector3.ONE * vox_size)
-	
-	#if triangle[0].x == triangle[1].x and triangle[1].x == triangle[2].x:
-		#pass # Debug breakpoint
 		
 	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(vox_size, tbt.aabb, size)
 		
@@ -192,13 +188,19 @@ func _voxels_overlapped_by_aabb(
 	var vb = voxel_bound/voxel_size_length
 	
 	# Include voxels merely touched by t_aabb
-	b.x = b.x - (1.0 if b.x == roundf(b.x) else 0.0)
-	b.y = b.y - (1.0 if b.y == roundf(b.y) else 0.0)
-	b.z = b.z - (1.0 if b.z == roundf(b.z) else 0.0)
-	
+	b.x = b.x - (1.0 if b.x == floorf(b.x) else 0.0)
+	b.y = b.y - (1.0 if b.y == floorf(b.y) else 0.0)
+	b.z = b.z - (1.0 if b.z == floorf(b.z) else 0.0)
 	e.x = e.x + (1.0 if e.x == roundf(e.x) else 0.0)
 	e.y = e.y + (1.0 if e.y == roundf(e.y) else 0.0)
 	e.z = e.z + (1.0 if e.z == roundf(e.z) else 0.0)
+	
+	#b.x = b.x - (1.0 if is_equal_approx(b.x, floorf(b.x)) else 0.0)
+	#b.y = b.y - (1.0 if is_equal_approx(b.y, floorf(b.y)) else 0.0)
+	#b.z = b.z - (1.0 if is_equal_approx(b.z, floorf(b.z)) else 0.0)
+	#e.x = e.x + (1.0 if is_equal_approx(e.x, ceilf(e.x)) else 0.0)
+	#e.y = e.y + (1.0 if is_equal_approx(e.y, ceilf(e.y)) else 0.0)
+	#e.z = e.z + (1.0 if is_equal_approx(e.z, ceilf(e.z)) else 0.0)
 	
 	# Clamp to fit inside Navigation Space
 	var bi: Vector3i = Vector3i(b.clamp(Vector3(), vb).floor())
@@ -209,25 +211,26 @@ func _voxels_overlapped_by_aabb(
 # Allocate each layer-1 node with 1 thread.[br]
 # For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
 # For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
-func _voxelize_tree(svo_input: SVO_V3, act1node_triangles: Dictionary[int, PackedVector3Array]):
+func _voxelize_tree(
+	parameters: FlightNavigation3DParameter, 
+	svo_input: SVO_V3, 
+	act1node_triangles: Dictionary[int, PackedVector3Array]):
+		
 	var act1node_triangles_keys: Array[int] = act1node_triangles.keys()
-	var threads: Array[Thread] = []
-	threads.resize(act1node_triangles_keys.size())
-	threads.resize(0)
-	
-	for key in act1node_triangles_keys:
-		threads.push_back(Thread.new())
-		threads.back().start(
-			_voxelize_tree_node0.bind(svo_input, key, act1node_triangles[key]),
-			Thread.PRIORITY_LOW)
-	
-	for t in threads:
-		t.wait_to_finish()
-		
-	# Debug (No threading):
-	#for key in act1node_triangles_keys:
-		#_voxelize_tree_node0(svo_input, key, act1node_triangles[key])
-		
+	if parameters.multithreading:
+		var threads: Array[Thread] = []
+		threads.resize(act1node_triangles_keys.size())
+		threads.resize(0)
+		for key in act1node_triangles_keys:
+			threads.push_back(Thread.new())
+			threads.back().start(
+				_voxelize_tree_node0.bind(svo_input, key, act1node_triangles[key]),
+				Thread.PRIORITY_LOW)
+		for t in threads:
+			t.wait_to_finish()
+	else:
+		for key in act1node_triangles_keys:
+			_voxelize_tree_node0(svo_input, key, act1node_triangles[key])
 
 
 func _voxelize_tree_node0(svo_input: SVO_V3, node1_morton: int, triangles: PackedVector3Array):
@@ -256,6 +259,7 @@ func _voxelize_tree_node0(svo_input: SVO_V3, node1_morton: int, triangles: Packe
 			#var pos = node0position[m]
 			if triangle_node0_test.overlap_voxel(node0position[m]):
 					_voxelize_tree_leaves(triangle_voxel_test, svo_input, node0s[m], node0position[m])
+
 
 func _voxelize_tree_leaves(tbtl: TriangleBoxTest, svo_input: SVO_V3, node0: SVOIteratorRandom, node0pos: Vector3):
 	var node0_solid_state: int = node0.rubik

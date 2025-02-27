@@ -82,16 +82,8 @@ static func create_new(tree_depth: int = 2, act1nodes: PackedInt64Array = [], su
 ## See [method create_new].[br]
 func _construct_tree(tree_depth: int, act1nodes: PackedInt64Array):
 	if act1nodes.size() == 0:
-		var root_node = PackedInt64Array()
-		root_node.resize(SVOIterator.DataField.MAX_FIELD)
-		layers = [root_node]
-		var it = SVOIteratorSequential.v_begin(self)
-		it.morton = 0
-		it.rubik = Subgrid.EMPTY
 		return
 	layers.resize(tree_depth)
-	for i in range(layers.size()):
-		layers[i] = PackedInt64Array()
 	_construct_bottom_up(act1nodes)
 	_fill_neighbor_top_down()
 	_initialize_layer0()
@@ -114,6 +106,7 @@ func _initialize_layer0() -> void:
 	while not it.end():
 		it.rubik = Subgrid.EMPTY
 		it.next()
+
 
 ## Return array of neighbors' [SVOLink]s.[br]
 ## [param svolink]: The node whose neighbors need to be found.[br]
@@ -215,6 +208,9 @@ func _construct_bottom_up(act1nodes: PackedInt64Array) -> void:
 	
 	var activelayers = act1nodes
 	
+	## An array to hold the parent index on above layer of the current layer in building.
+	var parent_idx = activelayers.duplicate()
+	
 	# Init layer 1 upward
 	var it = SVOIteratorRandom._new(self, SVOLink.NULL)
 	
@@ -223,8 +219,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array) -> void:
 		for i in range(0, activelayers.size()):
 			for child in range(8):
 				it.go(layer-1, i*8+child).morton = (activelayers[i] << 3) | child
-						
-		var parent_idx = activelayers.duplicate()
+				
 		parent_idx[0] = 0
 		
 		# ROOT NODE CASE
@@ -232,7 +227,7 @@ func _construct_bottom_up(act1nodes: PackedInt64Array) -> void:
 			resize_layer(layer, 1)
 			it.go(layer, 0).morton = 0
 		else:
-			for i in range(1, parent_idx.size()):
+			for i in range(1, activelayers.size()):
 				parent_idx[i] = parent_idx[i-1]\
 					+ int(not _mortons_same_parent(activelayers[i-1], activelayers[i]))
 		
@@ -333,7 +328,7 @@ func _ask_parent_for_neighbor(
 		return SVOLink.NULL
 	
 	# Parent's neighbor is on higher layer
-	if parent.layer != SVOLink.layer(parent_nbor_svolink):
+	if SVOLink.layer(parent_link) != SVOLink.layer(parent_nbor_svolink):
 		return parent_nbor_svolink
 		
 	var neighbor = SVOIteratorRandom._new(self, 
@@ -365,6 +360,7 @@ static func _get_subgrid_voxels_where_component_equals(v: Vector3i) -> PackedInt
 # Indexes of subgrid voxel that makes up a face of a layer-0 node
 # e.g. face_subgrid[Face.X_NEG] for all indexes of voxel on negative-x face
 static var _face_subgrid: Array[PackedInt64Array] = [
+	[], [], [], # Padding 0, 1, 2 until NEIGHBOR_X_NEGATIVE
 	_get_subgrid_voxels_where_component_equals(Vector3i(0, -1, -1)),
 	_get_subgrid_voxels_where_component_equals(Vector3i(3, -1, -1)),
 	_get_subgrid_voxels_where_component_equals(Vector3i(-1, 0, -1)),

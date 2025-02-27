@@ -3,14 +3,12 @@ extends Node3D
 @onready var flight_nav = $FlightNavigation3D
 
 func _ready() -> void:
-	await get_tree().create_timer(1).timeout
-	await deferred_build_nav()
-
-func deferred_build_nav():
-	var params = {
-		"depth": 9,
-	}
+	#TriangleBoxTest_ReferenceCode._automated_test()
+	#TriangleBoxTest._automated_test()
+	var params = FlightNavigation3DParameter.new()
+	params.depth = 7
 	await $FlightNavigation3D.build_navigation_data(params)
+	await get_tree().create_timer(1).timeout
 	$FlightNavigation3D.draw_debug_boxes()
 
 ######## TEST #############

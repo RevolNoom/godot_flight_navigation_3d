@@ -405,7 +405,7 @@ func draw_svolink_box(svolink: int,
 	var node = svo.node_from_link(svolink)
 	cube.mesh.material = StandardMaterial3D.new()
 	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
-	label.text = text if text != null else SVOLink.get_format_string(svolink, svo)
+	#label.text = text if text != null else SVOLink.get_format_string(svolink, svo)
 			
 	if layer == 0 and node.first_child != 0:
 		cube.mesh.size = Vector3.ONE * leaf_cube_size

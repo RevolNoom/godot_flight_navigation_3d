@@ -1,61 +1,119 @@
 ## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel
+extends RefCounted
 class_name TriangleBoxTest
 
 ## Triangle bounding box
 var aabb: AABB
 
-## Triangle normal
-var n: Vector3
+## All member variables are serialized as float 64 and referenced via enum Field.[br]
+## This is to make sure that all calculations are done in float 64, not float 32 
+## when variables are stored as Vector2 or Vector3.
+var _fields: PackedFloat64Array
+
+enum Field {
+	## Triangle normal
+	V3_N = 0,
+	## Edges normal projections on xy. 3 edges.
+	V2_NE_XY = 3,
+	## Edges normal projections on yz. 3 edges.
+	V2_NE_YZ = 9,
+	## Edges normal projections on zx. 3 edges.
+	V2_NE_ZX = 15,
+	## Edges projected distances(?) on xy. 3 edges.
+	F_DE_XY = 21,
+	## Edges projected distances(?) on yz. 3 edges.
+	F_DE_YZ = 24,
+	## Edges projected distances(?) on zx. 3 edges.
+	F_DE_ZX = 27,
+	## Temporary field for calculation result. 1 Vector3 or 2 Vector2
+	TEMP = 30,
+	## Distance factor 1
+	F_D1 = 34,
+	## Distance factor 2
+	F_D2,
+	FIELD_MAX,
+}
+
 
 ## Initialize a new triangle-box test.[br]
 ## [br]
 ## [param v]: Positions of 3 triangle vertices.[br]
 ## [param dp]: Box size.
 func _init(v: PackedVector3Array, dp: Vector3):
+	var vf64 = Vector3F64._new_tarray(v)
+	var dpf64 = Vector3F64._new(dp)
+	_fields = PackedFloat64Array()
+	_fields.resize(Field.FIELD_MAX)
+	
 	# Bounding box
-	aabb = AABB()
-	aabb.position = v[0]
-	aabb = aabb.expand(v[1])
-	aabb = aabb.expand(v[2])
+	aabb = AABB(v[0], Vector3()).expand(v[1]).expand(v[2]).abs()
 	
 	# Edge equations
-	var e: PackedVector3Array = [null, null, null]
-	for i in range(0, 3):
-		e[i] = v[(i+1)%3] - v[i]
+	var e: PackedFloat64Array = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+	Vector3F64.sub(vf64, 3, vf64, 0, e, 0)
+	Vector3F64.sub(vf64, 6, vf64, 3, e, 3)
+	Vector3F64.sub(vf64, 0, vf64, 6, e, 6)
 	
+	# Triangle normal
 	# NOTE: This order of vector is important. Copied from cuda_voxelizer
-	n = (e[0]).cross(e[1])
+	Vector3F64.cross(e, 0, e, 3, _fields, Field.V3_N)
 	
-	## Critical point
-	var c = Vector3(
-		0.0 if n.x <= 0 else dp.x,
-		0.0 if n.y <= 0 else dp.y,
-		0.0 if n.z <= 0 else dp.z)
+	# Critical point
+	var c: PackedFloat64Array = [
+		0.0 if _fields[Field.V3_N] <= 0 else dp.x,
+		0.0 if _fields[Field.V3_N + 1] <= 0 else dp.y,
+		0.0 if _fields[Field.V3_N + 2] <= 0 else dp.z]
 	
 	# Distance factors
-	_d1 = n.dot(c - v[0])
-	_d2 = n.dot((dp - c) - v[0])
+	Vector3F64.sub(c, 0, vf64, 0, _fields, Field.TEMP)
+	_fields[Field.F_D1] = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP) 
+	
+	Vector3F64.sub(dpf64, 0, c, 0, _fields, Field.TEMP)
+	Vector3F64.sub(_fields, Field.TEMP, vf64, 0, _fields, Field.TEMP)
+	_fields[Field.F_D2] = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP)
 	
 	# Edges Normals/Distances' Projections
-	for i in range(0, 3):
-		_ne_xy[i] = Vector2(-e[i].y, e[i].x) * (1.0 if n.z >= 0.0 else -1.0)
-		_ne_yz[i] = Vector2(-e[i].z, e[i].y) * (1.0 if n.x >= 0.0 else -1.0)
+	for i in range(3):
+		if _fields[Field.V3_N + 2] >= 0: # n.z >= 0
+			_fields[Field.V2_NE_XY + i * 2 + 0] = -e[i*3+1] 
+			_fields[Field.V2_NE_XY + i * 2 + 1] = e[i*3+0]
+		else:
+			_fields[Field.V2_NE_XY + i * 2 + 0] = e[i*3+1]
+			_fields[Field.V2_NE_XY + i * 2 + 1] = -e[i*3+0]
+			
+		if _fields[Field.V3_N + 0] >= 0: # n.x >= 0
+			_fields[Field.V2_NE_YZ + i * 2 + 0] = -e[i*3+2]
+			_fields[Field.V2_NE_YZ + i * 2 + 1] = e[i*3+1]
+		else:
+			_fields[Field.V2_NE_YZ + i * 2 + 0] = e[i*3+2]
+			_fields[Field.V2_NE_YZ + i * 2 + 1] = -e[i*3+1]
+			
+		if _fields[Field.V3_N+1] >= 0: # n.y >= 0
+			_fields[Field.V2_NE_ZX + i * 2 + 0] = -e[i*3+0]
+			_fields[Field.V2_NE_ZX + i * 2 + 1] = e[i*3+2]
+		else:
+			_fields[Field.V2_NE_ZX + i * 2 + 0] = e[i*3+0]
+			_fields[Field.V2_NE_ZX + i * 2 + 1] = -e[i*3+2]
+
+		_fields[Field.F_DE_XY + i] = \
+			- Vector2F64.dot(_fields, Field.V2_NE_XY + i*2, vf64, i*3)\
+			+ maxf(0, dpf64[0]*_fields[Field.V2_NE_XY + i*2 + 0])\
+			+ maxf(0, dpf64[1]*_fields[Field.V2_NE_XY + i*2 + 1])
+			
+		#i*3+1 so we are dotting yz
+		_fields[Field.F_DE_YZ + i] = \
+			- Vector2F64.dot(_fields, Field.V2_NE_YZ + i*2, vf64, i*3+1)\
+			+ maxf(0, dpf64[1]*_fields[Field.V2_NE_YZ + i*2 + 0])\
+			+ maxf(0, dpf64[2]*_fields[Field.V2_NE_YZ + i*2 + 1])
 		
-		# Don't even think about exchanging the signs!
-		_ne_zx[i] = Vector2(-e[i].x, e[i].z) * (1.0 if n.y >= 0.0 else -1.0)
-		
-		_de_xy[i] = - _ne_xy[i].dot(Vector2(v[i].x, v[i].y))\
-					+ maxf(0, dp.x*_ne_xy[i].x)\
-					+ maxf(0, dp.y*_ne_xy[i].y)
-		
-		_de_yz[i] = - _ne_yz[i].dot(Vector2(v[i].y, v[i].z))\
-					+ maxf(0, dp.y*_ne_yz[i].x)\
-					+ maxf(0, dp.z*_ne_yz[i].y)
-		
-		_de_xz[i] = - _ne_zx[i].dot(Vector2(v[i].z, v[i].x))\
-					+ maxf(0.0, dp.x*_ne_zx[i].x)\
-					+ maxf(0.0, dp.z*_ne_zx[i].y)
-					
+		_fields[Field.TEMP + 0] = vf64[i*3+2] # z
+		_fields[Field.TEMP + 1] = vf64[i*3+0] # x
+		_fields[Field.F_DE_ZX + i] = \
+			- Vector2F64.dot(_fields, Field.V2_NE_ZX + i*2, _fields, Field.TEMP)\
+			+ maxf(0, dpf64[0]*_fields[Field.V2_NE_ZX + i*2 + 0])\
+			+ maxf(0, dpf64[2]*_fields[Field.V2_NE_ZX + i*2 + 1])
+
+
 ## Return true if triangle overlaps voxel at position [param p].[br]
 ## [br]
 ## [b]Note:[/b] This test doesn't check whether triangle's bounding box overlaps voxel, 
@@ -71,51 +129,64 @@ func overlap_voxel(p: Vector3) -> bool:
 
 ## Return true if triangle's plane overlaps voxel at position [param p].[br]
 func _plane_overlaps(p: Vector3) -> bool:
-	var np = n.dot(p) 
-	return (np + _d1) * (np + _d2) <= 0
-
+	Vector3F64.assignv(_fields, Field.TEMP, p)
+	var np = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP)
+	return (np + _fields[Field.F_D1]) * (np + _fields[Field.F_D2]) <= 0
+	#var npd1 = (np + _fields[Field.F_D1])
+	#var npd2 = (np + _fields[Field.F_D2])
+	#return npd1 * npd2 <= 0
 
 ## Return true if triangle's projections on x, y, z overlaps those of voxel at position [param p].[br]
 func _projection_2d_overlaps(p: Vector3) -> bool:
-	var p_xy = Vector2(p.x, p.y)
-	var p_yz = Vector2(p.y, p.z)
-	var p_zx = Vector2(p.z, p.x)
-		
-	return  (_ne_xy[0].dot(p_xy) + _de_xy[0]) >= 0\
-		and (_ne_xy[1].dot(p_xy) + _de_xy[1]) >= 0\
-		and (_ne_xy[2].dot(p_xy) + _de_xy[2]) >= 0\
-		
-		and (_ne_yz[0].dot(p_yz) + _de_yz[0]) >= 0\
-		and (_ne_yz[1].dot(p_yz) + _de_yz[1]) >= 0\
-		and (_ne_yz[2].dot(p_yz) + _de_yz[2]) >= 0\
+	# XY, YZ, ZX Projections
+	_fields[Field.TEMP + 0] = p[0]
+	_fields[Field.TEMP + 1] = p[1]
+	_fields[Field.TEMP + 2] = p[2]
+	_fields[Field.TEMP + 3] = p[0]
+	
+	#var b1 = (Vector2F64.dot(_fields, Field.V2_NE_XY, _fields, Field.TEMP)\
+	#+ _fields[Field.F_DE_XY]) >= 0
+	#var b2 = (Vector2F64.dot(_fields, Field.V2_NE_XY + 2, _fields, Field.TEMP)\
+	#+ _fields[Field.F_DE_XY + 1]) >= 0
+	#var b3 = (Vector2F64.dot(_fields, Field.V2_NE_XY + 4, _fields, Field.TEMP)\
+	#+ _fields[Field.F_DE_XY + 2]) >= 0
+#
+	#var b4 = (Vector2F64.dot(_fields, Field.V2_NE_YZ, _fields, Field.TEMP + 1)\
+	#+ _fields[Field.F_DE_YZ]) >= 0
+	#var b5 = (Vector2F64.dot(_fields, Field.V2_NE_YZ + 2, _fields, Field.TEMP + 1)\
+	#+ _fields[Field.F_DE_YZ + 1]) >= 0
+	#var b6 = (Vector2F64.dot(_fields, Field.V2_NE_YZ + 4, _fields, Field.TEMP + 1)\
+	#+ _fields[Field.F_DE_YZ + 2]) >= 0
+	#
+	#var b7 = (Vector2F64.dot(_fields, Field.V2_NE_ZX, _fields, Field.TEMP + 2)\
+	#+ _fields[Field.F_DE_ZX]) >= 0
+	#var b8 = (Vector2F64.dot(_fields, Field.V2_NE_ZX + 2, _fields, Field.TEMP + 2)\
+	#+ _fields[Field.F_DE_ZX + 1]) >= 0
+	#var b9 = (Vector2F64.dot(_fields, Field.V2_NE_ZX + 4, _fields, Field.TEMP + 2)\
+	#+ _fields[Field.F_DE_ZX + 2]) >= 0
+	#return b1 and b2 and b3 and b4 and b5 and b6 and b7 and b8 and b9
+	
+	return\
+	(Vector2F64.dot(_fields, Field.V2_NE_XY, _fields, Field.TEMP)\
+	+ _fields[Field.F_DE_XY]) >= 0\
+and (Vector2F64.dot(_fields, Field.V2_NE_XY + 2, _fields, Field.TEMP)\
+	+ _fields[Field.F_DE_XY + 1]) >= 0\
+and (Vector2F64.dot(_fields, Field.V2_NE_XY + 4, _fields, Field.TEMP)\
+	+ _fields[Field.F_DE_XY + 2]) >= 0\
 
-		and (_ne_zx[0].dot(p_zx) + _de_xz[0]) >= 0\
-		and (_ne_zx[1].dot(p_zx) + _de_xz[1]) >= 0\
-		and (_ne_zx[2].dot(p_zx) + _de_xz[2]) >= 0
-
-## Distance factor from one critical point to triangle plane.
-var _d1: float
-## Distance factor from critical point on the opposite region of triangle plane
-## to [member _d1] critical point.
-var _d2: float
-
-## Edges normal projections on xy.
-var _ne_xy: PackedVector2Array = [null, null, null]
-## Edges normal projections on yz.
-var _ne_yz: PackedVector2Array = [null, null, null]
-## Edges normal projections on zx.
-var _ne_zx: PackedVector2Array = [null, null, null]
-
-## 01/02/2025: Note to self: Calculate with float32 and store results into float64
-## will cause bug on float precision. Happens in cases where triangles lie in
-## x/y/z plane.
-
-## Edges projected distances(?) on xy.
-var _de_xy: PackedFloat32Array = [null, null, null]
-## Edges projected distances(?) on yz.
-var _de_yz: PackedFloat32Array = [null, null, null]
-## Edges projected distances(?) on xz.
-var _de_xz: PackedFloat32Array = [null, null, null]
+and (Vector2F64.dot(_fields, Field.V2_NE_YZ, _fields, Field.TEMP + 1)\
+	+ _fields[Field.F_DE_YZ]) >= 0\
+and (Vector2F64.dot(_fields, Field.V2_NE_YZ + 2, _fields, Field.TEMP + 1)\
+	+ _fields[Field.F_DE_YZ + 1]) >= 0\
+and (Vector2F64.dot(_fields, Field.V2_NE_YZ + 4, _fields, Field.TEMP + 1)\
+	+ _fields[Field.F_DE_YZ + 2]) >= 0\
+	
+and (Vector2F64.dot(_fields, Field.V2_NE_ZX, _fields, Field.TEMP + 2)\
+	+ _fields[Field.F_DE_ZX]) >= 0\
+and (Vector2F64.dot(_fields, Field.V2_NE_ZX + 2, _fields, Field.TEMP + 2)\
+	+ _fields[Field.F_DE_ZX + 1]) >= 0\
+and (Vector2F64.dot(_fields, Field.V2_NE_ZX + 4, _fields, Field.TEMP + 2)\
+	+ _fields[Field.F_DE_ZX + 2]) >= 0
 
 
 static func _automated_test():
@@ -221,6 +292,7 @@ static func _auto_test_triangle_extended(v: PackedVector3Array, box_range: Packe
 	var errors = 0
 	for key in test_result.keys():
 		if test_result[key] != expected_result[key]:
+			test.overlap_voxel(key)
 			errors += 1
 			printerr("Got %s, expected %s for %s" % [test_result[key], expected_result[key], key])
 	print("Completed with %d error%s" % [errors, "" if errors < 2 else "s"])
