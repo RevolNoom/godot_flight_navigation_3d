@@ -86,6 +86,7 @@ var offset: int:
 var subgrid: int:
 	get():
 		return SVOLink.subgrid(svolink)
+		
 ## The SVOLink that identify this node/voxel.[br]
 var svolink: int
 ## For layer-0 node, [member SVONode.first_child] [b]IS[b] [member SVONode.subgrid].[br]
@@ -173,10 +174,25 @@ func set_field(df: DataField, value: int) -> void:
 
 ## Return true if this voxel is solid.[br]
 func is_solid() -> bool:
-	return (morton & 1 << 63) || rubik & (1 << SVOLink.subgrid(svolink))
+	return rubik & (1 << subgrid) # || (morton & 1 << 63)
 
 ## Return true if [param svolink] refers to a subgrid voxel.[br]
 ## An svolink points to a subgrid voxel when it points to layer 0 and that node
 ## has at least one solid voxel.
 func is_subgrid_voxel() -> bool:
 	return layer == 0 and rubik != SVONode.Subgrid.EMPTY
+
+func get_debug_dict() -> Dictionary:
+	return {
+		"svolink": SVOLink.get_format_string(svolink),
+		"morton": Morton.int_to_bin(morton),
+		"parent": SVOLink.get_format_string(parent),
+		"first_child": SVOLink.get_format_string(first_child),
+		"rubik": SVOLink.get_format_string(rubik),
+		"xn": SVOLink.get_format_string(xn),
+		"xp": SVOLink.get_format_string(xp),
+		"yn": SVOLink.get_format_string(yn),
+		"yp": SVOLink.get_format_string(yp),
+		"zn": SVOLink.get_format_string(zn),
+		"zp": SVOLink.get_format_string(zp),
+	}

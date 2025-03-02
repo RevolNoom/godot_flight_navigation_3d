@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=23 format=3 uid="uid://dgo7fj4tmihlq"]
 
 [ext_resource type="Script" uid="uid://d11cyhx2in52c" path="res://demo.gd" id="1_j05pj"]
 [ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_0bhed"]
@@ -25,13 +25,6 @@ albedo_color = Color(1, 1, 0, 1)
 material = SubResource("StandardMaterial3D_kb1i8")
 radius = 0.1
 height = 0.2
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c6xj6"]
-
-[sub_resource type="SphereMesh" id="SphereMesh_6bw2v"]
-material = SubResource("StandardMaterial3D_c6xj6")
-radius = 0.03
-height = 0.06
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_c6xj6"]
 points = PackedVector3Array(1.451, 1.002, 1.5, 1.5, 1.5, 1.5, 1.5, 1, 1.5, 1.46, 1.02, 1.499)
@@ -80,13 +73,11 @@ one_shot = true
 autostart = true
 
 [node name="Start" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.9, -1.9, -1.9)
-visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1)
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="End" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9, 1.9, 1.9)
-visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.395059, 1, 1)
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="CSGCombiner3D" type="CSGCombiner3D" parent="."]
@@ -102,9 +93,6 @@ smooth_faces = false
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
 transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(3, 3, 3)
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="FlightNavigation3D"]
-mesh = SubResource("SphereMesh_6bw2v")
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false

@@ -2,7 +2,7 @@
 extends SVOIterator
 class_name SVOIteratorRandom
 
-static func _new(svo: SVO_V3, new_svolink: int = SVOLink.NULL) -> SVOIteratorRandom:
+static func _new(svo: SVO, new_svolink: int = SVOLink.NULL) -> SVOIteratorRandom:
 	var it = SVOIteratorRandom.new()
 	it.svolink = new_svolink
 	it._svo_data = svo.layers

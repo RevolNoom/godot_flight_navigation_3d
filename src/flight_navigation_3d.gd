@@ -18,8 +18,18 @@ signal logging(message: String)
 ## be considered for Voxelization.
 @export_flags_3d_navigation var voxelization_mask: int
 
-@export var svo: SVO_V3
+@export var svo: SVO
 
+## Node with pathfinding algorithm used for [method find_path]
+@export_node_path("FlightPathfinder") var pathfinder
+
+## Return a path that connects [param from] and [param to].[br]
+## [param from], [param to] are in global coordinate.[br]
+func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
+	var svolink_path: Array = (get_node(pathfinder) as FlightPathfinder).find_path(get_svolink_of(from), get_svolink_of(to), svo)
+	return svolink_path.map(func (link) -> Vector3:
+		return get_global_position_of(link))
+		
 ## parameters:[br]
 ## - int depth: number of layers this SVO has (not counting leaf layers)
 func build_navigation_data(parameters: FlightNavigation3DParameter):
@@ -92,10 +102,10 @@ func build_mesh(target_array: Array[VoxelizationTarget]) -> PackedVector3Array:
 #endregion
 
 #region Voxelize Triangles
-func voxelize(triangles: PackedVector3Array, parameters: FlightNavigation3DParameter) -> SVO_V3:
+func voxelize(triangles: PackedVector3Array, parameters: FlightNavigation3DParameter) -> SVO:
 	var act1node_triangles = determine_act1nodes(triangles, parameters)
 	var act1nodes = act1node_triangles.keys()
-	var new_svo = SVO_V3.create_new(parameters.depth, act1nodes)
+	var new_svo = SVO.create_new(parameters.depth, act1nodes)
 	if not act1node_triangles.is_empty():
 		_voxelize_tree(parameters, new_svo, act1node_triangles)
 	return new_svo
@@ -213,7 +223,7 @@ func _voxels_overlapped_by_aabb(
 # For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
 func _voxelize_tree(
 	parameters: FlightNavigation3DParameter, 
-	svo_input: SVO_V3, 
+	svo_input: SVO, 
 	act1node_triangles: Dictionary[int, PackedVector3Array]):
 		
 	var act1node_triangles_keys: Array[int] = act1node_triangles.keys()
@@ -233,7 +243,7 @@ func _voxelize_tree(
 			_voxelize_tree_node0(svo_input, key, act1node_triangles[key])
 
 
-func _voxelize_tree_node0(svo_input: SVO_V3, node1_morton: int, triangles: PackedVector3Array):
+func _voxelize_tree_node0(svo_input: SVO, node1_morton: int, triangles: PackedVector3Array):
 	var node0size = _node_size(0, svo_input.depth)
 	var node1size = _node_size(1, svo_input.depth) 
 	
@@ -261,7 +271,7 @@ func _voxelize_tree_node0(svo_input: SVO_V3, node1_morton: int, triangles: Packe
 					_voxelize_tree_leaves(triangle_voxel_test, svo_input, node0s[m], node0position[m])
 
 
-func _voxelize_tree_leaves(tbtl: TriangleBoxTest, svo_input: SVO_V3, node0: SVOIteratorRandom, node0pos: Vector3):
+func _voxelize_tree_leaves(tbtl: TriangleBoxTest, svo_input: SVO, node0: SVOIteratorRandom, node0pos: Vector3):
 	var node0_solid_state: int = node0.rubik
 	
 	var node0size = Vector3.ONE * _node_size(0, svo_input.depth)
@@ -293,24 +303,24 @@ func _voxelize_tree_leaves(tbtl: TriangleBoxTest, svo_input: SVO_V3, node0: SVOI
 ## Return global position of center of the node or subgrid voxel identified as [param svolink].[br]
 ## [member svo] must not be null.[br]
 func get_global_position_of(svolink: int) -> Vector3:
-	var layer = SVOLink.layer(svolink)
-	var node = SVOIteratorRandom._new(svo, svolink)
-	if svo.is_subgrid_voxel(svolink):
-		var voxel_morton = (node.morton << 6) | SVOLink.subgrid(svolink)
-		return global_transform*((Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) * _leaf_cube_size()\
+	var it = SVOIteratorRandom._new(svo, svolink)
+	if it.is_subgrid_voxel():
+		var voxel_morton = (it.morton << 6) | it.subgrid
+		return global_transform*(
+			(Morton3.decode_vec3(voxel_morton) + Vector3.ONE*0.5) 
+			* _leaf_cube_size()\
 				+ _corner())
+				
 	var result = global_transform\
-			* ((Morton3.decode_vec3(node.morton) + Vector3.ONE*0.5) * _node_size(layer, svo.depth)\
+			* ((Morton3.decode_vec3(it.morton) + Vector3.ONE*0.5)
+			 * _node_size(it.layer, svo.depth)\
 				+ _corner())
 	return result
 
 
-#TODO: @return_closest_node: determine what to return if navspace doesn't encloses @gposition
-# if false, return SVOLink.NULL
-# if true, return the closest node 
 ## Return [SVOLink] of the smallest node/voxel at [param gposition].[br]
 ## [param gposition]: Global position that needs conversion to [SVOLink].[br]
-func get_svolink_of(gposition: Vector3, _return_closest_node: bool = false) -> int:
+func get_svolink_of(gposition: Vector3) -> int:
 	var local_pos = to_local(gposition) - _corner()
 	var extent = size.x
 	var aabb := AABB(Vector3.ZERO, Vector3.ONE*extent)
@@ -327,7 +337,7 @@ func get_svolink_of(gposition: Vector3, _return_closest_node: bool = false) -> i
 	var it = SVOIteratorRandom._new(svo)
 	# Descend the tree layer by layer
 	while link_layer > 0:
-		it.svolink = SVOLink.from(link_layer, link_offset, 0)
+		it.go(link_layer, link_offset)
 		if it.first_child == SVOLink.NULL:
 			return it.svolink
 
@@ -353,7 +363,7 @@ func get_svolink_of(gposition: Vector3, _return_closest_node: bool = false) -> i
 	
 	# If code reaches here, it means we have descended down to layer 0 already
 	# If the layer 0 node is free space, return it
-	if it.go(0, link_offset).subgrid == SVONode.Subgrid.EMPTY:
+	if it.go(0, link_offset).rubik == SVONode.Subgrid.EMPTY:
 		return it.svolink
 	
 	# else, return the subgrid voxel that encloses @position
@@ -376,6 +386,47 @@ func _leaf_cube_size() -> float:
 	return _node_size(-2, svo.depth)
 	
 
+## Draw a box represents the space occupied by an [SVONode] identified as [param svolink].[br]
+## 
+## Return a reference to the box. [br] 
+##
+## Gives [param text] a custom value to insert a label in the center of the box.
+## null for default value of [method SVOLink.get_format_string].[br]
+##
+## [b]NOTE:[/b]: [member svo] must not be null.[br]
+func draw_svolink_box(svolink: int, 
+		node_color: Color = Color.RED, 
+		leaf_color: Color = Color.GREEN,
+		text = null) -> MeshInstance3D:
+	var cube = MeshInstance3D.new()
+	cube.mesh = BoxMesh.new()
+	var label = Label3D.new()
+	cube.add_child(label)
+	
+	
+	var layer = SVOLink.layer(svolink)
+	var it = SVOIteratorRandom._new(svo, svolink)
+	cube.mesh.material = StandardMaterial3D.new()
+	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
+	label.text = text if text != null else SVOLink.get_format_string(svolink)
+			
+	if layer == 0 and it.first_child != 0:
+		cube.mesh.size = Vector3.ONE * _leaf_cube_size()
+		cube.mesh.material.albedo_color = leaf_color
+		label.pixel_size = _leaf_cube_size() / 400
+	else:
+		cube.mesh.size = Vector3.ONE * _node_size(layer, svo.depth)
+		cube.mesh.material.albedo_color = node_color
+		label.pixel_size = _node_size(layer, svo.depth) / 400
+	cube.mesh.material.albedo_color.a = 0.2
+	
+	#if svolink == 90368:
+		#breakpoint
+		
+	$SVOLinkCubes.add_child(cube)
+	cube.global_position = get_global_position_of(svolink) #+ Vector3(1, 0, 0)
+	return cube
+	
 ## Draw all subgrid voxels in the svo.[br]
 func draw_debug_boxes():
 	var node0_size = _node_size(0, svo.depth)

@@ -103,7 +103,12 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 			break
 		
 		#print(best_node[TotalCostEstimated])
+		#if best_node_link == 172096:
+			#breakpoint
 		var bn_neighbors := svo.neighbors_of(best_node_link)
+		#var bnn_debug = Array(bn_neighbors).map(func (n):
+			#return SVOIteratorRandom._new(svo, n).get_debug_dict()
+			#)
 		
 		for neighbor in bn_neighbors:
 			# Ignore obstacles
@@ -138,6 +143,8 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 		
 	var path: PackedInt64Array = [destination]
 	while path[-1] != start:
+		if breadcrumb[path[-1]] == 172096:
+			breakpoint
 		path.push_back(breadcrumb[path[-1]])
 	path.reverse()
 	

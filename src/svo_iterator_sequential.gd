@@ -4,26 +4,26 @@ class_name SVOIteratorSequential
 
 ## Vertical Iterator
 ## Travels from top (biggest voxel) to bottom (smallest voxel) layer
-static func v_begin(svo: SVO_V3) -> SVOIteratorSequential:
+static func v_begin(svo: SVO) -> SVOIteratorSequential:
 	return SVOIteratorSequential._new(svo, 
 		SVOLink.from(svo.layers.size()-1, 0, 0), 
 		Vector2i(0, -1))
 
 ## Vertical Iterator
 ## Travels from bottom (smallest voxel) to top (biggest voxel) layer
-static func v_rbegin(svo: SVO_V3) -> SVOIteratorSequential:
+static func v_rbegin(svo: SVO) -> SVOIteratorSequential:
 	return SVOIteratorSequential._new(svo, 
 		SVOLink.from(0, 0, 0), 
 		Vector2i(0, 1))
 		
 ## Horizontal Iterator
 ## Traverses over all nodes in a layer
-static func h_begin(svo: SVO_V3, new_svolink: int) -> SVOIteratorSequential:
+static func h_begin(svo: SVO, new_svolink: int) -> SVOIteratorSequential:
 	return SVOIteratorSequential._new(svo, 
 		new_svolink, 
 		Vector2i(1, 0))
 
-static func _new(svo: SVO_V3, new_svolink: int, direction: Vector2i) -> SVOIteratorSequential:
+static func _new(svo: SVO, new_svolink: int, direction: Vector2i) -> SVOIteratorSequential:
 	var it = SVOIteratorSequential.new()
 	it._direction = direction
 	it.svolink = new_svolink

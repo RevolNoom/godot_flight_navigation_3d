@@ -6,16 +6,17 @@ func _ready() -> void:
 	#TriangleBoxTest_ReferenceCode._automated_test()
 	#TriangleBoxTest._automated_test()
 	var params = FlightNavigation3DParameter.new()
-	params.depth = 7
+	params.depth = 6
 	await $FlightNavigation3D.build_navigation_data(params)
 	await get_tree().create_timer(1).timeout
 	$FlightNavigation3D.draw_debug_boxes()
+	_find_path_test()
 
 ######## TEST #############
 
-func _automated_test():
-	_test_debug_draw()
-	pass
+#func _automated_test():
+	#_test_debug_draw()
+	#pass
 
 func _post_voxelization_svolink_globalpos_conversion_test():
 	var test_positions = [Vector3(1, 1, 1), Vector3(0.9,0.9,0.9),Vector3(0.3,0.3,0.3),]
@@ -51,11 +52,11 @@ func _find_path_test():
 	#print(svolink_path.map(func(svolink): return SVOLink.get_format_string(svolink, $FlightNavigation3D.svo)))
 	
 
-func _test_debug_draw():
-	var Ns: PackedScene = preload("res://src/flight_navigation_3d.tscn")
-	var ns = Ns.instantiate()
-	var max_depth = 5
-	ns.max_depth = max_depth
-	ns.svo = SVO.get_debug_svo(max_depth)
-	add_child(ns)
-	ns.draw_debug_boxes()
+#func _test_debug_draw():
+	#var Ns: PackedScene = preload("res://src/flight_navigation_3d.tscn")
+	#var ns = Ns.instantiate()
+	#var max_depth = 5
+	#ns.max_depth = max_depth
+	#ns.svo = SVO.get_debug_svo(max_depth)
+	#add_child(ns)
+	#ns.draw_debug_boxes()
