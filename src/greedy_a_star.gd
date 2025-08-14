@@ -55,15 +55,17 @@ func _ready():
 	distance_function = distance_function
 
 func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
+	#var linkstart=SVOLink.get_format_string(start)
+	#var linkdes=SVOLink.get_format_string(destination)
 	# The Priority Queue of nodes to search
-	# Element: [TotalCostEstimated, SVOLink]
+	# Element: [TOTAL_COST_ESTIMATED, SVOLink]
 	# Sorted by TCE. TCE = f(x) = g(x) + h(x).
 	# pop() returns element with smallest TCE
-	const TotalCostEstimated = 0
-	const SvoLink = 1
+	const TOTAL_COST_ESTIMATED = 0
+	const SVOLINK = 1
 	var frontier:= PriorityQueue.new([],
 		func (u1, u2) -> bool:
-			return u1[TotalCostEstimated] > u2[TotalCostEstimated])
+			return u1[TOTAL_COST_ESTIMATED] > u2[TOTAL_COST_ESTIMATED])
 	frontier.push([INF, start])
 	
 	# travel_cost[node] returns the current cost to travel
@@ -81,7 +83,7 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 		#
 		#,
 		#func (u1, u2) -> bool:
-			#return u1[TotalCostEstimated] > u2[TotalCostEstimated])
+			#return u1[TOTAL_COST_ESTIMATED] > u2[TOTAL_COST_ESTIMATED])
 	#
 	#while not test.is_empty():
 		#print(test.pop()[0])
@@ -89,20 +91,20 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	while frontier.size() > 0:
 		# Get the next most promising node that we haven't visited to examine
 		var best_node = frontier.pop()
-		var best_node_link = best_node[SvoLink]
+		var best_node_link = best_node[SVOLINK]
 		
 		#print("%s" % str(frontier.to_array()))
 		#print()
 		#if best_node_link in [3331, 3363]:
-			#print("best: %d, f: %f" % [best_node_link, best_node[TotalCostEstimated]])
-		#print("best: %d, f: %f" % [best_node_link, best_node[TotalCostEstimated]])
+			#print("best: %d, f: %f" % [best_node_link, best_node[TOTAL_COST_ESTIMATED]])
+		#print("best: %d, f: %f" % [best_node_link, best_node[TOTAL_COST_ESTIMATED]])
 		#OS.delay_msec(5)
 		
 		#get_parent().draw_svolink_box(best_node_link, Color.GREEN, Color.GREEN, "")
 		if best_node_link == destination:
 			break
 		
-		#print(best_node[TotalCostEstimated])
+		#print(best_node[TOTAL_COST_ESTIMATED])
 		#if best_node_link == 172096:
 			#breakpoint
 		var bn_neighbors := svo.neighbors_of(best_node_link)
@@ -112,7 +114,7 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 		
 		for neighbor in bn_neighbors:
 			# Ignore obstacles
-			if svo.is_link_solid(neighbor):
+			if svo.is_solid(neighbor):
 				travel_cost[neighbor] = INF
 				continue
 			
@@ -143,8 +145,8 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 		
 	var path: PackedInt64Array = [destination]
 	while path[-1] != start:
-		if breadcrumb[path[-1]] == 172096:
-			breakpoint
+		#if breadcrumb[path[-1]] == 172096:
+			#breakpoint
 		path.push_back(breadcrumb[path[-1]])
 	path.reverse()
 	

@@ -6,10 +6,12 @@ func _ready() -> void:
 	#TriangleBoxTest_ReferenceCode._automated_test()
 	#TriangleBoxTest._automated_test()
 	var params = FlightNavigation3DParameter.new()
-	params.depth = 6
-	await $FlightNavigation3D.build_navigation_data(params)
-	await get_tree().create_timer(1).timeout
+	params.depth = 3
+	var svo = await $FlightNavigation3D.build_navigation_data(params)
+	$FlightNavigation3D.sparse_voxel_octree = svo
 	$FlightNavigation3D.draw_debug_boxes()
+	#breakpoint
+	#$FlightNavigation3D.svo.self_validate()
 	_find_path_test()
 
 ######## TEST #############
@@ -44,6 +46,7 @@ func _neighbor_draw_test():
 
 
 func _find_path_test():
+	#print($FlightNavigation3D.svo.layers[4])
 	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
 	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
 	print("Path: %s" % [str(svolink_path)])

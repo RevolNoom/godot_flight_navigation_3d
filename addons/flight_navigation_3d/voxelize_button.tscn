@@ -20,16 +20,22 @@ script = ExtResource("1_3cbmt")
 [node name="ProgressDialog" type="Window" parent="."]
 mode = 1
 title = "Progress Log"
-initial_position = 2
-size = Vector2i(319, 106)
+initial_position = 5
+size = Vector2i(500, 300)
 visible = false
 
-[node name="Log" type="Label" parent="ProgressDialog"]
+[node name="ScrollContainer" type="ScrollContainer" parent="ProgressDialog"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Log" type="Label" parent="ProgressDialog/ScrollContainer"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 autowrap_mode = 2
 
 [node name="VoxelizationInformation" type="Window" parent="."]
@@ -56,37 +62,44 @@ layout_mode = 2
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 
-[node name="Depth" type="Label" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth"]
 layout_mode = 2
-text = "Depth/Resolution"
+
+[node name="Depth" type="Label" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth/HBoxContainer"]
+layout_mode = 2
+text = "Depth (recommended: 7). Resolution: "
+
+[node name="ComputedResolution" type="Label" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth/HBoxContainer"]
+layout_mode = 2
+text = "512x512x512"
 
 [node name="DepthChoice" type="MenuButton" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Depth"]
 custom_minimum_size = Vector2(30, 0)
 layout_mode = 2
 theme_override_styles/normal = ExtResource("2_pjx2v")
-text = "7 (256x256x256) (recommended)"
+text = "7"
 flat = false
 alignment = 0
 item_count = 15
-popup/item_0/text = "2 (8x8x8)"
+popup/item_0/text = "2"
 popup/item_0/id = 2
-popup/item_1/text = "3 (16x16x16)"
+popup/item_1/text = "3"
 popup/item_1/id = 3
-popup/item_2/text = "4 (32x32x32)"
+popup/item_2/text = "4"
 popup/item_2/id = 4
-popup/item_3/text = "5 (64x64x64)"
+popup/item_3/text = "5"
 popup/item_3/id = 5
-popup/item_4/text = "6 (128x128x128)"
+popup/item_4/text = "6"
 popup/item_4/id = 6
-popup/item_5/text = "7 (256x256x256) (recommended)"
+popup/item_5/text = "7"
 popup/item_5/id = 7
-popup/item_6/text = "8 (512x512x512)"
+popup/item_6/text = "8"
 popup/item_6/id = 8
-popup/item_7/text = "9 (1024x1024x1024) (may crash)"
+popup/item_7/text = "9"
 popup/item_7/id = 9
-popup/item_8/text = "10 (2048x2048x2048) (may crash)"
+popup/item_8/text = "10"
 popup/item_8/id = 10
-popup/item_9/text = "11 (4096x4096x4096)"
+popup/item_9/text = "11"
 popup/item_9/id = 11
 popup/item_10/text = "12"
 popup/item_10/id = 12
@@ -106,21 +119,21 @@ size_flags_horizontal = 3
 
 [node name="Format" type="Label" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Format"]
 layout_mode = 2
-text = "Resource file format:"
+text = "Resource file format (.res recommended)"
 
 [node name="FormatChoice" type="MenuButton" parent="VoxelizationInformation/MarginContainer/VBoxContainer/Format"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/normal = ExtResource("2_pjx2v")
-text = ".res (binary) (recommended)"
+text = ".res"
 flat = false
 alignment = 0
 text_overrun_behavior = 3
 clip_text = true
 item_count = 2
-popup/item_0/text = ".res (binary) (recommended)"
+popup/item_0/text = ".res"
 popup/item_0/id = 0
-popup/item_1/text = ".tres (text)"
+popup/item_1/text = ".tres"
 popup/item_1/id = 1
 
 [node name="Padding" type="Control" parent="VoxelizationInformation/MarginContainer/VBoxContainer"]

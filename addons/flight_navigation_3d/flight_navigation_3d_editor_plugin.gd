@@ -1,7 +1,6 @@
 @tool
 extends EditorPlugin
 
-
 ## The "Voxelize" button that shows on 3D editor menu
 var voxelize_button 
 

@@ -1,15 +1,28 @@
 extends RefCounted
 class_name FlightNavigation3DParameter
 
-## Determine how detailed the space will be voxelized.[br]
-## Increase this value will exponentially increase memory usage and voxelization time.[br]
-@export_range(3, 15, 1) var depth: int = 7
+## Determine how detailed the space will be voxelized.
+## [br]
+## Increase this value will exponentially increase memory usage and voxelization time.
+@export_range(2, 15, 1) var depth: int = 7
 
-## Remove triangles with area close to zero before voxelization (recommended).[br]
+## Remove triangles with area close to zero before voxelization (recommended).
+## [br]
 ## FlightNavigation3D uses CSG nodes internally, and the result meshes contain 
-## lots of thin triangles which usually have 2 vertices in the same position.
+## lots of triangles with 2 vertices in the same position.
 @export var cull_slivers: bool = true
 
-## Perform tasks in parallel to speed up the process.[br]
-## (Usually set false for debugging purposes)
-@export var multithreading: bool = true
+## Enable multi-threading while building navigation data. [br]
+## Set to false for easier debugging in single-threading
+@export var multi_threading: bool = true
+
+## Thread priority when used in [member multi_threading]
+@export var thread_priority: Thread.Priority = Thread.PRIORITY_LOW
+
+## [DEBUG] Whether CSG nodes created for each Voxelization targets are kept.
+## [br]
+## Used to visualize and debug CSG nodes creation.
+@export var delete_csg: bool = true
+
+## [DEBUG] Perform validation after building navigation data.[br]
+@export var self_validate: bool = false

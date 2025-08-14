@@ -30,17 +30,22 @@ var _parent:
 func get_csg() -> Array[CSGShape3D]:
 	if _parent == null:
 		return []
+	var list_csg: Array[CSGShape3D] = []
 	if _parent is CollisionObject3D:
-		return _get_csg_collision_object_3d(_parent)
+		list_csg = _get_csg_collision_object_3d(_parent)
 	elif _parent is CollisionShape3D:
-		return _get_csg_collision_shape_3d(_parent)
+		list_csg =  _get_csg_collision_shape_3d(_parent)
 	elif _parent is MeshInstance3D:
-		return _get_csg_mesh_instance_3d(_parent)
+		list_csg =  _get_csg_mesh_instance_3d(_parent)
 	elif _parent is MultiMeshInstance3D: # TODO
-		return _get_csg_multimesh_instance_3d(_parent)
+		list_csg =  _get_csg_multimesh_instance_3d(_parent)
 	elif _parent is CSGShape3D:
-		return [_parent] # TODO: Do we need to duplicate() this parent and its children?
-	return []
+		list_csg =  [_parent] # TODO: Do we need to duplicate() this parent and its children?
+	# NOTE: The engine defers calculating CSG operations until they are visible.
+	# As such, all csg must be visible.
+	#for csg in list_csg:
+		#csg.visible = false
+	return list_csg
 
 
 ## Return CSG shapes from all CollisionShape3D children
@@ -76,9 +81,41 @@ func _get_csg_collision_shape_3d(collision_shape: CollisionShape3D) -> Array[CSG
 		csg.radius = shape.radius
 		csg.rings = rings
 		csg.smooth_faces = false
-	elif shape is CapsuleShape3D: #TODO
-		# With CapsuleShape3D, we need 3 CSG: 2 spheres on both ends, and a body
+	elif shape is CapsuleShape3D:
 		csg = CSGCombiner3D.new()
+		
+		var cylinder = CSGCylinder3D.new()
+		cylinder.radius = shape.radius
+		# A capsule height is the total height of the shape.
+		# Formula: Capsule height = 2 * shape.radius + Cylinder height.
+		# Constraint: Capsule height >= 2 * shape.radius.
+		# If the constraint is violated:
+		# either the radius will be shortened,
+		# or the height will be lengthened,
+		# whichever happens is based on which attribute the user edit on the editors.
+		# Rest assured that CapsuleShape3D has validated this constraint for us.
+		cylinder.height = max(0, shape.height - 2 * shape.radius)
+		cylinder.sides = radial_segments
+		cylinder.smooth_faces = false
+		
+		var sphere_begin = CSGSphere3D.new()
+		sphere_begin.radius = shape.radius
+		sphere_begin.radial_segments = radial_segments
+		sphere_begin.rings = rings
+		sphere_begin.smooth_faces = false
+		sphere_begin.position.y = -cylinder.height/2
+		
+		var sphere_end = CSGSphere3D.new()
+		sphere_end.radius = shape.radius
+		sphere_end.radial_segments = radial_segments
+		sphere_end.rings = rings
+		sphere_end.smooth_faces = false
+		sphere_end.position.y = +cylinder.height/2
+		
+		csg.add_child(cylinder)
+		csg.add_child(sphere_begin)
+		csg.add_child(sphere_end)
+		
 	elif shape is CylinderShape3D:
 		csg = CSGCylinder3D.new()
 		csg.height = shape.height
@@ -113,9 +150,41 @@ func _get_csg_from_mesh(mesh: Mesh) -> Array[CSGShape3D]:
 		csg.radius = mesh.radius
 		csg.rings = rings
 		csg.smooth_faces = false
-	elif mesh is CapsuleMesh: #TODO
-		# With CapsuleShape3D, we need 3 CSG: 2 spheres on both ends, and a body
+	elif mesh is CapsuleMesh:
 		csg = CSGCombiner3D.new()
+		
+		var cylinder = CSGCylinder3D.new()
+		cylinder.radius = mesh.radius
+		# A capsule height is the total height of the shape.
+		# Formula: Capsule height = 2 * shape.radius + Cylinder height.
+		# Constraint: Capsule height >= 2 * shape.radius.
+		# If the constraint is violated:
+		# either the radius will be shortened,
+		# or the height will be lengthened,
+		# whichever happens is based on which attribute the user edit on the editors.
+		# Rest assured that CapsuleShape3D has validated this constraint for us.
+		cylinder.height = max(0, mesh.height - 2 * mesh.radius)
+		cylinder.sides = radial_segments
+		cylinder.smooth_faces = false
+		
+		var sphere_begin = CSGSphere3D.new()
+		sphere_begin.radius = mesh.radius
+		sphere_begin.radial_segments = radial_segments
+		sphere_begin.rings = rings
+		sphere_begin.smooth_faces = false
+		sphere_begin.position.y = -cylinder.height/2
+		
+		var sphere_end = CSGSphere3D.new()
+		sphere_end.radius = mesh.radius
+		sphere_end.radial_segments = radial_segments
+		sphere_end.rings = rings
+		sphere_end.smooth_faces = false
+		sphere_end.position.y = +cylinder.height/2
+		
+		csg.add_child(cylinder)
+		csg.add_child(sphere_begin)
+		csg.add_child(sphere_end)
+		
 	elif mesh is CylinderMesh:
 		csg = CSGCylinder3D.new()
 		csg.height = mesh.height
@@ -125,16 +194,21 @@ func _get_csg_from_mesh(mesh: Mesh) -> Array[CSGShape3D]:
 	elif mesh is ArrayMesh:
 		csg = CSGMesh3D.new()
 		csg.mesh = mesh
-	elif mesh is PlaneMesh: # TODO
-		csg = CSGPolygon3D.new()
-	elif mesh is PointMesh:
-		return [] # Unsupported. I don't know what to do with it.
-	elif mesh is PrismMesh: # TODO
-		csg = CSGPolygon3D.new()
-	elif mesh is RibbonTrailMesh: # TODO
-		csg = CSGPolygon3D.new()
-	elif mesh is TextMesh: # TODO
-		csg = CSGPolygon3D.new()
+	## TODO: NOT YET SUPPORTED
+	#elif mesh is PlaneMesh:
+		#csg = CSGPolygon3D.new()
+	# UNSUPPORTED
+	#elif mesh is PointMesh:
+		#return []
+	## TODO: NOT YET SUPPORTED
+	#elif mesh is PrismMesh:
+		#csg = CSGPolygon3D.new()
+	## TODO: NOT YET SUPPORTED
+	#elif mesh is RibbonTrailMesh:
+		#csg = CSGPolygon3D.new()
+	## TODO: NOT YET SUPPORTED
+	#elif mesh is TextMesh:
+		#csg = CSGPolygon3D.new()
 	elif mesh is TorusMesh:
 		csg = CSGTorus3D.new()
 		csg.inner_radius = mesh.inner_radius
@@ -142,19 +216,30 @@ func _get_csg_from_mesh(mesh: Mesh) -> Array[CSGShape3D]:
 		csg.ring_sides = mesh.ring_segments
 		csg.sides = mesh.rings
 		csg.smooth_faces = false
-	elif mesh is TubeTrailMesh: # TODO
-		csg = CSGPolygon3D.new()
+	## TODO: NOT YET SUPPORTED
+	#elif mesh is TubeTrailMesh:
+		#csg = CSGPolygon3D.new()
 	return [csg]
 
 
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings = []
 	if _parent == null \
+		# Parent node must be of this type
 		or (_parent is not CollisionObject3D \
 		and _parent is not CollisionShape3D \
 		and _parent is not MeshInstance3D \
 		and _parent is not MultiMeshInstance3D \
-		and _parent is not CSGShape3D):
+		and _parent is not CSGShape3D)\
+		
+		# Parent node must NOT be of this type
+		or _parent is PointMesh\
+		or _parent is PlaneMesh\
+		or _parent is PrismMesh\
+		or _parent is RibbonTrailMesh\
+		or _parent is TextMesh\
+		or _parent is TubeTrailMesh\
+		:
 		warnings.push_back("Parent node does not support voxelization.")
 	if transform != Transform3D():
 		warnings.push_back("Transform should be default.")
