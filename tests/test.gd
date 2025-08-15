@@ -13,6 +13,8 @@ func start() -> FlightNavigation3DTestResult:
 	var svo = await flight_nav.build_navigation_data(params)
 	flight_nav.sparse_voxel_octree = svo
 	
+	var _face_subgrid = SVO._face_subgrid
+	print(_face_subgrid)
 	var test_result = FlightNavigation3DTestResult.new()
 	
 	var top_layer = params.depth-1
@@ -445,15 +447,187 @@ func start() -> FlightNavigation3DTestResult:
 	#endregion
 	
 	#region Neighbor test
-	var big_node_surrounded_by_big_node = [
+	var node_surrounded_by_node = [
 		SVOLink.from(second_to_top_layer, 3),
 		SVOLink.from(second_to_top_layer, 5),
 		SVOLink.from(second_to_top_layer, 6),
 	]
-	var big_node_surrounded_by_big_node_neighbors = svo.neighbors_of(SVOLink.from(second_to_top_layer, 7))
-	var big_node_surrounded_by_big_node_result = equal_set(
-		big_node_surrounded_by_big_node, big_node_surrounded_by_big_node_neighbors)
-	test_result.write_case("big_node_surrounded_by_big_node_result", big_node_surrounded_by_big_node_result)
+	var node_surrounded_by_node_neighbors = svo.neighbors_of(SVOLink.from(second_to_top_layer, 7))
+	var node_surrounded_by_node_result = equal_set(
+		node_surrounded_by_node, node_surrounded_by_node_neighbors)
+	test_result.write_case("node_surrounded_by_node_result", node_surrounded_by_node_result)
+	
+	var node_surrounded_by_node_and_voxel = [
+		SVOLink.from(leaf_layer, 20, 36),
+		SVOLink.from(leaf_layer, 20, 37),
+		SVOLink.from(leaf_layer, 20, 38),
+		SVOLink.from(leaf_layer, 20, 39),
+		SVOLink.from(leaf_layer, 20, 44),
+		SVOLink.from(leaf_layer, 20, 45),
+		SVOLink.from(leaf_layer, 20, 46),
+		SVOLink.from(leaf_layer, 20, 47),
+		SVOLink.from(leaf_layer, 20, 52),
+		SVOLink.from(leaf_layer, 20, 53),
+		SVOLink.from(leaf_layer, 20, 54),
+		SVOLink.from(leaf_layer, 20, 55),
+		SVOLink.from(leaf_layer, 20, 60),
+		SVOLink.from(leaf_layer, 20, 61),
+		SVOLink.from(leaf_layer, 20, 62),
+		SVOLink.from(leaf_layer, 20, 63),
+
+		SVOLink.from(leaf_layer, 21, 36),
+		SVOLink.from(leaf_layer, 21, 37),
+		SVOLink.from(leaf_layer, 21, 38),
+		SVOLink.from(leaf_layer, 21, 39),
+		SVOLink.from(leaf_layer, 21, 44),
+		SVOLink.from(leaf_layer, 21, 45),
+		SVOLink.from(leaf_layer, 21, 46),
+		SVOLink.from(leaf_layer, 21, 47),
+		SVOLink.from(leaf_layer, 21, 52),
+		SVOLink.from(leaf_layer, 21, 53),
+		SVOLink.from(leaf_layer, 21, 54),
+		SVOLink.from(leaf_layer, 21, 55),
+		SVOLink.from(leaf_layer, 21, 60),
+		SVOLink.from(leaf_layer, 21, 61),
+		SVOLink.from(leaf_layer, 21, 62),
+		SVOLink.from(leaf_layer, 21, 63),
+
+		SVOLink.from(leaf_layer, 22, 36),
+		SVOLink.from(leaf_layer, 22, 37),
+		SVOLink.from(leaf_layer, 22, 38),
+		SVOLink.from(leaf_layer, 22, 39),
+		SVOLink.from(leaf_layer, 22, 44),
+		SVOLink.from(leaf_layer, 22, 45),
+		SVOLink.from(leaf_layer, 22, 46),
+		SVOLink.from(leaf_layer, 22, 47),
+		SVOLink.from(leaf_layer, 22, 52),
+		SVOLink.from(leaf_layer, 22, 53),
+		SVOLink.from(leaf_layer, 22, 54),
+		SVOLink.from(leaf_layer, 22, 55),
+		SVOLink.from(leaf_layer, 22, 60),
+		SVOLink.from(leaf_layer, 22, 61),
+		SVOLink.from(leaf_layer, 22, 62),
+		SVOLink.from(leaf_layer, 22, 63),
+
+		SVOLink.from(leaf_layer, 23, 36),
+		SVOLink.from(leaf_layer, 23, 37),
+		SVOLink.from(leaf_layer, 23, 38),
+		SVOLink.from(leaf_layer, 23, 39),
+		SVOLink.from(leaf_layer, 23, 44),
+		SVOLink.from(leaf_layer, 23, 45),
+		SVOLink.from(leaf_layer, 23, 46),
+		SVOLink.from(leaf_layer, 23, 47),
+		SVOLink.from(leaf_layer, 23, 52),
+		SVOLink.from(leaf_layer, 23, 53),
+		SVOLink.from(leaf_layer, 23, 54),
+		SVOLink.from(leaf_layer, 23, 55),
+		SVOLink.from(leaf_layer, 23, 60),
+		SVOLink.from(leaf_layer, 23, 61),
+		SVOLink.from(leaf_layer, 23, 62),
+		SVOLink.from(leaf_layer, 23, 63),
+		
+		SVOLink.from(leaf_layer, 26, 18),
+		SVOLink.from(leaf_layer, 26, 19),
+		SVOLink.from(leaf_layer, 26, 22),
+		SVOLink.from(leaf_layer, 26, 23),
+		SVOLink.from(leaf_layer, 26, 26),
+		SVOLink.from(leaf_layer, 26, 27),
+		SVOLink.from(leaf_layer, 26, 30),
+		SVOLink.from(leaf_layer, 26, 31),
+		SVOLink.from(leaf_layer, 26, 50),
+		SVOLink.from(leaf_layer, 26, 51),
+		SVOLink.from(leaf_layer, 26, 54),
+		SVOLink.from(leaf_layer, 26, 55),
+		SVOLink.from(leaf_layer, 26, 58),
+		SVOLink.from(leaf_layer, 26, 59),
+		SVOLink.from(leaf_layer, 26, 62),
+		SVOLink.from(leaf_layer, 26, 63),
+
+		SVOLink.from(leaf_layer, 27, 18),
+		SVOLink.from(leaf_layer, 27, 19),
+		SVOLink.from(leaf_layer, 27, 22),
+		SVOLink.from(leaf_layer, 27, 23),
+		SVOLink.from(leaf_layer, 27, 26),
+		SVOLink.from(leaf_layer, 27, 27),
+		SVOLink.from(leaf_layer, 27, 30),
+		SVOLink.from(leaf_layer, 27, 31),
+		SVOLink.from(leaf_layer, 27, 50),
+		SVOLink.from(leaf_layer, 27, 51),
+		SVOLink.from(leaf_layer, 27, 54),
+		SVOLink.from(leaf_layer, 27, 55),
+		SVOLink.from(leaf_layer, 27, 58),
+		SVOLink.from(leaf_layer, 27, 59),
+		SVOLink.from(leaf_layer, 27, 62),
+		SVOLink.from(leaf_layer, 27, 63),
+
+		SVOLink.from(leaf_layer, 30, 18),
+		SVOLink.from(leaf_layer, 30, 19),
+		SVOLink.from(leaf_layer, 30, 22),
+		SVOLink.from(leaf_layer, 30, 23),
+		SVOLink.from(leaf_layer, 30, 26),
+		SVOLink.from(leaf_layer, 30, 27),
+		SVOLink.from(leaf_layer, 30, 30),
+		SVOLink.from(leaf_layer, 30, 31),
+		SVOLink.from(leaf_layer, 30, 50),
+		SVOLink.from(leaf_layer, 30, 51),
+		SVOLink.from(leaf_layer, 30, 54),
+		SVOLink.from(leaf_layer, 30, 55),
+		SVOLink.from(leaf_layer, 30, 58),
+		SVOLink.from(leaf_layer, 30, 59),
+		SVOLink.from(leaf_layer, 30, 62),
+		SVOLink.from(leaf_layer, 30, 63),
+
+		SVOLink.from(leaf_layer, 31, 18),
+		SVOLink.from(leaf_layer, 31, 19),
+		SVOLink.from(leaf_layer, 31, 22),
+		SVOLink.from(leaf_layer, 31, 23),
+		SVOLink.from(leaf_layer, 31, 26),
+		SVOLink.from(leaf_layer, 31, 27),
+		SVOLink.from(leaf_layer, 31, 30),
+		SVOLink.from(leaf_layer, 31, 31),
+		SVOLink.from(leaf_layer, 31, 50),
+		SVOLink.from(leaf_layer, 31, 51),
+		SVOLink.from(leaf_layer, 31, 54),
+		SVOLink.from(leaf_layer, 31, 55),
+		SVOLink.from(leaf_layer, 31, 58),
+		SVOLink.from(leaf_layer, 31, 59),
+		SVOLink.from(leaf_layer, 31, 62),
+		SVOLink.from(leaf_layer, 31, 63),
+		
+		SVOLink.from(second_to_top_layer, 7),
+	]
+	var node_surrounded_by_node_and_voxel_neighbors = svo.neighbors_of(SVOLink.from(second_to_top_layer, 6))
+	var node_surrounded_by_node_and_voxel_result = equal_set(
+		node_surrounded_by_node_and_voxel, node_surrounded_by_node_and_voxel_neighbors)
+	test_result.write_case("node_surrounded_by_node_and_voxel_result", node_surrounded_by_node_and_voxel_result)
+	
+	var voxel_surrounded_by_voxel = [
+		SVOLink.from(leaf_layer, 2, 3),
+		SVOLink.from(leaf_layer, 2, 5),
+		SVOLink.from(leaf_layer, 2, 6),
+		SVOLink.from(leaf_layer, 2, 14),
+		SVOLink.from(leaf_layer, 2, 21),
+		SVOLink.from(leaf_layer, 2, 35),
+	]
+	var voxel_surrounded_by_voxel_neighbors = svo.neighbors_of(SVOLink.from(leaf_layer, 2, 7))
+	var voxel_surrounded_by_voxel_result = equal_set(
+		voxel_surrounded_by_voxel, voxel_surrounded_by_voxel_neighbors)
+	test_result.write_case("voxel_surrounded_by_voxel_result", voxel_surrounded_by_voxel_result)
+	
+	var voxel_surrounded_by_voxel_and_node = [
+		SVOLink.from(leaf_layer, 7, 63),
+
+		SVOLink.from(leaf_layer, 21, 41),
+		SVOLink.from(leaf_layer, 21, 44),
+		SVOLink.from(leaf_layer, 21, 47),
+
+		SVOLink.from(second_to_top_layer, 3),
+		SVOLink.from(second_to_top_layer, 6),
+	]
+	var voxel_surrounded_by_voxel_and_node_neighbors = svo.neighbors_of(SVOLink.from(leaf_layer, 21, 45))
+	var voxel_surrounded_by_voxel_and_node_result = equal_set(
+		voxel_surrounded_by_voxel_and_node, voxel_surrounded_by_voxel_and_node_neighbors)
+	test_result.write_case("voxel_surrounded_by_voxel_and_node_result", voxel_surrounded_by_voxel_and_node_result)
 	#endregion
 	
 	return test_result

@@ -851,7 +851,7 @@ func draw_svolink_box(svolink: int,
 	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
 	label.text = text if text != null else SVOLink.get_format_string(svolink)
 			
-	if layer == 0 and sparse_voxel_octree.subgrid[offset] != 0:
+	if layer == 0:
 		cube.mesh.size = Vector3.ONE * _leaf_cube_size()
 		cube.mesh.material.albedo_color = leaf_color
 		label.pixel_size = _leaf_cube_size() / 400

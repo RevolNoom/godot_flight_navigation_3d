@@ -74,7 +74,7 @@ one_shot = true
 autostart = true
 
 [node name="Start" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, -1.4, -0.72353923)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, -1.4, -1.4)
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="End" type="MeshInstance3D" parent="."]
@@ -120,7 +120,7 @@ shape = SubResource("ConvexPolygonShape3D_c6xj6")
 [node name="VoxelizationTarget" parent="VoxelizationTargets/StaticBody3D" instance=ExtResource("3_m0rpm")]
 
 [node name="Box" type="StaticBody3D" parent="VoxelizationTargets"]
-transform = Transform3D(0.730537, 0.17074, 0.661184, 0.262361, 0.823747, -0.5026, -0.630462, 0.540637, 0.556982, -1.13867, 0, 0.51582)
+transform = Transform3D(0.730537, 0.17074, 0.661184, 0.262361, 0.823747, -0.5026, -0.630462, 0.540637, 0.556982, -0.29505587, 0, 0.14668989)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box"]
 shape = SubResource("BoxShape3D_u2ahw")
@@ -131,7 +131,7 @@ mesh = SubResource("BoxMesh_2w2yn")
 [node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("3_m0rpm")]
 
 [node name="Capsule" type="Area3D" parent="VoxelizationTargets"]
-transform = Transform3D(0.929165, -0.224951, -0.293342, 0, 0.793534, -0.608526, 0.369666, 0.565421, 0.737324, 0, -0.683882, -1.90184)
+transform = Transform3D(0.929165, -0.224951, -0.293342, 0, 0.793534, -0.608526, 0.369666, 0.565421, 0.737324, 0.28218508, -0.683882, -1.4533142)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Capsule"]
 shape = SubResource("CapsuleShape3D_tscoa")
@@ -154,7 +154,7 @@ mesh = SubResource("CylinderMesh_w63pk")
 [node name="VoxelizationTarget" parent="VoxelizationTargets/Cylinder" instance=ExtResource("3_m0rpm")]
 
 [node name="ConvexBoxShape" type="CharacterBody3D" parent="VoxelizationTargets"]
-transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0, 0, 0.0596905)
+transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0.9165685, 0, 0.0596905)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/ConvexBoxShape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, -0.5, -0.5)

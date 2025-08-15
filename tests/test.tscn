@@ -1,9 +1,9 @@
 [gd_scene load_steps=10 format=3 uid="uid://im43e5dxwne2"]
 
-[ext_resource type="Script" uid="uid://ddec7kgabubfl" path="res://tests/validate_svolink.gd" id="1_bjmd5"]
-[ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_0bhed"]
-[ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="3_m0rpm"]
-[ext_resource type="Resource" uid="uid://03uoqpnlgv4w" path="res://FlightNavigation3D.res" id="4_6bw2v"]
+[ext_resource type="Script" uid="uid://ddec7kgabubfl" path="res://tests/test.gd" id="1_ry45r"]
+[ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_dsb46"]
+[ext_resource type="Resource" uid="uid://03uoqpnlgv4w" path="res://FlightNavigation3D.res" id="3_uofsi"]
+[ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="4_jenrn"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m0rpm"]
 sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
@@ -24,8 +24,8 @@ size = Vector3(0.9, 0.9, 0.9)
 [sub_resource type="BoxMesh" id="BoxMesh_2w2yn"]
 size = Vector3(0.9, 0.9, 0.9)
 
-[node name="ValidateSvolink" type="Node3D"]
-script = ExtResource("1_bjmd5")
+[node name="Test" type="Node3D"]
+script = ExtResource("1_ry45r")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_6bw2v")
@@ -33,10 +33,10 @@ environment = SubResource("Environment_6bw2v")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
 
-[node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
+[node name="FlightNavigation3D" parent="." instance=ExtResource("2_dsb46")]
 transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(4, 4, 4)
-sparse_voxel_octree = ExtResource("4_6bw2v")
+sparse_voxel_octree = ExtResource("3_uofsi")
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 
@@ -49,7 +49,7 @@ shape = SubResource("BoxShape3D_u2ahw")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("3_m0rpm")]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("4_jenrn")]
 
 [node name="Box2" type="StaticBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.9999999, 0, 0, 0, 0.99999964, 0, 0, 0, 1, -0.5, -0.5, 0.5)
@@ -59,9 +59,8 @@ shape = SubResource("BoxShape3D_u2ahw")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box2"]
 mesh = SubResource("BoxMesh_2w2yn")
-skeleton = NodePath("../../Box2")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box2" instance=ExtResource("3_m0rpm")]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box2" instance=ExtResource("4_jenrn")]
 
 [node name="Box3" type="StaticBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.99999976, 0, 0, 0, 0.9999993, 0, 0, 0, 1, -0.5, 0.5, -0.5)
@@ -71,9 +70,8 @@ shape = SubResource("BoxShape3D_u2ahw")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box3"]
 mesh = SubResource("BoxMesh_2w2yn")
-skeleton = NodePath("../../Box3")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box3" instance=ExtResource("3_m0rpm")]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box3" instance=ExtResource("4_jenrn")]
 
 [node name="Box4" type="StaticBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.9999998, 0, 0, 0, 1, 0.5, -0.5, -0.5)
@@ -84,4 +82,4 @@ shape = SubResource("BoxShape3D_u2ahw")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box4"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box4" instance=ExtResource("3_m0rpm")]
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box4" instance=ExtResource("4_jenrn")]

@@ -150,17 +150,18 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 	#var linkstr = SVOLink.get_format_string(svolink)
 	# Get neighbors of subgrid voxel
 	if layer == 0:
-		var current_node_subgrid = subgrid[offset]
+		var current_svolink_subgrid = SVOLink.subgrid(svolink)
 		
-		for neighbor_info in [
+		var promising_neighbors = [
 			# neighbor_expected_subgrid, neighbor_direction, neighbor_actual_subgrid (in case neighbor is of different parent)
-			[Morton3.dec_x(current_node_subgrid), xn, Morton3.set_x(current_node_subgrid, 3)],
-			[Morton3.inc_x(current_node_subgrid), xp, Morton3.set_x(current_node_subgrid, 0)],
-			[Morton3.dec_y(current_node_subgrid), yn, Morton3.set_y(current_node_subgrid, 3)],
-			[Morton3.inc_y(current_node_subgrid), yp, Morton3.set_y(current_node_subgrid, 0)],
-			[Morton3.dec_z(current_node_subgrid), zn, Morton3.set_z(current_node_subgrid, 3)],
-			[Morton3.inc_z(current_node_subgrid), zp, Morton3.set_z(current_node_subgrid, 0)]
-			]:
+			[Morton3.dec_x(current_svolink_subgrid), xn, Morton3.set_x(current_svolink_subgrid, 3)],
+			[Morton3.inc_x(current_svolink_subgrid), xp, Morton3.set_x(current_svolink_subgrid, 0)],
+			[Morton3.dec_y(current_svolink_subgrid), yn, Morton3.set_y(current_svolink_subgrid, 3)],
+			[Morton3.inc_y(current_svolink_subgrid), yp, Morton3.set_y(current_svolink_subgrid, 0)],
+			[Morton3.dec_z(current_svolink_subgrid), zn, Morton3.set_z(current_svolink_subgrid, 3)],
+			[Morton3.inc_z(current_svolink_subgrid), zp, Morton3.set_z(current_svolink_subgrid, 0)]
+		]
+		for neighbor_info in promising_neighbors:
 			var neighbor_expected_subgrid = neighbor_info[0]
 			
 			var neighbor_is_a_leaf_voxel_of_same_parent = \
@@ -254,11 +255,11 @@ static var _face_subgrid: Dictionary[StringName, PackedInt64Array] = {
 }
 
 
-static func shift_to_svolink_index_field(list_index: Array[int]) -> PackedInt64Array:
+static func shift_to_svolink_index_field(list_index: PackedInt64Array) -> PackedInt64Array:
 	var new_list: PackedInt64Array = []
 	new_list.resize(list_index.size())
 	for i in range(new_list.size()):
-		new_list[i] <<= 6
+		new_list[i] = list_index[i] << 6
 	return new_list
 
 
