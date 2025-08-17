@@ -1,15 +1,12 @@
 # Godot Flight Navigation 3D 
 
-/In development. Buggy?/
-
 This package provides flying/swimming navigation in free 3D space. It builds a
 Sparse Voxel Octree representing the solid/empty state, and then applies Greedy
 A* algorithm for path finding.
 
 ## General Information
 
-- Tested on Godot versions: 
-	+ v4.2.1.stable.official.b09f793f5
+- Tested on Godot versions: v4.5.beta2.official.e1b4101e3
 
 ## Features
 
@@ -17,56 +14,80 @@ A* algorithm for path finding.
 
 - Upto 9 layers of voxelization (512 x 512 x 512) on 8GB RAM
 
-- Works with all primitive collision shapes and some complex shapes:
-	+ BoxShape3D
-	+ SphereShape3D
-	+ CapsuleShape3D
-	+ CylinderShape3D
-	+ ConcavePolygonShape3D
-	+ ConvexPolygonShape3D
+- Works with many type of nodes:
+	+ All CollisionObject3D nodes
+	+ All CSGShape3D nodes
+	+ Collision shape:
+		* BoxShape3D
+		* SphereShape3D
+		* CapsuleShape3D
+		* CylinderShape3D
+		* ConcavePolygonShape3D
+		* ConvexPolygonShape3D
+	+ Mesh:
+		* BoxMesh
+		* SphereMesh
+		* CapsuleMesh
+		* CylinderMesh
+		* ArrayMesh
+		* TorusMesh
 
 ## How To Use
 
-- Set up your scene with collision objects you want to voxelize, and reserve a 
-collision layer for them. (Note that all voxelize targets should be objects that 
-never move, because of "No runtime update" limitation. See below.)
+### Setup scene
 
-![Collision objects setup](imgs/collision_objects_setup.png "Collision objects setup")
+- In your scene, add VoxelizationTarget as a child to any obstacle objects.
+Note that all voxelize targets should be objects that never move, because of "No runtime update" limitation (see below).
 
-- Create a FlightNavigation3D, set its collision mask to include the voxelize 
-objects' mask, and set $Extent.shape.size property. For the size property, you can
-do it either in code or in editor (recommended) by right-click FlightNavigation3D
-object > Enable "Editable children".
+![Obstacles setup](imgs/obstacles_setup.png "Obstacles setup")
+
+- Create a FlightNavigation3D, and set $Extent.size property to encompass the navigation space
 
 ![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
 
-- Call FlightNavigation3D.voxelize() or voxelize_async() with the depth you want.
+### Build navigation space
 
-	+ Two voxelize methods must not be called at your root scene's _ready(),
-	because they need a physic frame or two to detect all overlapping bodies and areas.
-	
-	+ Voxelization might take a long time depending on host machine. It's recommended
-	to use voxelize_async(), which uses multithreading at low priority.
-	
-- Call find_path() anytime to get a connected path between two points inside FlightNavigation3D
-space. Here's an illustration of the result. The boxes are drawn with debug methods
-FlightNavigation3D.draw_svolink_box() (draw an arbitrary box) and 
-FlightNavigation3D.draw_debug_boxes() (draw all leaf voxels of the SVO)
+#### Using editor plugin
 
-![Result illustration](imgs/result_illustration.png "Result illustration")
+- Select FlightNavigation3D node. On editor toolbar, a "Voxelize" button will appear. 
+Click the button to show the option dialog. 
 
-### Warning
+	+ `Depth` controls how detailed the navigation space will be. 
+	Memory and computational power consumption rises exponentially per depth level.
+	It is recommended to start off small, and then increase depth only when you need finer-grained movement. 
 
-To be able to voxelize a map right in the editor, PhysicsServer3D is set active
-for the FlightNavigation3D to detect overlapping bodies and areas. It could cause
-you editor-wide problems, like objects set afloat in the scene suddenly drop to the 
-ground. 
+	+ Resource file format should be one of Godot supported resource file extension (.tres or .res).
 
-There are some ways you can try to work around this problem:
-	
-- Make sure you don't save the ill-affected scenes if it happens.
-- Try to open only the scene of map you need to voxelize and nothing else.
- 
+- Click "Start voxelization" to start the baking process. A progress popup will show. 
+When it is done, you will see SVO resource in the Inspector tab.
+
+![Bake navigation using editor plugin](imgs/bake_navigation.png "Bake navigation using editor plugin")
+
+#### Using GDScript
+
+```gdscript
+	var params = FlightNavigation3DParameter.new()
+	params.depth = 7
+	var svo = await $FlightNavigation3D.build_navigation_data(params)
+	$FlightNavigation3D.sparse_voxel_octree = svo
+
+	# Use this for visual confirmation.
+	$FlightNavigation3D.draw_debug_boxes()
+```
+
+### Find path between two positions in space
+
+	```gdscript
+	# find_path works with global positions. 
+	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
+
+	# Use this for visual confirmation
+	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
+	for svolink in svolink_path:
+		$FlightNavigation3D.draw_svolink_box(svolink)
+	```
+
+![Find path - Result illustration](imgs/find_path_result_illustration.png "Find path - Result illustration")
 
 ### Write your own pathfinding algorithm
 
@@ -76,9 +97,10 @@ There are some ways you can try to work around this problem:
 
 - No runtime update
 
-By design, the SVO packs data tightly to save space and quick neighbor lookup.
+By design, the SVO packs data tightly to save space and lookup neighbor quickly.
 Thus, addition/removal/transformation of objects inside the navigation space 
-cannot be updated trivially, and you must re-voxelize the space every time. 
+cannot be updated trivially. You must re-voxelize every time there are 
+relative movements of static objects to FlightNavigation3D. 
 
 - No inside/outside state.
 
@@ -87,12 +109,9 @@ is inside an object. This could be a future improvement.
 
 ## Future Improvements
 
-- Save/load SVO into Resource file and voxelize in the editor. (UI is ready, but
-implementation for ResourceFormatSaver/Loader encounters error).
-
 - Implement some tips and tricks from paper to speedup voxelization.
 
-- GPU voxelization (? uhhhh I'll figure this out later).
+- Voxelization using GPU
 
 ## Credits
 
@@ -105,4 +124,68 @@ implementation for ResourceFormatSaver/Loader encounters error).
 	https://github.com/Forceflow/cuda_voxelizer/blob/main/src/cpu_voxelizer.cpp
 
 ### Modifications From Papers
-/TODO/
+
+#### SVOLink: 32-bit to 64-bit
+
+SVO Link is originally an int32, packed with: 
+
++ 4 bits - layer index (0 to 15).
+
++ 22 bits - node index (0 to 4,194,303).
+
++ 6 bit - subnode index (0 to 63) (only used for indexing voxels inside leaf nodes).
+
+SVO Link implemented in GDScript is int64, packed with:
+
++ 4 bits - layer index (0 to 15).
+
++ 54 bits - node index 
+
++ 6 bit - subnode index (0 to 63).
+
+It was felt that 54 is a beautiful number that can represent a full space of 2^18 x 2^18 x 2^18 SVO Node.
+Such requirements does not exist in real life. Therefore, the number of bits for layer and node index might change in the future.
+
+#### Sparse voxel octree structure
+
+Daniel Brewer's approach structures data into layers of SVO Nodes. 
+Each node contains all relevant information to it (morton code, link to parents, link to neighbors,...).
+Since GDScript does not support `struct` like C++, implementing SVO Node means it has to extends Object (or RefCounted/Resource).
+Such implementation in GDScript faces a few drawbacks:
+
++ Billions of separate SVONode memory allocations would terribly fragments physical memory. 
+
++ Memory access takes 1 extra pointer jump (for a total of 3).
+
++ Redundant memory usage (inherited attributes from Object).
+
++ Sparse Voxel Octree cannot be serialized into Resource in a simple manner.
+
+Drawbacks in general include:
+
++ SVO Node in the leaf layer has no children, only voxels. 
+As such, 1 int64 (SVO Link to first child) of the most crowded layer is wasted for storing nothing.
+With 64-bit SVOLink, this attribute can be used to store subgrid mask instead, 
+but it makes logic hard to read and maintain.
+
+After 2 overhauls, I have found the most simple data structure to work with GDScript:
+
+![Compare old - new data structure](imgs/data_structure_old_compare_new.png "Compare old - new data structure")
+
+Instead of packing all data into 1 big tree, each attribute of SVO Node splits into its own tree.
+Each tree is an Array[PackedArray]. The advantages of this approach are:
+
++ Little redundant memory usage. There's only little extra overhead in arrays management.
+
++ Memory allocations are contiguous, can be easily pre-allocated.
+
++ Memory access takes only 2 pointer jumps.
+
++ Sparse Voxel Octree can be simply serialized, because PackedArray supports serialization.
+
++ Use only as much memory as needed. 
+Things like coverage percentage (implemented in the future) can be turned on and off depending on the need of the game.
+
+The disadvantages are:
+
++ Accessing data of a single node takes extra time, as its attributes are spread all over the places.

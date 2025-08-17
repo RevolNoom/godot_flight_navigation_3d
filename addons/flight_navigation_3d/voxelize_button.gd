@@ -60,12 +60,20 @@ func _on_confirm_voxelize_pressed() -> void:
 	parameters.self_validate = true
 	
 	var svo = await flight_navigation_3d_scene.build_navigation_data(parameters)
-	var resource_path = "%s%s" % [flight_navigation_3d_scene.name, format_choice.text]
-	svo.resource_path = resource_path
-	ResourceSaver.save(svo, "",
-		ResourceSaver.FLAG_RELATIVE_PATHS | 
-		ResourceSaver.FLAG_CHANGE_PATH |
-		ResourceSaver.FLAG_REPLACE_SUBRESOURCE_PATHS)
+	var existing_svo = flight_navigation_3d_scene.sparse_voxel_octree
+	var resource_path = ""
+	if existing_svo == null:
+		resource_path = "%s%s" % [flight_navigation_3d_scene.name, format_choice.text]
+		svo.resource_path = resource_path
+		ResourceSaver.save(svo, resource_path,
+			ResourceSaver.FLAG_RELATIVE_PATHS
+			#ResourceSaver.FLAG_COMPRESS |
+			)
+	else:
+		resource_path = existing_svo.resource_path
+		svo.take_over_path(resource_path)
+		ResourceSaver.save(svo, resource_path, ResourceSaver.FLAG_NONE)
+		
 	flight_navigation_3d_scene.sparse_voxel_octree = svo
 	progress_dialog.text += "Done building navigation data.\nResource saved to %s." % resource_path
 

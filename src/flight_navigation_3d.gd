@@ -743,14 +743,14 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 #region Utility function
 
 ## Return global position of center of the node or subgrid voxel identified as [param svolink].[br]
-## [member svo] must not be null.[br]
+## [member sparse_voxel_octree] must not be null.[br]
 func get_global_position_of(svolink: int) -> Vector3:
 	var layer = SVOLink.layer(svolink)
 	var offset = SVOLink.offset(svolink)
 	
 	var morton_code = sparse_voxel_octree.morton[layer][offset]
 	if layer == 0:
-		var voxel_morton = (morton_code << 6) | sparse_voxel_octree.subgrid[offset]
+		var voxel_morton = (morton_code << 6) | SVOLink.subgrid(svolink)#sparse_voxel_octree.subgrid[offset]
 		var half_a_voxel = Vector3(0.5, 0.5, 0.5)
 		return global_transform * (
 			(Morton3.decode_vec3(voxel_morton) + half_a_voxel) 
@@ -834,7 +834,7 @@ func _leaf_cube_size() -> float:
 ## Gives [param text] a custom value to insert a label in the center of the box.
 ## null for default value of [method SVOLink.get_format_string].[br]
 ##
-## [b]NOTE:[/b]: [member svo] must not be null.[br]
+## [b]NOTE:[/b]: [member sparse_voxel_octree] must not be null.[br]
 func draw_svolink_box(svolink: int, 
 		node_color: Color = Color.RED, 
 		leaf_color: Color = Color.GREEN,

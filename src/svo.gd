@@ -27,58 +27,6 @@
 ## - Current implementation only do a surface voxelization. 
 ## It means SVO only knows whether a position is On The Surface of an object.
 ## SVO doesn't know whether a position is inside an object. [br]
-## [br][br]
-## [b]HISTORICAL: DATA STRUCTURE[/b]
-## [br][br]
-## SVO has had 2 reworks on data structures. 
-## This section talks about the historical ways, 
-## and explain the new way data is structured and accessed.
-## [br][br]
-## The first attempt was to extend RefCounted to create SVONode class.
-## SVONode contains 10 int member variables (morton, parent, first_child,...).
-## Each SVO layer is stored into an Array[SVONode]. 
-## SVO stores all layers into another array (Array[Array[SVONode]]).
-## [br]
-## However, the (thought of) drawbacks were:
-## [br]
-## - Memory allocation: Billions of separate SVONode memory allocations 
-## would terribly fragments physical memory. 
-## Furthermore, RefCounted is not a primitive data type, which means an SVONode
-## will consume more memory than 10 ints, more than it should. 
-## (This drawback comes from thought analysis, not profiling)
-## [br]
-## - Data access: Each data access requires 3 pointer chases:
-## tree -> layer -> SVONode. Although SVONodes are contiguous in Layer array, 
-## their memory allocation might be scattered randomly in memory, 
-## which might not play nice with physical cache. (Thought analysis)
-## [br]
-## - Serialization: SVONode is a custom type, 
-## serialization into .tres files isn't support out of the box.
-## [br][br]
-## The second attempt was to expand SVONode into 10 ints. 
-## Previously, if layer 5 is an array of 100 SVONodes, then now it becomes a
-## PackedIntArray of length 100 * 10 = 1000. This solves 
-## Memory Allocation (all ints are contiguously stored, no extra memory needed),
-## Data access (only 2 pointer chases: tree -> layer), 
-## and Serialization (PackedIntArray supports serialization by Godot).
-## [br]
-## The drawback, however, is that it makes code more difficult to debug, 
-## and indexing is awkward without using iterator.
-## [br][br]
-## The newest attempt tackle the problem by spliting a tree of Array[Array[SVONode]]
-## into many trees of Array[PackedIntArray], each tree specifically stores 1 attribute
-## of SVONode.
-## [br]
-## For example, tree[2][3].xn accesses x-negative neighbor of the 3rd SVONode on layer 2,
-## are now accessed using xn[2][3]. 
-## [br]
-## Most attributes (neighbors, morton, parent) have the same dimensions 
-## (if morton[2][3] exists, then xn[2][3] exists). The different attributes are
-## [member first_child] and [member subgrid].
-## [br]
-## SVONodes in the deepest layer has no SVONode children. They contain voxels instead. 
-## As such, an empty array [] is assigned as placeholder for first_child[0],
-## and subgrid[34] contains the subgrid voxel mask for tree[0][34].
 
 extends Resource
 class_name SVO

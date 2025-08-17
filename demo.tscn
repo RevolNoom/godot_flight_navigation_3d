@@ -68,17 +68,12 @@ script = ExtResource("2_c6xj6")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
 
-[node name="Timer" type="Timer" parent="."]
-wait_time = 0.1
-one_shot = true
-autostart = true
-
 [node name="Start" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, -1.4, -1.4)
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="End" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 1.4, -1.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4894586, 1.3231775, 0.14570159)
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
@@ -97,6 +92,8 @@ shape = SubResource("ConvexPolygonShape3D_c6xj6")
 
 [node name="ArrayMesh" type="MeshInstance3D" parent="VoxelizationTargets"]
 mesh = SubResource("ArrayMesh_c6xj6")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/ArrayMesh" instance=ExtResource("3_m0rpm")]
 
 [node name="Sphere" type="RigidBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, 1.5)
@@ -167,5 +164,3 @@ shape = SubResource("BoxShape3D_1bjku")
 mesh = SubResource("BoxMesh_mmhx4")
 
 [node name="VoxelizationTarget" parent="VoxelizationTargets/ConvexBoxShape" instance=ExtResource("3_m0rpm")]
-
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
