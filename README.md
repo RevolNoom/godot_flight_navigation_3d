@@ -41,7 +41,7 @@ Note that all voxelize targets should be objects that never move, because of "No
 
 ![Obstacles setup](imgs/obstacles_setup.png "Obstacles setup")
 
-- Create a FlightNavigation3D, and set $Extent.size property to encompass the navigation space
+- Create a FlightNavigation3D, and set `CSGBox3D.size` property to encompass the navigation space. Make sure all sides are equals.
 
 ![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
 
@@ -123,9 +123,9 @@ is inside an object. This could be a future improvement.
 	jerking hair out of my head wondering why my overlap test doesn't work:
 	https://github.com/Forceflow/cuda_voxelizer/blob/main/src/cpu_voxelizer.cpp
 
-### Modifications From Papers
+## Modifications From Papers
 
-#### SVOLink: 32-bit to 64-bit
+### SVOLink: 32-bit to 64-bit
 
 SVO Link is originally an int32, packed with: 
 
@@ -146,7 +146,7 @@ SVO Link implemented in GDScript is int64, packed with:
 It was felt that 54 is a beautiful number that can represent a full space of 2^18 x 2^18 x 2^18 SVO Node.
 Such requirements does not exist in real life. Therefore, the number of bits for layer and node index might change in the future.
 
-#### Sparse voxel octree structure
+### Sparse voxel octree structure
 
 Daniel Brewer's approach structures data into layers of SVO Nodes. 
 Each node contains all relevant information to it (morton code, link to parents, link to neighbors,...).
