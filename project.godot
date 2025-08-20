@@ -13,7 +13,7 @@ config_version=5
 config/name="FlightNavigation3D"
 run/main_scene="uid://dgo7fj4tmihlq"
 config/features=PackedStringArray("4.5", "Forward Plus")
-config/icon="res://icon.png"
+config/icon="uid://bipgchee54e5e"
 
 [editor_plugins]
 

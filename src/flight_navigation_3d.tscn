@@ -1,7 +1,6 @@
-[gd_scene load_steps=7 format=3 uid="uid://c1axq013ak0v1"]
+[gd_scene load_steps=6 format=3 uid="uid://c1axq013ak0v1"]
 
 [ext_resource type="Script" uid="uid://dtmtfahi0uhx8" path="res://src/flight_navigation_3d.gd" id="1_28b6r"]
-[ext_resource type="Script" uid="uid://w5m2mbfn0dai" path="res://src/greedy_a_star.gd" id="2_e3o65"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u4dg3"]
 transparency = 1
@@ -26,7 +25,6 @@ calculate_tangents = false
 material = SubResource("StandardMaterial3D_u4dg3")
 script = ExtResource("1_28b6r")
 voxelization_mask = 1
-pathfinder = NodePath("FlightPathfinder")
 
 [node name="DebugCubes" type="MultiMeshInstance3D" parent="."]
 multimesh = SubResource("MultiMesh_e3o65")
@@ -34,8 +32,5 @@ multimesh = SubResource("MultiMesh_e3o65")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 visible = false
 material_override = SubResource("StandardMaterial3D_e3o65")
-
-[node name="FlightPathfinder" type="Node" parent="."]
-script = ExtResource("2_e3o65")
 
 [node name="SVOLinkCubes" type="Node3D" parent="."]

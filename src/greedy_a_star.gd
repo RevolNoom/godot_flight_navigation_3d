@@ -50,7 +50,7 @@ var _get_distance: Callable = FlightPathfinder.euclidean
 ## Unit cost used when [member use_unit_cost] is true.
 @export var unit_cost: float = 1.0
 
-func _ready():
+func _init():
 	endpoints = endpoints
 	distance_function = distance_function
 

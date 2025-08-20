@@ -1,8 +1,11 @@
 ## Interface for various path finding algorithms.
 ##
 ## 
-extends Node
+extends Resource
 class_name FlightPathfinder
+
+func _init():
+	printerr("FlightPathfinder is abstract. Instantiate a derived class instead.")
 
 ## Return a path of [SVOLink]s connecting [param from] and [param to] through [param svo].[br]
 ##
@@ -91,15 +94,3 @@ static func get_closest_faces(svolink1: int, svolink2: int, svo: SVO) -> PackedV
 ## [param svolink1] and [param svolink2] are [SVOLink]s[br]
 static func get_centers(svolink1: int, svolink2: int, svo: SVO) -> PackedVector3Array:
 	return [svo.get_center(svolink1), svo.get_center(svolink2)]
-
-
-#### CONFIGURATION WARNINGS ####
-
-func _on_property_list_changed():
-	update_configuration_warnings()
-
-
-func _get_configuration_warnings():
-	if get_parent() == null or not get_parent() is FlightNavigation3D:
-		return ["Must be a child of FlightNavigation3D"]
-	return []

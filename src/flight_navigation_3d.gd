@@ -19,15 +19,15 @@ signal build_log(message: String, time_string: String, time_elapsed: int)
 
 @export var sparse_voxel_octree: SVO
 
-## Node with pathfinding algorithm used for [method find_path]
-@export_node_path("FlightPathfinder") var pathfinder
+## Pathfinding algorithm used for [method find_path]
+@export var pathfinder: FlightPathfinder
 
 ## Return a path that connects [param from] and [param to].[br]
 ## [param from], [param to] are in global coordinate.[br]
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	var from_svolink = get_svolink_of(from)
 	var to_svolink = get_svolink_of(to)
-	var svolink_path: Array = (get_node(pathfinder) as FlightPathfinder).find_path(
+	var svolink_path: Array = pathfinder.find_path(
 		from_svolink, to_svolink, sparse_voxel_octree)
 	var vec3_path = PackedVector3Array()
 	vec3_path.resize(svolink_path.size())
