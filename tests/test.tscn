@@ -34,52 +34,52 @@ environment = SubResource("Environment_6bw2v")
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
 
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_dsb46")]
-transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 1, 1, 1)
 size = Vector3(4, 4, 4)
 sparse_voxel_octree = ExtResource("3_uofsi")
 
-[node name="VoxelizationTargets" type="Node3D" parent="."]
+[node name="VoxelizationTargets" type="Node3D" parent="FlightNavigation3D"]
 
-[node name="Box" type="StaticBody3D" parent="VoxelizationTargets"]
+[node name="Box" type="StaticBody3D" parent="FlightNavigation3D/VoxelizationTargets"]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.9999998, 0, 0, 0, 1, -0.5, -0.5, -0.5)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FlightNavigation3D/VoxelizationTargets/Box"]
 shape = SubResource("BoxShape3D_u2ahw")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="FlightNavigation3D/VoxelizationTargets/Box"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("4_jenrn")]
+[node name="VoxelizationTarget" parent="FlightNavigation3D/VoxelizationTargets/Box" instance=ExtResource("4_jenrn")]
 
-[node name="Box2" type="StaticBody3D" parent="VoxelizationTargets"]
+[node name="Box2" type="StaticBody3D" parent="FlightNavigation3D/VoxelizationTargets"]
 transform = Transform3D(0.9999999, 0, 0, 0, 0.99999964, 0, 0, 0, 1, -0.5, -0.5, 0.5)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box2"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FlightNavigation3D/VoxelizationTargets/Box2"]
 shape = SubResource("BoxShape3D_u2ahw")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box2"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="FlightNavigation3D/VoxelizationTargets/Box2"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box2" instance=ExtResource("4_jenrn")]
+[node name="VoxelizationTarget" parent="FlightNavigation3D/VoxelizationTargets/Box2" instance=ExtResource("4_jenrn")]
 
-[node name="Box3" type="StaticBody3D" parent="VoxelizationTargets"]
+[node name="Box3" type="StaticBody3D" parent="FlightNavigation3D/VoxelizationTargets"]
 transform = Transform3D(0.99999976, 0, 0, 0, 0.9999993, 0, 0, 0, 1, -0.5, 0.5, -0.5)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box3"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FlightNavigation3D/VoxelizationTargets/Box3"]
 shape = SubResource("BoxShape3D_u2ahw")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box3"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="FlightNavigation3D/VoxelizationTargets/Box3"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box3" instance=ExtResource("4_jenrn")]
+[node name="VoxelizationTarget" parent="FlightNavigation3D/VoxelizationTargets/Box3" instance=ExtResource("4_jenrn")]
 
-[node name="Box4" type="StaticBody3D" parent="VoxelizationTargets"]
+[node name="Box4" type="StaticBody3D" parent="FlightNavigation3D/VoxelizationTargets"]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.9999998, 0, 0, 0, 1, 0.5, -0.5, -0.5)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box4"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FlightNavigation3D/VoxelizationTargets/Box4"]
 shape = SubResource("BoxShape3D_u2ahw")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="VoxelizationTargets/Box4"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="FlightNavigation3D/VoxelizationTargets/Box4"]
 mesh = SubResource("BoxMesh_2w2yn")
 
-[node name="VoxelizationTarget" parent="VoxelizationTargets/Box4" instance=ExtResource("4_jenrn")]
+[node name="VoxelizationTarget" parent="FlightNavigation3D/VoxelizationTargets/Box4" instance=ExtResource("4_jenrn")]

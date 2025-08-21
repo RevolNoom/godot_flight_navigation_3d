@@ -630,6 +630,36 @@ func start() -> FlightNavigation3DTestResult:
 	test_result.write_case("voxel_surrounded_by_voxel_and_node_result", voxel_surrounded_by_voxel_and_node_result)
 	#endregion
 	
+	#region FlightNavigation3D tests
+	
+	var get_svolink_of = {
+		SVOLink.from(second_to_top_layer, 3): SVOLink.from(second_to_top_layer, 3) == flight_nav.get_svolink_of(Vector3(2.9, 2.9, -0.9)),
+		SVOLink.from(second_to_top_layer, 5): SVOLink.from(second_to_top_layer, 5) == flight_nav.get_svolink_of(Vector3(1.1, 0.9, 1.1)),
+		SVOLink.from(second_to_top_layer, 6): SVOLink.from(second_to_top_layer, 6) == flight_nav.get_svolink_of(Vector3(0.7, 2.5, 2.5)),
+		SVOLink.from(second_to_top_layer, 7): SVOLink.from(second_to_top_layer, 7) == flight_nav.get_svolink_of(Vector3(2.3, 2.4, 2.5)),
+		
+		SVOLink.from(leaf_layer, 0, 0): SVOLink.from(leaf_layer, 0, 0) == flight_nav.get_svolink_of(Vector3(-0.9999, -0.9999, -0.9999)),
+		SVOLink.from(leaf_layer, 0, 1): SVOLink.from(leaf_layer, 0, 1) == flight_nav.get_svolink_of(Vector3(-0.7499, -0.9999, -0.9999)),
+		SVOLink.from(leaf_layer, 15, 63): SVOLink.from(leaf_layer, 15, 63) == flight_nav.get_svolink_of(Vector3(2.875, 0.875, 0.875)),
+	}
+	var get_svolink_of_sum = sum_result_dictionary(get_svolink_of)
+	test_result.write_case("get_svolink_of_sum", get_svolink_of_sum)
+	
+	var get_global_position_of = {
+		SVOLink.from(second_to_top_layer, 3): Vector3(2, 2, 0).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(second_to_top_layer, 3))),
+		SVOLink.from(second_to_top_layer, 5): Vector3(2, 0, 2).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(second_to_top_layer, 5))),
+		SVOLink.from(second_to_top_layer, 6): Vector3(0, 2, 2).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(second_to_top_layer, 6))),
+		SVOLink.from(second_to_top_layer, 7): Vector3(2, 2, 2).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(second_to_top_layer, 7))),
+		
+		SVOLink.from(leaf_layer, 0, 0): Vector3(-0.875, -0.875, -0.875).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(leaf_layer, 0, 0))),
+		SVOLink.from(leaf_layer, 0, 1): Vector3(-0.625, -0.875, -0.875).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(leaf_layer, 0, 1))),
+		SVOLink.from(leaf_layer, 15, 63): Vector3(2.875, 0.875, 0.875).is_equal_approx(flight_nav.get_global_position_of(SVOLink.from(leaf_layer, 15, 63))),
+	}
+	var get_global_position_of_sum = sum_result_dictionary(get_global_position_of)
+	test_result.write_case("get_global_position_of_sum", get_global_position_of_sum)
+	
+	#endregion
+	
 	return test_result
 
 func sum_result_dictionary(result: Dictionary) -> bool:

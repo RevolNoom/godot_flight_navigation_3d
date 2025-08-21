@@ -756,14 +756,31 @@ func get_global_position_of(svolink: int) -> Vector3:
 			(Morton3.decode_vec3(voxel_morton) + half_a_voxel) 
 			* _leaf_cube_size() + _corner())
 				
+	var gt = global_transform
+	var vec3 = Morton3.decode_vec3(morton_code)
+	var node_size = _node_size(layer, sparse_voxel_octree.depth)
+	var corner = _corner()
+	
 	var half_a_node = Vector3(0.5, 0.5, 0.5)
+	
+	var vec3_half = vec3 + half_a_node
+	var vec3_half_node_size = vec3_half * node_size
+	var vec3_half_node_size_corner = vec3_half_node_size + corner
+	var gt_vec3_half_node_size_corner = gt * vec3_half_node_size_corner
+	
 	var result = global_transform\
-			* ((Morton3.decode_vec3(morton_code) + half_a_node)
-			 * _node_size(layer, sparse_voxel_octree.depth) + _corner())
+			* (
+				(Morton3.decode_vec3(morton_code) + half_a_node)
+			 	* _node_size(layer, sparse_voxel_octree.depth) 
+				+ _corner()
+			)
 	return result
 
 
 ## Return [SVOLink] of the smallest node/voxel at [param gposition].
+## [br]
+## [b]NOTE:[/b] Positions exactly on a face might be mislocated
+## to different node/voxel due to floating-point inaccuracy.
 ## [br]
 ## [param gposition]: Global position that needs conversion to [SVOLink].
 func get_svolink_of(gposition: Vector3) -> int:
@@ -772,9 +789,7 @@ func get_svolink_of(gposition: Vector3) -> int:
 	var aabb := AABB(Vector3.ZERO, Vector3.ONE*extent)
 	
 	# Points outside Navigation Space
-	## TODO: Return the closest node
 	if not aabb.has_point(local_pos):
-		#print("Position: %v -> null" % position)
 		return SVOLink.NULL
 	
 	var link_layer := sparse_voxel_octree.depth - 1
@@ -821,7 +836,7 @@ func _corner() -> Vector3:
 ## Return the size (in local meter) of a node at 'depth' level, 
 ## in an SVO with 'layer'
 func _node_size(layer: int, depth: int) -> float:
-	return size.x * (2.0 ** (-depth + 1 + layer))
+	return size.x * (2.0 ** (layer - depth + 1))
 	
 func _leaf_cube_size() -> float:
 	return _node_size(-2, sparse_voxel_octree.depth)
