@@ -10,7 +10,7 @@ class_name FlightNavigation3DParameter
 ## [br]
 ## FlightNavigation3D uses CSG nodes internally, and the result meshes contain 
 ## lots of triangles with 2 vertices in the same position.
-@export var cull_slivers: bool = true
+@export var remove_thin_triangles: bool = true
 
 ## Enable multi-threading while building navigation data. [br]
 ## Set to false for easier debugging in single-threading
@@ -19,10 +19,13 @@ class_name FlightNavigation3DParameter
 ## Thread priority when used in [member multi_threading]
 @export var thread_priority: Thread.Priority = Thread.PRIORITY_LOW
 
-## [DEBUG] Whether CSG nodes created for each Voxelization targets are kept.
+## Surface voxelization "thickness". [br]
+## Default to conservative voxelization (all voxels touched by the surface).
+@export var surface_separability:\
+	TriangleBoxTest.Separability = TriangleBoxTest.Separability.SEPARATING_26
+
+## [DEBUG] Whether CSG nodes created for each Voxelization targets 
+## are deleted after voxelization.
 ## [br]
 ## Used to visualize and debug CSG nodes creation.
 @export var delete_csg: bool = true
-
-## [DEBUG] Perform validation after building navigation data.[br]
-@export var self_validate: bool = false

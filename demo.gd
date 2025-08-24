@@ -6,10 +6,13 @@ func _ready() -> void:
 	#TriangleBoxTest_ReferenceCode._automated_test()
 	#TriangleBoxTest._automated_test()
 	var params = FlightNavigation3DParameter.new()
-	params.depth = 7
-	#var svo = await $FlightNavigation3D.build_navigation_data(params)
-	#$FlightNavigation3D.sparse_voxel_octree = svo
-	#$FlightNavigation3D.draw_debug_boxes()
+	params.depth = 4
+	params.multi_threading = false
+	#params.remove_thin_triangles = false
+	params.surface_separability = TriangleBoxTest.Separability.SEPARATING_6
+	var svo = await $FlightNavigation3D.build_navigation_data(params)
+	$FlightNavigation3D.sparse_voxel_octree = svo
+	$FlightNavigation3D.draw_debug_boxes()
 	_find_path_test()
 
 ######## TEST #############

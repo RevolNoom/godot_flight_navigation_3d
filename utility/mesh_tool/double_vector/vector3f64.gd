@@ -95,3 +95,18 @@ static func cross(
 		#c[c_idx] = -c[c_idx]
 		#c[c_idx + 1] = -c[c_idx + 1]
 		#c[c_idx + 2] = -c[c_idx + 2]
+
+
+## Normalize Vector(a[a_idx], a[a_idx+1], a[a_idx+2])
+## then put the result in b[b_idx], b[b_idx+1], b[b_idx+2].
+static func normalize(
+	a: PackedFloat64Array, a_idx: int, 
+	b: PackedFloat64Array, b_idx: int):
+		var a0_squared: float = a[a_idx + 0] * a[a_idx + 0]
+		var a1_squared: float = a[a_idx + 1] * a[a_idx + 1]
+		var a2_squared: float = a[a_idx + 2] * a[a_idx + 2]
+		var sum_squared: float = a0_squared + a1_squared + a2_squared
+		
+		b[b_idx + 0] = sqrt(a0_squared / sum_squared)
+		b[b_idx + 1] = sqrt(a1_squared / sum_squared)
+		b[b_idx + 2] = sqrt(a2_squared / sum_squared)

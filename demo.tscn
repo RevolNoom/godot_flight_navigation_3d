@@ -88,6 +88,7 @@ sparse_voxel_octree = ExtResource("4_6bw2v")
 pathfinder = SubResource("Resource_kem5a")
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
+visible = false
 
 [node name="SingleTriangle" type="StaticBody3D" parent="VoxelizationTargets"]
 

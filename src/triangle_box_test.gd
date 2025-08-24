@@ -1,4 +1,5 @@
-## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel
+## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel.
+## Used for surface voxelization.
 extends RefCounted
 class_name TriangleBoxTest
 
@@ -6,8 +7,8 @@ class_name TriangleBoxTest
 var aabb: AABB
 
 ## All member variables are serialized as float 64 and referenced via enum Field.[br]
-## This is to make sure that all calculations are done in float 64, not float 32 
-## when variables are stored as Vector2 or Vector3.
+## This is to make sure that all calculations are done in float64, 
+## as Vector2 and Vector3 store their components in float32
 var _fields: PackedFloat64Array
 
 enum Field {
@@ -34,14 +35,26 @@ enum Field {
 	FIELD_MAX,
 }
 
+## Determines how "thick" the surface voxelization is.
+enum Separability {
+	## Thin voxelization.[br]
+	## [b]WARNING: [/b]Due to floating-point inaccuracy, 
+	## a water-tight object might have a non-water-tight voxel representation.[br]
+	## Thus, it is recommended to also perform a solid voxelization.
+	SEPARATING_6,
+	
+	## Conservative voxelization.[br]
+	## The surface contains all voxels it cuts through, even merely touched.
+	SEPARATING_26,
+}
 
 ## Initialize a new triangle-box test.[br]
 ## [br]
 ## [param v]: Positions of 3 triangle vertices.[br]
 ## [param dp]: Box size.
-func _init(v: PackedVector3Array, dp: Vector3):
-	var vf64 = Vector3F64._new_tarray(v)
-	var dpf64 = Vector3F64._new(dp)
+func _init(v: PackedVector3Array, dp: Vector3, separability: Separability):
+	var vf64: PackedFloat64Array = Vector3F64._new_tarray(v)
+	var dpf64: PackedFloat64Array = Vector3F64._new(dp)
 	_fields = PackedFloat64Array()
 	_fields.resize(Field.FIELD_MAX)
 	
@@ -58,21 +71,16 @@ func _init(v: PackedVector3Array, dp: Vector3):
 	# NOTE: This order of vector is important. Copied from cuda_voxelizer
 	Vector3F64.cross(e, 0, e, 3, _fields, Field.V3_N)
 	
+	# Normalization creates too much inaccuracy, and thus omitted
+	#Vector3F64.normalize(_fields, Field.V3_N, _fields, Field.V3_N)
+	
 	# Critical point
 	var c: PackedFloat64Array = [
-		0.0 if _fields[Field.V3_N] <= 0 else dp.x,
-		0.0 if _fields[Field.V3_N + 1] <= 0 else dp.y,
-		0.0 if _fields[Field.V3_N + 2] <= 0 else dp.z]
+		0.0 if _fields[Field.V3_N] <= 0 else dpf64[0],
+		0.0 if _fields[Field.V3_N + 1] <= 0 else dpf64[1],
+		0.0 if _fields[Field.V3_N + 2] <= 0 else dpf64[2]]
 	
-	# Distance factors
-	Vector3F64.sub(c, 0, vf64, 0, _fields, Field.TEMP)
-	_fields[Field.F_D1] = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP) 
-	
-	Vector3F64.sub(dpf64, 0, c, 0, _fields, Field.TEMP)
-	Vector3F64.sub(_fields, Field.TEMP, vf64, 0, _fields, Field.TEMP)
-	_fields[Field.F_D2] = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP)
-	
-	# Edges Normals/Distances' Projections
+	# Edges Normal Projections
 	for i in range(3):
 		if _fields[Field.V3_N + 2] >= 0: # n.z >= 0
 			_fields[Field.V2_NE_XY + i * 2 + 0] = -e[i*3+1] 
@@ -88,30 +96,105 @@ func _init(v: PackedVector3Array, dp: Vector3):
 			_fields[Field.V2_NE_YZ + i * 2 + 0] = e[i*3+2]
 			_fields[Field.V2_NE_YZ + i * 2 + 1] = -e[i*3+1]
 			
-		if _fields[Field.V3_N+1] >= 0: # n.y >= 0
+		if _fields[Field.V3_N + 1] >= 0: # n.y >= 0
 			_fields[Field.V2_NE_ZX + i * 2 + 0] = -e[i*3+0]
 			_fields[Field.V2_NE_ZX + i * 2 + 1] = e[i*3+2]
 		else:
 			_fields[Field.V2_NE_ZX + i * 2 + 0] = e[i*3+0]
 			_fields[Field.V2_NE_ZX + i * 2 + 1] = -e[i*3+2]
-
-		_fields[Field.F_DE_XY + i] = \
-			- Vector2F64.dot(_fields, Field.V2_NE_XY + i*2, vf64, i*3)\
-			+ maxf(0, dpf64[0]*_fields[Field.V2_NE_XY + i*2 + 0])\
-			+ maxf(0, dpf64[1]*_fields[Field.V2_NE_XY + i*2 + 1])
+	
+	# Distance factors
+	match separability:
+		Separability.SEPARATING_6:
+			var dp_n: float = 0
 			
-		#i*3+1 so we are dotting yz
-		_fields[Field.F_DE_YZ + i] = \
-			- Vector2F64.dot(_fields, Field.V2_NE_YZ + i*2, vf64, i*3+1)\
-			+ maxf(0, dpf64[1]*_fields[Field.V2_NE_YZ + i*2 + 0])\
-			+ maxf(0, dpf64[2]*_fields[Field.V2_NE_YZ + i*2 + 1])
-		
-		_fields[Field.TEMP + 0] = vf64[i*3+2] # z
-		_fields[Field.TEMP + 1] = vf64[i*3+0] # x
-		_fields[Field.F_DE_ZX + i] = \
-			- Vector2F64.dot(_fields, Field.V2_NE_ZX + i*2, _fields, Field.TEMP)\
-			+ maxf(0, dpf64[0]*_fields[Field.V2_NE_ZX + i*2 + 0])\
-			+ maxf(0, dpf64[2]*_fields[Field.V2_NE_ZX + i*2 + 1])
+			var anx: float = absf(_fields[Field.V3_N + 0])
+			var any: float = absf(_fields[Field.V3_N + 1])
+			var anz: float = absf(_fields[Field.V3_N + 2])
+			# Triangle normal is most dominant on x-axis
+			if anx > any and anx > anz:
+				dp_n = dpf64[0] * anx
+			# Triangle normal is most dominant on y-axis
+			elif any > anz and any > anx:
+				dp_n = dpf64[1] * any
+			# Triangle normal is most dominant on z-axis
+			else:
+				dp_n = dpf64[2] * anz
+			
+			# TEMP = 1/2dp
+			_fields[Field.TEMP + 0] = dpf64[0] / 2
+			_fields[Field.TEMP + 1] = dpf64[1] / 2
+			_fields[Field.TEMP + 2] = dpf64[2] / 2
+			# TEMP = 1/2dp - v0
+			Vector3F64.sub(_fields, Field.TEMP, vf64, 0, _fields, Field.TEMP)
+			
+			# n.dot(1/2dp - v0)
+			var ndpv = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP)
+			
+			_fields[Field.F_D1] = ndpv + dp_n / 2
+			_fields[Field.F_D2] = ndpv - dp_n / 2
+			
+			# Edges Distances' Projections
+			for i in range(3):
+				for projection in [
+					[0, 1, Field.V2_NE_XY, Field.F_DE_XY],
+					[1, 2, Field.V2_NE_YZ, Field.F_DE_YZ],
+					[2, 0, Field.V2_NE_ZX, Field.F_DE_ZX],
+				]:
+					var axis_1 = projection[0]
+					var axis_2 = projection[1]
+					var V2_NE_A1A2 = projection[2]
+					var F_DE_A1A2 = projection[3]
+					# 1/2 dp_*|nei_|
+					var dp_nei_a1a2: float = 0
+					var abs_nei_a1a2_a1 = absf(_fields[V2_NE_A1A2 + i*2 + 0])
+					var abs_nei_a1a2_a2 = absf(_fields[V2_NE_A1A2 + i*2 + 1])
+					if abs_nei_a1a2_a1 >= abs_nei_a1a2_a2:
+						dp_nei_a1a2 = dpf64[axis_1] * abs_nei_a1a2_a1 / 2
+					else:
+						dp_nei_a1a2 = dpf64[axis_2] * abs_nei_a1a2_a2 / 2
+					
+					# 1/2 dpxy
+					_fields[Field.TEMP + 0] = dpf64[axis_1] / 2
+					_fields[Field.TEMP + 1] = dpf64[axis_2] / 2
+					# v_i_xy
+					_fields[Field.TEMP + 2] = vf64[i*3 + axis_1]
+					_fields[Field.TEMP + 3] = vf64[i*3 + axis_2]
+					# 1/2 dpxy - v_i_xy
+					Vector2F64.sub(_fields, Field.TEMP, 
+									_fields, Field.TEMP + 2,
+									_fields, Field.TEMP)
+					# n_ei_xy.dot(1/2 dpxy - v_i_xy)
+					var dot_a1a2 = Vector2F64.dot(_fields, V2_NE_A1A2 + i*2, _fields, Field.TEMP)
+					_fields[F_DE_A1A2 + i] = dot_a1a2 + dp_nei_a1a2
+	
+		Separability.SEPARATING_26:
+			Vector3F64.sub(c, 0, vf64, 0, _fields, Field.TEMP)
+			_fields[Field.F_D1] = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP) 
+			
+			Vector3F64.sub(dpf64, 0, c, 0, _fields, Field.TEMP)
+			Vector3F64.sub(_fields, Field.TEMP, vf64, 0, _fields, Field.TEMP)
+			_fields[Field.F_D2] = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP)
+	
+			# Edges Distances' Projections
+			for i in range(3):
+				_fields[Field.F_DE_XY + i] = \
+					- Vector2F64.dot(_fields, Field.V2_NE_XY + i*2, vf64, i*3)\
+					+ maxf(0, dpf64[0]*_fields[Field.V2_NE_XY + i*2 + 0])\
+					+ maxf(0, dpf64[1]*_fields[Field.V2_NE_XY + i*2 + 1])
+					
+				#i*3+1 so we are dotting yz
+				_fields[Field.F_DE_YZ + i] = \
+					- Vector2F64.dot(_fields, Field.V2_NE_YZ + i*2, vf64, i*3+1)\
+					+ maxf(0, dpf64[1]*_fields[Field.V2_NE_YZ + i*2 + 0])\
+					+ maxf(0, dpf64[2]*_fields[Field.V2_NE_YZ + i*2 + 1])
+				
+				_fields[Field.TEMP + 0] = vf64[i*3+2] # z
+				_fields[Field.TEMP + 1] = vf64[i*3+0] # x
+				_fields[Field.F_DE_ZX + i] = \
+					- Vector2F64.dot(_fields, Field.V2_NE_ZX + i*2, _fields, Field.TEMP)\
+					+ maxf(0, dpf64[0]*_fields[Field.V2_NE_ZX + i*2 + 0])\
+					+ maxf(0, dpf64[2]*_fields[Field.V2_NE_ZX + i*2 + 1])
 
 
 ## Return true if triangle overlaps voxel at position [param p].[br]
@@ -132,6 +215,8 @@ func _plane_overlaps(p: Vector3) -> bool:
 	Vector3F64.assignv(_fields, Field.TEMP, p)
 	var np = Vector3F64.dot(_fields, Field.V3_N, _fields, Field.TEMP)
 	return (np + _fields[Field.F_D1]) * (np + _fields[Field.F_D2]) <= 0
+	#return _is_less_or_approx((np + _fields[Field.F_D1]) * (np + _fields[Field.F_D2]), 0)
+	
 	#var npd1 = (np + _fields[Field.F_D1])
 	#var npd2 = (np + _fields[Field.F_D2])
 	#return npd1 * npd2 <= 0
@@ -166,28 +251,57 @@ func _projection_2d_overlaps(p: Vector3) -> bool:
 	#+ _fields[Field.F_DE_ZX + 2]) >= 0
 	#return b1 and b2 and b3 and b4 and b5 and b6 and b7 and b8 and b9
 	
-	return\
-	(Vector2F64.dot(_fields, Field.V2_NE_XY, _fields, Field.TEMP)\
-	+ _fields[Field.F_DE_XY]) >= 0\
-and (Vector2F64.dot(_fields, Field.V2_NE_XY + 2, _fields, Field.TEMP)\
-	+ _fields[Field.F_DE_XY + 1]) >= 0\
-and (Vector2F64.dot(_fields, Field.V2_NE_XY + 4, _fields, Field.TEMP)\
-	+ _fields[Field.F_DE_XY + 2]) >= 0\
-
-and (Vector2F64.dot(_fields, Field.V2_NE_YZ, _fields, Field.TEMP + 1)\
-	+ _fields[Field.F_DE_YZ]) >= 0\
-and (Vector2F64.dot(_fields, Field.V2_NE_YZ + 2, _fields, Field.TEMP + 1)\
-	+ _fields[Field.F_DE_YZ + 1]) >= 0\
-and (Vector2F64.dot(_fields, Field.V2_NE_YZ + 4, _fields, Field.TEMP + 1)\
-	+ _fields[Field.F_DE_YZ + 2]) >= 0\
+	#return\
+	#_is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_XY, _fields, Field.TEMP)\
+	#+ _fields[Field.F_DE_XY]), 0)\
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_XY + 2, _fields, Field.TEMP)\
+	#+ _fields[Field.F_DE_XY + 1]), 0)\
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_XY + 4, _fields, Field.TEMP)\
+	#+ _fields[Field.F_DE_XY + 2]), 0)\
+#
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_YZ, _fields, Field.TEMP + 1)\
+	#+ _fields[Field.F_DE_YZ]), 0)\
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_YZ + 2, _fields, Field.TEMP + 1)\
+	#+ _fields[Field.F_DE_YZ + 1]), 0)\
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_YZ + 4, _fields, Field.TEMP + 1)\
+	#+ _fields[Field.F_DE_YZ + 2]), 0)\
+	#
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_ZX, _fields, Field.TEMP + 2)\
+	#+ _fields[Field.F_DE_ZX]), 0)\
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_ZX + 2, _fields, Field.TEMP + 2)\
+	#+ _fields[Field.F_DE_ZX + 1]), 0)\
+#and _is_greater_or_approx((Vector2F64.dot(_fields, Field.V2_NE_ZX + 4, _fields, Field.TEMP + 2)\
+	#+ _fields[Field.F_DE_ZX + 2]), 0)
 	
-and (Vector2F64.dot(_fields, Field.V2_NE_ZX, _fields, Field.TEMP + 2)\
-	+ _fields[Field.F_DE_ZX]) >= 0\
-and (Vector2F64.dot(_fields, Field.V2_NE_ZX + 2, _fields, Field.TEMP + 2)\
-	+ _fields[Field.F_DE_ZX + 1]) >= 0\
-and (Vector2F64.dot(_fields, Field.V2_NE_ZX + 4, _fields, Field.TEMP + 2)\
-	+ _fields[Field.F_DE_ZX + 2]) >= 0
+	return\
+	Vector2F64.dot(_fields, Field.V2_NE_XY, _fields, Field.TEMP)\
+	+ _fields[Field.F_DE_XY] >= 0\
+and Vector2F64.dot(_fields, Field.V2_NE_XY + 2, _fields, Field.TEMP)\
+	+ _fields[Field.F_DE_XY + 1] >= 0\
+and Vector2F64.dot(_fields, Field.V2_NE_XY + 4, _fields, Field.TEMP)\
+	+ _fields[Field.F_DE_XY + 2] >= 0\
 
+and Vector2F64.dot(_fields, Field.V2_NE_YZ, _fields, Field.TEMP + 1)\
+	+ _fields[Field.F_DE_YZ] >= 0\
+and Vector2F64.dot(_fields, Field.V2_NE_YZ + 2, _fields, Field.TEMP + 1)\
+	+ _fields[Field.F_DE_YZ + 1] >= 0\
+and Vector2F64.dot(_fields, Field.V2_NE_YZ + 4, _fields, Field.TEMP + 1)\
+	+ _fields[Field.F_DE_YZ + 2] >= 0\
+	
+and Vector2F64.dot(_fields, Field.V2_NE_ZX, _fields, Field.TEMP + 2)\
+	+ _fields[Field.F_DE_ZX] >= 0\
+and Vector2F64.dot(_fields, Field.V2_NE_ZX + 2, _fields, Field.TEMP + 2)\
+	+ _fields[Field.F_DE_ZX + 1] >= 0\
+and Vector2F64.dot(_fields, Field.V2_NE_ZX + 4, _fields, Field.TEMP + 2)\
+	+ _fields[Field.F_DE_ZX + 2] >= 0
+
+## >= that deals with inaccuracy in calculation.
+static func _is_greater_or_approx(a: float, b: float) -> bool:
+	return a > b or is_equal_approx(a, b)
+
+## <= that deals with inaccuracy in calculation.
+static func _is_less_or_approx(a: float, b: float) -> bool:
+	return a < b or is_equal_approx(a, b)
 
 static func _automated_test():
 	print("Test triangle on YZ")
@@ -273,7 +387,7 @@ static func _automated_test():
 	
 	
 static func _auto_test_triangle_extended(v: PackedVector3Array, box_range: PackedInt64Array, solid_voxels: PackedVector3Array, box_size:= Vector3(1,1,1)):
-	var test = TriangleBoxTest.new(v, box_size)
+	var test = TriangleBoxTest.new(v, box_size, Separability.SEPARATING_26)
 	var test_result = {}
 	
 	for x in box_range:

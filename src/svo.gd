@@ -1,7 +1,8 @@
-## Sparse Voxel Octree is a data structure used to contain solid state of 
-## volumes in 3D space.
+## Sparse Voxel Octree 
+## [br][br]
+## Represents the solid/free states of volumes in 3D space.
 ##
-## Sparse Voxel Octree contains solid/free state of space. It has the following features:
+## Sparse Voxel Octree has the following properties:
 ## [br][br]
 ## - Tightly packed: Each layer contains only nodes that has some solid volume, and
 ## they are serialized in increasing Morton order.
@@ -72,6 +73,20 @@ class_name SVO
 
 ## [class SVOLink] of Z-Negative neighbor
 @export var zn: Array[PackedInt64Array] = []
+
+## Determine whether a node is inside or outside an object. [br]
+## [b]NOTE:[/b] Although it is possible to pack each inside state as a bit 
+## (8 inside states in 1 byte),
+## it was thought that the trade off between memory saved 
+## and code coherence was not worth it. 
+## As such, this array is indexed similar to other arrays ([member xn], [member yn], [member zn]...).
+## @experimental: TODO
+@export var inside: Array[PackedByteArray] = []
+
+## Coverage factor (the percentage of the voxel covered by the object).
+## Is a number between 0 and 1.
+## @experimental: TODO
+@export var coverage: Array[PackedFloat64Array] = []
 
 func _init():
 	pass
@@ -176,6 +191,10 @@ func get_center(svolink: int) -> Vector3:
 	return (node_corner_position + half_a_node) * node_size 
 
 
+## [STATIC]
+## [br]
+## Helper function.
+## [br]
 ## Return all subgrid voxels which has morton code coordinate
 ## equals to some of [param v]'s x, y, z components.
 ## [br]
@@ -191,6 +210,8 @@ static func _get_subgrid_voxels_where_component_equals(v: Vector3i) -> PackedInt
 	return result
 
 
+## [STATIC]
+## [br]
 ## Indexes of subgrid voxel that makes up a face of a layer-0 node
 ## e.g. face_subgrid[Face.X_NEG] for all indexes of voxel on negative-x face
 static var _face_subgrid: Dictionary[StringName, PackedInt64Array] = {
@@ -202,7 +223,9 @@ static var _face_subgrid: Dictionary[StringName, PackedInt64Array] = {
 	"zp": _get_subgrid_voxels_where_component_equals(Vector3i(-1, -1, 3)),
 }
 
-
+## [STATIC]
+## [br]
+## Helper function
 static func shift_to_svolink_index_field(list_index: PackedInt64Array) -> PackedInt64Array:
 	var new_list: PackedInt64Array = []
 	new_list.resize(list_index.size())
@@ -211,6 +234,8 @@ static func shift_to_svolink_index_field(list_index: PackedInt64Array) -> Packed
 	return new_list
 
 
+## [STATIC]
+## [br]
 ## Each face of a node has 4 children. Their indexes are listed here.
 ## Each index are shifted 6 bits to be added to SVOLink index field directly 
 static var _children_node_by_face: Dictionary[StringName, PackedInt64Array] = {

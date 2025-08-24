@@ -87,10 +87,10 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	_write_build_log("Done build_mesh")
 	#endregion
 	
-	if parameters.cull_slivers:
-		_write_build_log("Before cull_slivers: %d triangles" % [triangles.size()/3])
+	if parameters.remove_thin_triangles:
+		_write_build_log("Before remove_thin_triangles: %d triangles" % [triangles.size()/3])
 		triangles = MeshTool.cull_slivers(triangles)
-		_write_build_log("Done cull_slivers: %d triangles left" % [triangles.size()/3])
+		_write_build_log("Done remove_thin_triangles: %d triangles left" % [triangles.size()/3])
 	#_write_build_log("Creating array mesh from faces")
 	#$MeshInstance3D.mesh = MeshTool.create_array_mesh_from_faces(triangles)
 	
@@ -112,10 +112,10 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	# [param polygon] is assumed to have length divisible by 3. Every 3 elements make up a triangle.[br]
 	# [b]NOTE:[/b] This method allocates one thread per triangle
 	
+	# TODO: Count node 1 and then pre-allocate data.
 	_write_build_log("Determining active layer 1 nodes")
 	
 	# Mapping between active layer 1 node, and the triangles overlap it
-	
 	var act1node_triangles: Dictionary[int, PackedVector3Array] = {}
 	var node1_size = _node_size(1, parameters.depth)
 	if parameters.multi_threading:
@@ -126,7 +126,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 		for i in range(0, triangles.size(), 3):
 			threads.push_back(Thread.new())
 			var err = threads.back().start(
-				voxelize_triangle.bind(node1_size, triangles.slice(i, i+3)), 
+				voxelize_triangle.bind(node1_size, triangles.slice(i, i+3), parameters), 
 				parameters.thread_priority)
 			if err != OK:
 				_write_build_log("Can't start thread %d. Code: %d" % [i/3, err])
@@ -143,7 +143,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	else:
 		for i in range(0, triangles.size(), 3):
 			_merge_triangle_overlap_node_dicts(act1node_triangles, 
-				voxelize_triangle(node1_size, triangles.slice(i, i+3)))
+				voxelize_triangle(node1_size, triangles.slice(i, i+3), parameters))
 	_write_build_log("Done determining active layer 1 nodes: %d nodes" % act1node_triangles.keys().size())
 	#endregion
 	
@@ -154,6 +154,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	var svo = SVO.new()
 	var tree_depth = parameters.depth
 	if list_active_layer_1_node_morton_code.size() == 0:
+		printerr("No layer 1 node found")
 		return null
 		
 	svo.morton.resize(tree_depth)
@@ -297,7 +298,6 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 		#endregion
 
 		current_active_layer_nodes = new_active_layer_nodes
-	#SVO._comprehensive_test(self)
 	#endregion
 	
 	#region Fill neighbor links from top down
@@ -519,7 +519,13 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	_write_build_log("Done constructing SVO")
 	#endregion
 	
-	#region Voxelize tree
+	#region Solid voxelization
+	# Lay AABB cua tam giac
+	# Kiem tra co overlap voxel nao khong theo function 
+	# Moi overlap se project xuong solid voxel
+	#endregion
+	
+	#region Surface voxelization
 	# Allocate each layer-1 node with 1 thread.[br]
 	# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
 	# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
@@ -535,7 +541,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 			for key in act1node_triangles_keys:
 				threads.push_back(Thread.new())
 				threads.back().start(
-					_voxelize_tree_node0.bind(svo, key, act1node_triangles[key]),
+					_voxelize_tree_node0.bind(svo, key, act1node_triangles[key], parameters),
 					parameters.thread_priority)
 			for t in threads:
 				while true:
@@ -546,17 +552,17 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						await get_tree().process_frame
 		else:
 			for key in act1node_triangles_keys:
-				_voxelize_tree_node0(svo, key, act1node_triangles[key])
+				_voxelize_tree_node0(svo, key, act1node_triangles[key], parameters)
 		_write_build_log("Done voxelizing tree")
 	#endregion
 	_write_build_log("Done voxelizing")
 	#endregion
 	return svo
+	
 
 var _time_elapsed_since_last_log = 0
 func _write_build_log(message: String):
 	var ticks = Time.get_ticks_msec()
-	# call_deferred to synchronize between multiple threads
 	build_log.emit(message, Time.get_time_string_from_system(), ticks - _time_elapsed_since_last_log)
 	_time_elapsed_since_last_log = ticks
 
@@ -631,9 +637,11 @@ func _merge_triangle_overlap_node_dicts(
 # Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
 func voxelize_triangle(
 	vox_size: float, 
-	triangle: PackedVector3Array) -> Dictionary[int, PackedVector3Array]:
+	triangle: PackedVector3Array,
+	parameters: FlightNavigation3DParameter
+	) -> Dictionary[int, PackedVector3Array]:
 	var result: Dictionary[int, PackedVector3Array] = {}
-	var tbt = TriangleBoxTest.new(triangle, Vector3.ONE * vox_size)
+	var tbt = TriangleBoxTest.new(triangle, Vector3.ONE * vox_size, parameters.surface_separability)
 		
 	#_write_build_log("Voxelize triangle started.")
 	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(vox_size, tbt.aabb, size)
@@ -695,7 +703,12 @@ func _voxels_overlapped_by_aabb(
 	return [bi, ei]
 
 
-func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3Array):
+func _voxelize_tree_node0(
+	svo: SVO,
+	node1_morton: int, 
+	triangles: PackedVector3Array,
+	parameters: FlightNavigation3DParameter
+	):
 	var voxel_size = _node_size(-2, svo.depth)
 	var node0_size = _node_size(0, svo.depth)
 	var node1_size = _node_size(1, svo.depth)
@@ -704,10 +717,9 @@ func _voxelize_tree_node0(svo: SVO, node1_morton: int, triangles: PackedVector3A
 	
 	for i in range(0, triangles.size(), 3):
 		var triangle = triangles.slice(i, i+3)
-		#if triangle[0].z == triangle[1].z and triangle[1].z == triangle[2].z: # Look for corner voxel
-			#pass
-		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * node0_size)
-		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * voxel_size)
+		
+		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * node0_size, parameters.surface_separability)
+		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * voxel_size, parameters.surface_separability)
 		
 		for m in range(8): # Test overlap on all 8 nodes layer 0 within node layer 1
 			var node0_svolink = svo.svolink_from_morton(0, (node1_morton << 3) | m)
@@ -756,18 +768,16 @@ func get_global_position_of(svolink: int) -> Vector3:
 			(Morton3.decode_vec3(voxel_morton) + half_a_voxel) 
 			* _leaf_cube_size() + _corner())
 				
-	var gt = global_transform
-	var vec3 = Morton3.decode_vec3(morton_code)
-	var node_size = _node_size(layer, sparse_voxel_octree.depth)
-	var corner = _corner()
+	#var gt = global_transform
+	#var vec3 = Morton3.decode_vec3(morton_code)
+	#var node_size = _node_size(layer, sparse_voxel_octree.depth)
+	#var corner = _corner()
 	
 	var half_a_node = Vector3(0.5, 0.5, 0.5)
-	
-	var vec3_half = vec3 + half_a_node
-	var vec3_half_node_size = vec3_half * node_size
-	var vec3_half_node_size_corner = vec3_half_node_size + corner
-	var gt_vec3_half_node_size_corner = gt * vec3_half_node_size_corner
-	
+	#var vec3_half = vec3 + half_a_node
+	#var vec3_half_node_size = vec3_half * node_size
+	#var vec3_half_node_size_corner = vec3_half_node_size + corner
+	#var gt_vec3_half_node_size_corner = gt * vec3_half_node_size_corner
 	var result = global_transform\
 			* (
 				(Morton3.decode_vec3(morton_code) + half_a_node)
@@ -876,9 +886,6 @@ func draw_svolink_box(svolink: int,
 		label.pixel_size = _node_size(layer, sparse_voxel_octree.depth) / 400
 	cube.mesh.material.albedo_color.a = 0.2
 	
-	#if svolink == 90368:
-		#breakpoint
-		
 	$SVOLinkCubes.add_child(cube)
 	cube.global_position = get_global_position_of(svolink) #+ Vector3(1, 0, 0)
 	return cube
