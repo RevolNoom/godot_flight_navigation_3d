@@ -7,20 +7,116 @@ class_name FlightNavigation3D
 ## [param time_elapsed]: milliseconds since last log
 signal build_log(message: String, time_string: String, time_elapsed: int)
 
-	
-## There could be mayn FlightNavigation3D in one scene, 
-## and you might decide that some targets will voxelize
-## in one FlightNavigation3D but not the others.
-##
-## If FlightNavigation3D's mask overlaps with at least
-## one bit of VoxelizationTarget mask, its shapes will 
-## be considered for Voxelization.
-@export_flags_3d_navigation var voxelization_mask: int
 
-@export var sparse_voxel_octree: SVO
+@export var sparse_voxel_octree: SVO:
+	set(value):
+		sparse_voxel_octree = value
+		if value != null:
+			_initialize_debug_draw_multimesh()
 
 ## Pathfinding algorithm used for [method find_path]
 @export var pathfinder: FlightPathfinder
+
+## Readonly
+var _is_build_navigation_data_running: bool = false
+
+## Return true if this space is being voxelized.
+func is_build_navigation_data_running() -> bool:
+	return _is_build_navigation_data_running
+
+
+#region Voxelization parameters
+@export_group("Voxelization parameters")
+@export_subgroup("Debug")
+## Whether CSG nodes created for each Voxelization targets 
+## are deleted after voxelization.
+## [br]
+## Used to visualize and debug CSG nodes creation.
+@export var delete_csg: bool = true
+@export_subgroup("")
+
+@export_subgroup("Multi-threading", "")
+## Enable multi-threading while building navigation data. [br]
+## Set to false for easier debugging in single-threading.
+@export var multi_threading: bool = true
+
+## Thread priority when used in [member multi_threading]
+@export var thread_priority: Thread.Priority = Thread.PRIORITY_LOW
+@export_subgroup("", "")
+
+@export_subgroup("Voxelization targets handling", "")
+## Many [FlightNavigation3D] could coexist in one scene, 
+## and you might decide that some objects will voxelize
+## in one [FlightNavigation3D] but not the others.
+##
+## Voxelize [VoxelizationTarget]s
+## whose mask overlaps with [FlightNavigation3D]
+@export_flags_3d_navigation var voxelization_mask: int = 1
+
+## Remove triangles with area close to zero before voxelization (recommended).
+## [br]
+## FlightNavigation3D uses CSG nodes internally, and the result meshes contain 
+## lots of triangles with 2 vertices in the same position.
+@export var remove_thin_triangles: bool = true
+@export_subgroup("", "")
+
+@export_subgroup("SVO construction", "")
+
+## Determine how detailed the space will be voxelized.
+## [br]
+## Increase this value will exponentially increase memory usage and voxelization time.
+@export_range(2, 15, 1) var depth: int = 7:
+	set(value):
+		depth = value
+		var res = 2**(value+2)
+		resolution = "%d x %d x %d" % [res, res, res]
+
+
+## (Readonly) The amount of subgrid voxels on each dimension.
+## The higher the resolution, the better the space can capture fine details.
+@export var resolution: String = "512 x 512 x 512":
+	set(value):
+		var res = 2**(depth+2)
+		resolution = "%d x %d x %d" % [res, res, res]
+
+## The [Resource] format to save, when voxelized via editor addon.[br]
+## [b].res[/b] is recommended to save space.
+@export_enum(".tres", ".res") var resource_format: String = ".res"
+		
+@export_subgroup("SVO construction/Solid voxelization", "")
+## Construct inside/outside states of the space,
+## useful for [FlightPathfinder] algorithms.
+## [br]
+## [b]NOTE:[/b] If you want to voxelize objects to display, not for navigation,
+## then you may omit solid voxelization and go for SEPARATING_26 surface voxelization.
+@export var perform_solid_voxelization: bool = true:
+	set(value):
+		perform_solid_voxelization = value
+		update_configuration_warnings()
+
+## Calculate the percentage of solid volume for each SVO node.[br]
+## Useful for heuristic navigation algorithms.
+@export var calculate_coverage_factor: bool = true
+@export_subgroup("", "")
+
+@export_subgroup("SVO construction/Surface voxelization", "")
+## Capture fine details like thin sheets, tree leaves,...
+## [br]
+## [b]NOTE:[/b] If you care only about navigation, you may not need this.
+@export var perform_surface_voxelization: bool = true:
+	set(value):
+		perform_surface_voxelization = value
+		update_configuration_warnings()
+
+## Surface voxelization "thickness". [br]
+## Default to conservative voxelization (all voxels touched by the surface).
+@export var surface_separability:\
+	TriangleBoxTest.Separability = TriangleBoxTest.Separability.SEPARATING_26
+@export_subgroup("", "")
+
+@export_subgroup("", "")
+@export_group("", "")
+#endregion
 
 ## Return a path that connects [param from] and [param to].[br]
 ## [param from], [param to] are in global coordinate.[br]
@@ -35,16 +131,23 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 		vec3_path[i] = get_global_position_of(svolink_path[i])
 	return vec3_path
 
+#region Build navigation
 ## Construct an SVO that can be assigned to [member sparse_voxel_octree] later.[br]
-## [b]NOTE:[/b] This function is asynchronous, and span over many frames.
-## Please "await" it for the result. 
-func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
+## [b]NOTE:[/b] If the last call to build_navigation_data is unfinished,
+## it is dangerous to change parameters then call this function again.
+func build_navigation_data() -> SVO:
+	if _is_build_navigation_data_running:
+		printerr("build_navigation_data is already running. Please wait until the last call is done.")
+		return null
+	
+	_is_build_navigation_data_running = true
+	
 	_time_elapsed_since_last_log = Time.get_ticks_msec()
 	
 	#region Prepare triangles
 	
 	#region Get all voxelization_target
-	_write_build_log("Begin get all voxelization_target")
+	_write_build_log("[Start] Get all voxelization_target")
 	# Array[VoxelizationTarget]
 	var target_array = get_tree().get_nodes_in_group("voxelization_target") 
 	var result: Array = []
@@ -53,11 +156,11 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	for target in target_array:
 		if target.voxelization_mask & voxelization_mask != 0:
 			result.push_back(target)
-	_write_build_log("Done get all voxelization_target: %d" % target_array.size())
+	_write_build_log("[Done] Get all voxelization_target: %d" % target_array.size())
 	#endregion
 	
 	#region Build mesh
-	_write_build_log("Begin build_mesh")
+	_write_build_log("[Start] Build mesh")
 	var union_voxelization_target_shapes = CSGCombiner3D.new()
 	union_voxelization_target_shapes.operation = CSGShape3D.OPERATION_INTERSECTION
 	# The combiner must be added as child first, so that its children could have
@@ -79,33 +182,32 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	# So we must wait until next frame.
 	await get_tree().process_frame
 	var mesh = bake_static_mesh()
-	if parameters.delete_csg:
+	if delete_csg:
 		remove_child(union_voxelization_target_shapes)
 		union_voxelization_target_shapes.free()
 	
-	var triangles = mesh.get_faces()
-	_write_build_log("Done build_mesh")
+	var triangles: PackedVector3Array = mesh.get_faces()
+	_write_build_log("[Done] Build_mesh")
 	#endregion
 	
-	if parameters.remove_thin_triangles:
-		_write_build_log("Before remove_thin_triangles: %d triangles" % [triangles.size()/3])
-		triangles = MeshTool.cull_slivers(triangles)
-		_write_build_log("Done remove_thin_triangles: %d triangles left" % [triangles.size()/3])
+	if remove_thin_triangles:
+		_write_build_log("[Start] Remove_thin_triangles: %d triangles" % [triangles.size()/3])
+		triangles = MeshTool.remove_thin_triangles(triangles)
+		_write_build_log("[Done] Remove_thin_triangles: %d triangles left" % [triangles.size()/3])
 	#_write_build_log("Creating array mesh from faces")
 	#$MeshInstance3D.mesh = MeshTool.create_array_mesh_from_faces(triangles)
 	
 	# Add half a cube offset to each vertex, 
 	# because morton code index starts from the corner of the cube
-	_write_build_log("Offsetting vertices to local coordinate")
+	_write_build_log("[Start] Offsetting vertices to local coordinate")
 	var half_flight_navigation_cube_offset = size/2
 	for i in range(0, triangles.size()):
 		triangles[i] += half_flight_navigation_cube_offset
+	_write_build_log("[Done] Offsetting vertices to local coordinate")
 	#MeshTool.set_vertices_in_clockwise_order(triangles)
 	#MeshTool.print_faces(triangles)
 	#endregion
 	
-	#region Voxelize
-	_write_build_log("Begin voxelizing")
 	#region Determine active layer 1 nodes
 	# Return dictionary of key - value: Active node morton code - Overlapping triangles.[br]
 	# Overlapping triangles are serialized. Every 3 elements make up a triangle.[br]
@@ -113,12 +215,12 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	# [b]NOTE:[/b] This method allocates one thread per triangle
 	
 	# TODO: Count node 1 and then pre-allocate data.
-	_write_build_log("Determining active layer 1 nodes")
+	_write_build_log("[Start] Determine active layer 1 nodes")
 	
 	# Mapping between active layer 1 node, and the triangles overlap it
 	var act1node_triangles: Dictionary[int, PackedVector3Array] = {}
-	var node1_size = _node_size(1, parameters.depth)
-	if parameters.multi_threading:
+	var node1_size = _node_size(1, depth)
+	if multi_threading:
 		var threads: Array[Thread] = []
 		threads.resize(triangles.size() / 3)
 		threads.resize(0)
@@ -126,8 +228,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 		for i in range(0, triangles.size(), 3):
 			threads.push_back(Thread.new())
 			var err = threads.back().start(
-				voxelize_triangle.bind(node1_size, triangles.slice(i, i+3), parameters), 
-				parameters.thread_priority)
+				voxelize_triangle.bind(node1_size, triangles.slice(i, i+3)), thread_priority)
 			if err != OK:
 				_write_build_log("Can't start thread %d. Code: %d" % [i/3, err])
 				pass
@@ -142,18 +243,19 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 					await get_tree().process_frame
 	else:
 		for i in range(0, triangles.size(), 3):
-			_merge_triangle_overlap_node_dicts(act1node_triangles, 
-				voxelize_triangle(node1_size, triangles.slice(i, i+3), parameters))
-	_write_build_log("Done determining active layer 1 nodes: %d nodes" % act1node_triangles.keys().size())
+			var triangle_overlap_node_dictionary = voxelize_triangle(node1_size, triangles.slice(i, i+3))
+			_merge_triangle_overlap_node_dicts(act1node_triangles, triangle_overlap_node_dictionary)
+	_write_build_log("[Done] Determine active layer 1 nodes: %d nodes" % act1node_triangles.keys().size())
 	#endregion
 	
 	var list_active_layer_1_node_morton_code = act1node_triangles.keys()
 	
 	#region Construct SVO
-	_write_build_log("Constructing SVO")
+	_write_build_log("[Start] Constructing SVO")
 	var svo = SVO.new()
-	var tree_depth = parameters.depth
+	var tree_depth = depth
 	if list_active_layer_1_node_morton_code.size() == 0:
+		_write_build_log("[ERR] No layer 1 node found. Abort")
 		printerr("No layer 1 node found")
 		return null
 		
@@ -304,7 +406,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 	# Fill neighbor link from the second-to-top layer, 
 	# because the top layer has no neighbors.
 	
-	if parameters.multi_threading:
+	if multi_threading:
 		var threads: Array[Thread] = []
 		# Negative X neighbor
 		threads.push_back(Thread.new())
@@ -326,7 +428,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						else:
 							svo.xn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (xn & 0b111))
 						,
-				parameters.thread_priority)
+				thread_priority)
 		if err != OK:
 			printerr("Error creating thread for xn neighbor filling")
 			
@@ -350,7 +452,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						else:
 							svo.xp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (xp & 0b111))
 						,
-				parameters.thread_priority)
+				thread_priority)
 		if err != OK:
 			printerr("Error creating thread for xp neighbor filling")
 
@@ -374,7 +476,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						else:
 							svo.yn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (yn & 0b111))
 						,
-				parameters.thread_priority)
+				thread_priority)
 		if err != OK:
 			printerr("Error creating thread for yn neighbor filling")
 			
@@ -398,7 +500,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						else:
 							svo.yp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (yp & 0b111))
 						,
-				parameters.thread_priority)
+				thread_priority)
 		if err != OK:
 			printerr("Error creating thread for yp neighbor filling")
 			
@@ -422,7 +524,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						else:
 							svo.zp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zp & 0b111))
 						,
-				parameters.thread_priority)
+				thread_priority)
 		if err != OK:
 			printerr("Error creating thread for zp neighbor filling")
 		
@@ -446,7 +548,7 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 						else:
 							svo.zn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zn & 0b111))
 						,
-				parameters.thread_priority)
+				thread_priority)
 		if err != OK:
 			printerr("Error creating thread for zn neighbor filling")
 		for t in threads:
@@ -516,49 +618,443 @@ func build_navigation_data(parameters: FlightNavigation3DParameter) -> SVO:
 					svo.zp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zp & 0b111))
 	#endregion
 	
-	_write_build_log("Done constructing SVO")
+	_write_build_log("[Done] Constructing SVO")
 	#endregion
 	
 	#region Solid voxelization
-	# Lay AABB cua tam giac
-	# Kiem tra co overlap voxel nao khong theo function 
-	# Moi overlap se project xuong solid voxel
+	if perform_solid_voxelization:
+		_write_build_log("[Start] Solid voxelization")
+		
+		#region XY plane rasterization, and projection on z column
+		# NOTE: 
+		# Schwarz projects triangles onto yz plane, and then propagates bit flip in x direction.
+		# I project triangles onto xy plane, and then propagates bit flip in z direction.
+		# It helps mapping Vec3 to Vec2 less confusing.
+		
+		# Used to convert from meter unit to voxel unit
+		var voxel_size = _voxel_size()
+		var inv_voxel_size = 1 / voxel_size
+		
+		const epsilon: float = 0.00001
+		
+		_write_build_log("Spawning %d threads to rasterize triangles in xy plane." % [triangles.size()/3])
+		
+		var threads: Array[Thread] = []
+		threads.resize(triangles.size()/3)
+		threads.resize(0)
+		for i in range(threads.size()):
+			threads.push_back(Thread.new())
+			threads.back().start(func ():
+				var v0xyz: Vector3 = triangles[i*3+0]
+				var v1xyz: Vector3 = triangles[i*3+1]
+				var v2xyz: Vector3 = triangles[i*3+2]
+				
+				var v0: Vector2 = Vector2(v0xyz.x, v0xyz.y)
+				var v1: Vector2 = Vector2(v1xyz.x, v1xyz.y)
+				var v2: Vector2 = Vector2(v2xyz.x, v2xyz.y)
+				
+				var e0: Vector2 = v1 - v0
+				var e1: Vector2 = v2 - v1
+				var e2: Vector2 = v0 - v2
+				
+				#region Ensure consistent counter-clockwise order of vertices
+				var not_is_ccw = e2.x * e0.y - e0.x * e2.y < 0
+				if not_is_ccw:
+					# Swap v1 and v2
+					var v_temp = v1
+					v1 = v2
+					v2 = v_temp
+					
+					# Recalculate edge equations
+					e0 = v1 - v0
+					e1 = v2 - v1
+					e2 = v0 - v2
+				#endregion
+				
+				var n: Vector3 = v0xyz.cross(v1xyz)
+				
+				var n_xy_e0: Vector2 = Vector2(-e0.y, e0.x)
+				var n_xy_e1: Vector2 = Vector2(-e1.y, e1.x)
+				var n_xy_e2: Vector2 = Vector2(-e2.y, e2.x)
+				
+				if n.z < 0:
+					n_xy_e0 = Vector2(e0.y, -e0.x)
+					n_xy_e1 = Vector2(e1.y, -e1.x)
+					n_xy_e2 = Vector2(e2.y, -e2.x)
+					
+				var d_xy_e0: float = -n_xy_e0.dot(v0)
+				var d_xy_e1: float = -n_xy_e1.dot(v1)
+				var d_xy_e2: float = -n_xy_e2.dot(v2)
+				
+				var is_left_edge_e0: bool = n_xy_e0.x > 0
+				var is_left_edge_e1: bool = n_xy_e1.x > 0
+				var is_left_edge_e2: bool = n_xy_e2.x > 0
+				
+				var is_top_edge_e0: bool = n_xy_e0.x == 0 and n_xy_e0.y < 0
+				var is_top_edge_e1: bool = n_xy_e1.x == 0 and n_xy_e1.y < 0
+				var is_top_edge_e2: bool = n_xy_e2.x == 0 and n_xy_e2.y < 0
+				
+				var f_xy_e0: float = 0
+				var f_xy_e1: float = 0
+				var f_xy_e2: float = 0
+				
+				if is_left_edge_e0 or is_top_edge_e0:
+					f_xy_e0 = epsilon
+				if is_left_edge_e1 or is_top_edge_e1:
+					f_xy_e1 = epsilon
+				if is_left_edge_e2 or is_top_edge_e2:
+					f_xy_e2 = epsilon
+				
+				# Bounding box in voxel coordinate
+				#
+				# Use floori(x + 0.) instead of roundi(x) to make sure that 
+				# 0.5 cases are handled consistently
+				#
+				# Voxel coordinates are offseted by 0.5 
+				# because we are considering voxel centers
+				var rect2i: Rect2i = Rect2i()
+				rect2i.position = Vector2i(
+					floori(min(v0.x, v1.x, v2.x) * inv_voxel_size + 0.5-epsilon), 
+					floori(min(v0.y, v1.y, v2.y) * inv_voxel_size + 0.5-epsilon))
+				rect2i.end = Vector2i(
+					floori(max(v0.x, v1.x, v2.x) * inv_voxel_size + 0.5+epsilon), 
+					floori(max(v0.y, v1.y, v2.y) * inv_voxel_size + 0.5+epsilon))
+				
+				if not rect2i.has_area:
+					return
+				
+				for voxel_x in range(rect2i.position.x, rect2i.end.x):
+					for voxel_y in range(rect2i.position.y, rect2i.end.y):
+						var p_xy: Vector2 = Vector2(voxel_x, voxel_y) * voxel_size + Vector2(0.5, 0.5)
+						
+						var triangle_overlap_voxel_center =\
+							(n_xy_e0.dot(p_xy) + d_xy_e0 + f_xy_e0 > 0)\
+							and (n_xy_e1.dot(p_xy) + d_xy_e1 + f_xy_e1 > 0)\
+							and (n_xy_e2.dot(p_xy) + d_xy_e2 + f_xy_e2 > 0)
+						
+						if not triangle_overlap_voxel_center:
+							continue
+						
+						# n = (a, b, c)
+						# Plane equation: ax + by + cz = 0
+						# z = -(ax+by)/c
+						var projected_z = (- n.x * p_xy.x - n.y * p_xy.y)/n.z
+						
+						var voxel_z: int = floori(projected_z * inv_voxel_size)
+						
+						var voxel_morton = Morton3.encode64(voxel_x, voxel_y, voxel_z)
+						var voxel_svolink = svo.svolink_from_morton(0, voxel_morton)
+						
+						var offset = SVOLink.offset(voxel_svolink)
+						var subgrid = SVOLink.subgrid(voxel_svolink)
+						
+						var flip_mask: int = Fn3dLookupTable.\
+							z_column_flip_bitmask_by_subgrid_index[subgrid]
+						svo.subgrid[offset] = \
+							svo.subgrid[offset] ^ flip_mask
+				, thread_priority)
+		
+		for thread in threads:
+			while true:
+				if thread.is_alive():
+					await get_tree().process_frame
+				else:
+					thread.wait_to_finish()
+					break
+		_write_build_log("[Done] XY plane rasterization.")
+		
+		#endregion
+		
+		#region Hierarchical inside/outside propagation
+		_write_build_log("[Start] Hierarchical inside/outside propagation.")
+		
+		
+		#region Prepare flip flags, inside flags, list head nodes
+		_write_build_log("[Start] Prepare flip flags, inside flags, list head nodes")
+		# Flip flags of layer 0 are not used, so they are not initialized. 
+		# Only inside flags are initialized.
+		var flip_flag: Array[PackedByteArray] = []
+		flip_flag.resize(svo.morton.size())
+		for i in range(1, svo.morton.size()):
+			flip_flag[i].resize(svo.morton[i].size())
+			flip_flag[i].fill(0)
+			
+		svo.inside.resize(svo.morton.size())
+		for i in range(0, svo.morton.size()):
+			svo.inside[i].resize(svo.morton[i].size())
+			svo.inside[i].fill(0)
+			
+		var list_head_node_offset_of_layer: Array[PackedInt64Array] = []
+		list_head_node_offset_of_layer.resize(svo.morton.size())
+		for layer in range(0, svo.morton.size()):
+			list_head_node_offset_of_layer[layer].resize(svo.morton[layer].size())
+			list_head_node_offset_of_layer[layer] = svo._get_list_offset_of_head_node_of_layer(layer)
+			
+		_write_build_log("[Done] Prepare flip flags, inside flags, list head node")
+		#endregion
+		
+		#region Propagate bit flips in z+ direction
+		_write_build_log("[Start] Propagate bit flips in z+ direction")
+		var list_head_node_offset_of_layer_0: PackedInt64Array = list_head_node_offset_of_layer[0]
+		var subgrid_voxel_indexes_on_face_zp = Fn3dLookupTable.subgrid_voxel_indexes_on_face["zp"]
+		var svo_subgrid = svo.subgrid
+		var svo_zp = svo.zp
+		
+		threads.resize(list_head_node_offset_of_layer_0.size())
+		threads.resize(0)
+		for i in range(list_head_node_offset_of_layer_0.size()):
+			threads.push_back(Thread.new())
+			threads.back().start(func ():
+				var current_node_offset = list_head_node_offset_of_layer_0[i]
+				while true:
+					var zp_neighbor_svolink = svo_zp[0][current_node_offset]
+					if zp_neighbor_svolink == SVOLink.NULL:
+						break
+					var zp_neighbor_layer = SVOLink.layer(zp_neighbor_svolink)
+					if zp_neighbor_layer != 0:
+						break
+					
+					var flip_buffer = 0
+					for subgrid_index in subgrid_voxel_indexes_on_face_zp:
+						if svo_subgrid[current_node_offset] & (1 << subgrid_index):
+							flip_buffer = flip_buffer | Fn3dLookupTable.neighbor_node_z_column_bits_by_subgrid_index[subgrid_index]
+					var zp_neighbor_offset = SVOLink.offset(zp_neighbor_svolink)
+					svo_subgrid[zp_neighbor_offset] = svo_subgrid[zp_neighbor_offset] ^ flip_buffer
+					
+					# Increment condition
+					current_node_offset = zp_neighbor_offset
+				)
+		
+		for thread in threads:
+			while true:
+				if thread.is_alive():
+					await get_tree().process_frame
+				else:
+					thread.wait_to_finish()
+					break
+		_write_build_log("[Done] Propagate bit flips in z+ direction")
+		#endregion
+		
+		#region Flip bottom up layer 1
+		_write_build_log("[Start] Flip bottom up layer 1")
+		#region Prepare layer 1 flip flag
+		_write_build_log("[Start] Prepare layer 1 flip flag")
+		# Set flip flag for layer-1 nodes with children 
+		# at the end of a z-linked node string
+		var svo_first_child = svo.first_child
+		var svo_inside = svo.inside
+		var children_index_on_zp_face = [4, 5, 6, 7]
+		for i in range(0, flip_flag[1].size()):
+			var first_child = svo_first_child[1][i]
+			if first_child == SVOLink.NULL:
+				continue
+			var zp_svolink = svo_zp[1][i]
+			if zp_svolink != SVOLink.NULL:
+				continue
+			var zp_layer = SVOLink.layer(zp_svolink)
+			if zp_layer != 1:
+				continue
+			var zp_offset = SVOLink.offset(zp_svolink)
+			var zp_first_child = svo_first_child[1][zp_offset]
+			if zp_first_child != SVOLink.NULL:
+				continue
+			
+			var first_child_offset = SVOLink.offset(first_child)
+			var flip: bool = true
+			for child_on_zp_face_index in children_index_on_zp_face:
+				var child_on_zp_face_offset = first_child_offset + child_on_zp_face_index
+				var child_subgrid = svo_subgrid[child_on_zp_face_offset]
+				flip = (child_subgrid == child_subgrid & Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_zp)\
+					and flip
+			if flip:
+				flip_flag[1][i] = flip
+		_write_build_log("[Done] Prepare layer 1 flip flag")
+		#endregion
+		
+		#region Propagate layer 1 flip information
+		_write_build_log("[Start] Propagate layer 1 flip information")
+		
+		var list_head_node_offset_of_layer_1: PackedInt64Array = list_head_node_offset_of_layer[1]
+		threads.resize(list_head_node_offset_of_layer_1.size())
+		threads.resize(0)
+		for i in range(list_head_node_offset_of_layer_1.size()):
+			threads.push_back(Thread.new())
+			threads.back().start(func ():
+				var current_node_offset = list_head_node_offset_of_layer_1[i]
+				while true:
+					var zp_neighbor_svolink = svo_zp[1][current_node_offset]
+					if zp_neighbor_svolink == SVOLink.NULL:
+						break
+					var zp_neighbor_layer = SVOLink.layer(zp_neighbor_svolink)
+					if zp_neighbor_layer != 1:
+						break
+						
+					var zp_neighbor_offset = SVOLink.offset(zp_neighbor_svolink)
+					if flip_flag[1][current_node_offset]:
+						var neighbor_flip_flag = flip_flag[1][zp_neighbor_offset]
+						var neighbor_inside_flag = svo_inside[1][zp_neighbor_offset]
+						flip_flag[1][zp_neighbor_offset] = neighbor_flip_flag ^ 1
+						svo_inside[1][zp_neighbor_offset] = neighbor_inside_flag ^ 1
+					# Increment condition
+					current_node_offset = zp_neighbor_offset
+				)
+		
+		for thread in threads:
+			while true:
+				if thread.is_alive():
+					await get_tree().process_frame
+				else:
+					thread.wait_to_finish()
+					break
+		_write_build_log("[Done] Propagate layer 1 flip information")
+		#endregion
+		
+		_write_build_log("[Done] Flip bottom up layer 1")
+		#endregion
+		
+		#region Flip bottom up from layer 2
+		_write_build_log("[Start] Flip bottom up from layer 2")
+		
+		# Set flip flag for layer-1 nodes with children 
+		# at the end of a z-linked node string
+		# TODO: Parallelize operation in each layer, in all layers
+		for layer in range(2, flip_flag.size()):
+			#region Prepare flip flag
+			_write_build_log("[Start] Prepare flip flag layer %d" % [layer])
+			var flip_flag_layer = flip_flag[layer]
+			var flip_flag_child_layer = flip_flag[layer-1]
+			for i in range(0, flip_flag_layer.size()):
+				var first_child = svo_first_child[layer][i]
+				if first_child == SVOLink.NULL:
+					continue
+				var zp_svolink = svo_zp[layer][i]
+				if zp_svolink != SVOLink.NULL:
+					continue
+				var zp_layer = SVOLink.layer(zp_svolink)
+				if zp_layer != layer:
+					continue
+				var zp_offset = SVOLink.offset(zp_svolink)
+				var zp_first_child = svo_first_child[layer][zp_offset]
+				if zp_first_child != SVOLink.NULL:
+					continue
+				
+				var first_child_offset = SVOLink.offset(first_child)
+				var flip: bool = true
+				for child_on_zp_face_index in children_index_on_zp_face:
+					var child_on_zp_face_offset = first_child_offset + child_on_zp_face_index
+					flip = flip and flip_flag_child_layer[child_on_zp_face_offset]
+				if flip:
+					flip_flag_layer[i] = flip
+			_write_build_log("[Done] Prepare flip flag layer %d" % [layer])
+			#endregion
+		
+			#region Propagate flip information
+			_write_build_log("[Start] Propagate flip information layer %d" % [layer])
+			
+			var list_head_node_offset_of_layer_current: PackedInt64Array = list_head_node_offset_of_layer[layer]
+			var svo_inside_layer = svo_inside[layer]
+			threads.resize(list_head_node_offset_of_layer_current.size())
+			threads.resize(0)
+			
+			for i in range(list_head_node_offset_of_layer_current.size()):
+				threads.push_back(Thread.new())
+				threads.back().start(func ():
+					var current_node_offset = list_head_node_offset_of_layer_current[i]
+					while true:
+						var zp_neighbor_svolink = svo_zp[layer][current_node_offset]
+						if zp_neighbor_svolink == SVOLink.NULL:
+							break
+						var zp_neighbor_layer = SVOLink.layer(zp_neighbor_svolink)
+						if zp_neighbor_layer != layer:
+							break
+							
+						var zp_neighbor_offset = SVOLink.offset(zp_neighbor_svolink)
+						if flip_flag_layer[current_node_offset]:
+							var neighbor_flip_flag = flip_flag_layer[zp_neighbor_offset]
+							var neighbor_inside_flag = svo_inside[1][zp_neighbor_offset]
+							flip_flag_layer[zp_neighbor_offset] = neighbor_flip_flag ^ 1
+							svo_inside_layer[zp_neighbor_offset] = neighbor_inside_flag ^ 1
+						# Increment condition
+						current_node_offset = zp_neighbor_offset
+					)
+			
+			for thread in threads:
+				while true:
+					if thread.is_alive():
+						await get_tree().process_frame
+					else:
+						thread.wait_to_finish()
+						break
+			_write_build_log("[Done] Propagate flip information layer %d" % [layer])
+			#endregion
+		_write_build_log("[Done] Flip bottom up from layer 2")
+		#endregion
+		
+		#region Propagate inside flags topdown for tree nodes
+		_write_build_log("[Start] Propagate inside flags topdown for tree nodes")
+		for layer in range(depth-1, 0, -1):
+			var svo_inside_layer = svo_inside[layer]
+			var svo_inside_layer_child = svo_inside[layer-1]
+			var svo_first_child_layer = svo.first_child[layer]
+			for offset in range(svo_inside_layer.size()):
+				if svo_inside_layer[offset]:
+					var first_child = svo_first_child_layer[offset]
+					var first_child_offset = SVOLink.offset(first_child)
+					for child in range(first_child_offset, first_child_offset + 8):
+						svo_inside_layer_child[child] =\
+							1 ^ svo_inside_layer_child[child]
+		_write_build_log("[Done] Propagate inside flags topdown for tree nodes")
+		#endregion
+		
+		#region Propagate inside flag to subgrid voxels
+		_write_build_log("[Start] Propagate inside flag to subgrid voxels")
+		var svo_inside_layer_0 = svo_inside[0]
+		for offset in range(svo_inside_layer_0.size()):
+			if svo_inside_layer_0[offset]:
+				svo_subgrid[offset] = ~svo_subgrid[offset]
+		_write_build_log("[Done] Propagate inside flag to subgrid voxels")
+		#endregion
+		
+		_write_build_log("[Done] Hierarchical inside/outside propagation.")
+		#endregion
+		
+		_write_build_log("[Done] Solid voxelization")
 	#endregion
 	
 	#region Surface voxelization
-	# Allocate each layer-1 node with 1 thread.[br]
-	# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
-	# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
-
-	if not act1node_triangles.is_empty():
-		_write_build_log("Begin voxelizing tree")
-		var act1node_triangles_keys: Array[int] = act1node_triangles.keys()
-		_write_build_log("Spawning %d threads" % act1node_triangles_keys.size())
-		if parameters.multi_threading:
-			var threads: Array[Thread] = []
-			threads.resize(act1node_triangles_keys.size())
-			threads.resize(0)
-			for key in act1node_triangles_keys:
-				threads.push_back(Thread.new())
-				threads.back().start(
-					_voxelize_tree_node0.bind(svo, key, act1node_triangles[key], parameters),
-					parameters.thread_priority)
-			for t in threads:
-				while true:
-					if not t.is_alive():
-						t.wait_to_finish()
-						break
-					else:
-						await get_tree().process_frame
-		else:
-			for key in act1node_triangles_keys:
-				_voxelize_tree_node0(svo, key, act1node_triangles[key], parameters)
-		_write_build_log("Done voxelizing tree")
+	if perform_surface_voxelization:
+		_write_build_log("[Start] Surface voxelization")
+		# Allocate each layer-1 node with 1 thread.[br]
+		# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
+		# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
+		if not act1node_triangles.is_empty():
+			var act1node_triangles_keys: Array[int] = act1node_triangles.keys()
+			_write_build_log("Spawning %d threads" % act1node_triangles_keys.size())
+			if multi_threading:
+				var threads: Array[Thread] = []
+				threads.resize(act1node_triangles_keys.size())
+				threads.resize(0)
+				for key in act1node_triangles_keys:
+					threads.push_back(Thread.new())
+					threads.back().start(
+						_voxelize_tree_node0.bind(svo, key, act1node_triangles[key]),
+						thread_priority)
+				for t in threads:
+					while true:
+						if not t.is_alive():
+							t.wait_to_finish()
+							break
+						else:
+							await get_tree().process_frame
+			else:
+				for key in act1node_triangles_keys:
+					_voxelize_tree_node0(svo, key, act1node_triangles[key])
+		_write_build_log("[Done] Surface voxelization")
 	#endregion
-	_write_build_log("Done voxelizing")
-	#endregion
-	return svo
 	
+	_is_build_navigation_data_running = false
+	return svo
+
 
 var _time_elapsed_since_last_log = 0
 func _write_build_log(message: String):
@@ -637,11 +1133,9 @@ func _merge_triangle_overlap_node_dicts(
 # Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
 func voxelize_triangle(
 	vox_size: float, 
-	triangle: PackedVector3Array,
-	parameters: FlightNavigation3DParameter
-	) -> Dictionary[int, PackedVector3Array]:
+	triangle: PackedVector3Array) -> Dictionary[int, PackedVector3Array]:
 	var result: Dictionary[int, PackedVector3Array] = {}
-	var tbt = TriangleBoxTest.new(triangle, Vector3.ONE * vox_size, parameters.surface_separability)
+	var tbt = TriangleBoxTest.new(triangle, Vector3.ONE * vox_size, surface_separability)
 		
 	#_write_build_log("Voxelize triangle started.")
 	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(vox_size, tbt.aabb, size)
@@ -707,7 +1201,6 @@ func _voxelize_tree_node0(
 	svo: SVO,
 	node1_morton: int, 
 	triangles: PackedVector3Array,
-	parameters: FlightNavigation3DParameter
 	):
 	var voxel_size = _node_size(-2, svo.depth)
 	var node0_size = _node_size(0, svo.depth)
@@ -718,8 +1211,8 @@ func _voxelize_tree_node0(
 	for i in range(0, triangles.size(), 3):
 		var triangle = triangles.slice(i, i+3)
 		
-		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * node0_size, parameters.surface_separability)
-		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * voxel_size, parameters.surface_separability)
+		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * node0_size, surface_separability)
+		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * voxel_size, surface_separability)
 		
 		for m in range(8): # Test overlap on all 8 nodes layer 0 within node layer 1
 			var node0_svolink = svo.svolink_from_morton(0, (node1_morton << 3) | m)
@@ -748,8 +1241,7 @@ func _voxelize_tree_node0(
 				svo.subgrid[offset] = node0_solid_state
 				#endregion
 
-
-
+#endregion
 #endregion
 
 #region Utility function
@@ -766,7 +1258,7 @@ func get_global_position_of(svolink: int) -> Vector3:
 		var half_a_voxel = Vector3(0.5, 0.5, 0.5)
 		return global_transform * (
 			(Morton3.decode_vec3(voxel_morton) + half_a_voxel) 
-			* _leaf_cube_size() + _corner())
+			* _voxel_size() + _corner())
 				
 	#var gt = global_transform
 	#var vec3 = Morton3.decode_vec3(morton_code)
@@ -837,6 +1329,9 @@ func get_svolink_of(gposition: Vector3) -> int:
 	
 #endregion
 
+func _ready():
+	_initialize_debug_draw_multimesh()
+
 #region Helper functions
 
 ## Return the corner position where morton index starts counting
@@ -845,11 +1340,41 @@ func _corner() -> Vector3:
 	
 ## Return the size (in local meter) of a node at 'depth' level, 
 ## in an SVO with 'layer'
-func _node_size(layer: int, depth: int) -> float:
-	return size.x * (2.0 ** (layer - depth + 1))
+func _node_size(layer: int, svo_depth: int) -> float:
+	return size.x * (2.0 ** (layer - svo_depth + 1))
 	
-func _leaf_cube_size() -> float:
+func _voxel_size() -> float:
 	return _node_size(-2, sparse_voxel_octree.depth)
+
+
+func _initialize_debug_draw_multimesh():
+	var debug_draw_svonode = $DebugDraw/SVONode
+	var debug_draw_voxel = $DebugDraw/Voxel
+	for multimesh_instance in debug_draw_svonode.get_children():
+		debug_draw_svonode.remove_child(multimesh_instance)
+		multimesh_instance.queue_free()
+	
+	if sparse_voxel_octree == null:
+		return
+		
+	for layer in range(0, sparse_voxel_octree.depth):
+		var boxmesh = BoxMesh.new()
+		boxmesh.size = Vector3.ONE * _node_size(layer, sparse_voxel_octree.depth)
+		boxmesh.material = StandardMaterial3D.new()
+		
+		var multimesh = MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
+		multimesh.mesh = boxmesh
+		
+		var multimesh_instance = MultiMeshInstance3D.new()
+		multimesh_instance.multimesh = multimesh
+		
+		debug_draw_svonode.add_child(multimesh_instance)
+	
+	debug_draw_voxel.multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
+	
+	debug_draw_voxel.multimesh.mesh.size = Vector3.ONE * _voxel_size()
+	debug_draw_voxel.multimesh.mesh.material = StandardMaterial3D.new()
 	
 
 ## Draw a box represents the space occupied by an [SVONode] identified as [param svolink].[br]
@@ -868,18 +1393,21 @@ func draw_svolink_box(svolink: int,
 	cube.mesh = BoxMesh.new()
 	var label = Label3D.new()
 	cube.add_child(label)
-
-	var layer = SVOLink.layer(svolink)
-	var offset = SVOLink.offset(svolink)
 	
 	cube.mesh.material = StandardMaterial3D.new()
 	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
 	label.text = text if text != null else SVOLink.get_format_string(svolink)
 			
-	if layer == 0:
-		cube.mesh.size = Vector3.ONE * _leaf_cube_size()
+	var layer = SVOLink.layer(svolink)
+	var offset = SVOLink.offset(svolink)
+	
+	# Draw voxel
+	if layer == 0 and not(sparse_voxel_octree.support_inside
+		and sparse_voxel_octree.inside[layer][offset]):
+		cube.mesh.size = Vector3.ONE * _voxel_size()
 		cube.mesh.material.albedo_color = leaf_color
-		label.pixel_size = _leaf_cube_size() / 400
+		label.pixel_size = _voxel_size() / 400
+	# Draw node
 	else:
 		cube.mesh.size = Vector3.ONE * _node_size(layer, sparse_voxel_octree.depth)
 		cube.mesh.material.albedo_color = node_color
@@ -889,65 +1417,111 @@ func draw_svolink_box(svolink: int,
 	$SVOLinkCubes.add_child(cube)
 	cube.global_position = get_global_position_of(svolink) #+ Vector3(1, 0, 0)
 	return cube
+
+
+## Draw all solid voxels, solid nodes there are
+func draw():
+	draw_solid_nodes()
+	draw_solid_voxels()
+
+
+## Draw a box to represent the space occupied by a SVO Node identified as [param svolink].[br]
+##
+## [b]NOTE:[/b]: [member sparse_voxel_octree] must not be null.[br]
+func draw_solid_nodes():
+	if not sparse_voxel_octree.support_inside:
+		return
+		
+	var solid_node_count_by_layer: PackedInt64Array
+	solid_node_count_by_layer.resize(sparse_voxel_octree.depth)
+	solid_node_count_by_layer.fill(0)
 	
-## Draw all subgrid voxels in the svo.[br]
-func draw_debug_boxes():
+	# Count nodes before allocating memory for them
+	for layer in range(sparse_voxel_octree.depth):
+		for offset in range(sparse_voxel_octree.inside[layer].size()):
+			if sparse_voxel_octree.inside[layer][offset]:
+				solid_node_count_by_layer[layer] += 1
+	
+	# Allocate memory
+	var debug_draw_node = $DebugDraw/SVONode
+	for layer in range(sparse_voxel_octree.depth):
+		debug_draw_node.get_child(layer).multimesh.instance_count = \
+			solid_node_count_by_layer[layer]
+	
+	# Set transform for each node
+	for layer in range(sparse_voxel_octree.depth):
+		var solid_node_index = 0
+		var multimesh = debug_draw_node.get_child(layer).multimesh
+		for offset in range(sparse_voxel_octree.inside[layer].size()):
+			if sparse_voxel_octree.inside[layer][offset]:
+				var svolink = SVOLink.from(layer, offset)
+				multimesh.set_instance_transform(solid_node_index, 
+					Transform3D(Basis(), get_global_position_of(svolink)))
+				solid_node_index += 1
+				
+
+func draw_solid_voxels():
+	if sparse_voxel_octree == null:
+		printerr(str(get_path()) + ".sparse_voxel_octree is null")
+		return
+	
 	var node0_size = _node_size(0, sparse_voxel_octree.depth)
 	
 	var threads: Array[Thread] = []
 	threads.resize(sparse_voxel_octree.subgrid.size())
 	threads.resize(0)
-	var cube_pos : Array[PackedVector3Array] = []
-	cube_pos.resize(sparse_voxel_octree.subgrid.size())
+	var list_voxel_position_by_node0 : Array[PackedVector3Array] = []
+	list_voxel_position_by_node0.resize(sparse_voxel_octree.subgrid.size())
 	var iterator_array = []
-	iterator_array.resize(cube_pos.size())
+	iterator_array.resize(list_voxel_position_by_node0.size())
 		
 	for i in range(sparse_voxel_octree.subgrid.size()):
 		var svolink = SVOLink.from(0, i, 0)
 		threads.push_back(Thread.new())
 		threads.back().start(
-			_collect_cubes.bind(
+			_collect_voxels.bind(
 				sparse_voxel_octree,
 				svolink,
-				cube_pos, i, node0_size),
+				list_voxel_position_by_node0, i, node0_size),
 			Thread.PRIORITY_LOW)
 	for thread in threads:
 		thread.wait_to_finish()
 	
-	var all_pos: PackedVector3Array = []
-	for pv3a in cube_pos:
-		all_pos.append_array(pv3a)
+	var list_voxel_position: PackedVector3Array = []
+	for pv3a in list_voxel_position_by_node0:
+		list_voxel_position.append_array(pv3a)
 		
-	$DebugCubes.multimesh.mesh.size = _leaf_cube_size() * Vector3.ONE
-	
-	$DebugCubes.multimesh.instance_count = all_pos.size()
-		
-	for i in range(all_pos.size()):
-		$DebugCubes.multimesh.set_instance_transform(i, 
-			Transform3D(Basis(), all_pos[i]))
+	var debug_draw_voxel = $DebugDraw/Voxel
+	debug_draw_voxel.multimesh.instance_count = list_voxel_position.size()
+	for i in range(list_voxel_position.size()):
+		debug_draw_voxel.multimesh.set_instance_transform(i, 
+			Transform3D(Basis(), list_voxel_position[i]))
 
-func _collect_cubes(
+func _collect_voxels(
 	svo: SVO, 
 	svolink: int, 
-	cube_pos: Array[PackedVector3Array],
+	list_voxel_position_by_node0: Array[PackedVector3Array],
 	i: int,
 	node0_size: float):
-	cube_pos[i] = PackedVector3Array([])
+	list_voxel_position_by_node0[i] = PackedVector3Array([])
 	var layer = SVOLink.layer(svolink)
 	var offset = SVOLink.offset(svolink)
 	var node_position = node0_size * Morton3.decode_vec3(svo.morton[layer][offset]) - size/2
 	for vox in range(64):
 		if svo.subgrid[offset] & (1<<vox):
-			var voxel_position_offset = _leaf_cube_size() * (Morton3.decode_vec3(vox) + Vector3(0.5,0.5,0.5))
+			var voxel_position_offset = _voxel_size() * (Morton3.decode_vec3(vox) + Vector3(0.5,0.5,0.5))
 			var pos = node_position + voxel_position_offset
-			cube_pos[i].push_back(pos)
+			list_voxel_position_by_node0[i].push_back(pos)
 #endregion
 	
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings: PackedStringArray = []
 	if !is_root_shape():
-		warnings.append("Must be a root csg shape to calculate mesh correctly")
+		warnings.append("Must be a root CSG shape to calculate mesh correctly")
 	if sparse_voxel_octree == null:# or svo.get_layer_size(0) == 0:
 		warnings.push_back("No valid SVO resource found. Try voxelize it in editor or call build_navigation_data from script.")
-		
+	if voxelization_mask == 0:
+		warnings.push_back("Empty voxelization_mask.")
+	if perform_solid_voxelization == false and perform_surface_voxelization == false:
+		warnings.push_back("Either perform_solid_voxelization or perform_surface_voxelization must be set.")
 	return warnings

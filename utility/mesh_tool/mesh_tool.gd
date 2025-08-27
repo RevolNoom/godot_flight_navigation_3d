@@ -270,7 +270,7 @@ static func print_faces(faces: PackedVector3Array):
 ## - Remove all faces with 2 or more vertices identical to each other [br]
 ## - Remove all faces with 3 vertices lie on the same line[br]
 ## - [NOT YET SUPPORTED] Remove identical faces (same set of 3 points)[br]
-static func cull_slivers(faces: PackedVector3Array) -> PackedVector3Array:
+static func remove_thin_triangles(faces: PackedVector3Array) -> PackedVector3Array:
 	#print("Before remove: %d faces" % [faces.size()/3])
 	var result: PackedVector3Array = []
 	result.resize(faces.size())

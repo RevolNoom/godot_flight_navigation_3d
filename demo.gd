@@ -5,15 +5,11 @@ extends Node3D
 func _ready() -> void:
 	#TriangleBoxTest_ReferenceCode._automated_test()
 	#TriangleBoxTest._automated_test()
-	var params = FlightNavigation3DParameter.new()
-	params.depth = 4
-	params.multi_threading = false
-	#params.remove_thin_triangles = false
-	params.surface_separability = TriangleBoxTest.Separability.SEPARATING_6
-	var svo = await $FlightNavigation3D.build_navigation_data(params)
-	$FlightNavigation3D.sparse_voxel_octree = svo
-	$FlightNavigation3D.draw_debug_boxes()
-	_find_path_test()
+	var svo = await flight_nav.build_navigation_data()
+	flight_nav.sparse_voxel_octree = svo
+	flight_nav.draw()
+	print("Done")
+	#_find_path_test()
 
 ######## TEST #############
 

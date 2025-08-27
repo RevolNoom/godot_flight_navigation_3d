@@ -8,17 +8,15 @@ func _ready():
 	print(JSON.stringify(result.to_json()))
 
 func start() -> FlightNavigation3DTestResult:
-	var params = FlightNavigation3DParameter.new()
-	params.depth = 3
-	var svo = await flight_nav.build_navigation_data(params)
+	var depth = 3
+	flight_nav.depth = depth
+	var svo = await flight_nav.build_navigation_data()
 	flight_nav.sparse_voxel_octree = svo
 	
-	var _face_subgrid = SVO._face_subgrid
-	print(_face_subgrid)
 	var test_result = FlightNavigation3DTestResult.new()
 	
-	var top_layer = params.depth-1
-	var second_to_top_layer = params.depth-2
+	var top_layer = depth-1
+	var second_to_top_layer = depth-2
 	var leaf_layer = 0
 	#region SVOLink test
 	# The second-to-top layer always has 8 children nodes, 

@@ -1,24 +1,24 @@
-## Mark an object to be voxelized by FlightNavigation3D
+## Mark an object to be voxelized by [FlightNavigation3D]
 @tool
 extends Node3D
 class_name VoxelizationTarget
 
-## There could be many FlightNavigation3D in one scene, 
+## There could be many [FlightNavigation3D] in one scene, 
 ## and you might decide that some targets will voxelize
-## in one FlightNavigation3D but not the others.
+## in one [FlightNavigation3D] but not the others.
 ##
-## If FlightNavigation3D's mask overlaps with at least
-## one bit of VoxelizationTarget mask, its shapes will 
-## be considered for Voxelization.
+## If [FlightNavigation3D]'s mask overlaps with at least
+## one bit of [VoxelizationTarget] mask, its shapes will 
+## be considered for voxelization.
 @export_flags_3d_navigation var voxelization_mask: int
 
-## Used for CSGShape3D generation of:[br]
-## - SphereShape3D/Mesh [br]
-## - CylinderShape3D/Mesh [br]
+## Used for [CSGShape3D] generation of:[br]
+## - [SphereShape3D]/[SphereMesh] [br]
+## - [CylinderShape3D]/[CylinderMesh] [br]
 @export var radial_segments = 64
 
-## Used for CSGShape3D generation of:[br]
-## - SphereShape3D/Mesh [br]
+## Used for [CSGShape3D] generation of:[br]
+## - [SphereShape3D]/[SphereMesh] [br]
 @export var rings = 32
 
 var _parent: 
@@ -59,8 +59,7 @@ func _get_csg_collision_object_3d(collision_object: CollisionObject3D) -> Array[
 	return result
 
 
-## Return a CSG shape that best describes this collision shape
-## TODO: Wrap a Combiner on all shapes.
+## Return a CSG shape that best describes this collision shape.
 ## The Combiner takes global transform of its parent.
 ## The real shape takes local transform relative to its parent
 func _get_csg_collision_shape_3d(collision_shape: CollisionShape3D) -> Array[CSGShape3D]:

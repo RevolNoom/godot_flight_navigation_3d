@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://c1axq013ak0v1"]
+[gd_scene load_steps=7 format=3 uid="uid://c1axq013ak0v1"]
 
 [ext_resource type="Script" uid="uid://dtmtfahi0uhx8" path="res://src/flight_navigation_3d.gd" id="1_28b6r"]
 
@@ -10,27 +10,35 @@ disable_ambient_light = true
 disable_fog = true
 albedo_color = Color(1, 1, 1, 0.0980392)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e3o65"]
+transparency = 1
+albedo_color = Color(0, 1, 0, 0.196078)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2h38c"]
+
 [sub_resource type="BoxMesh" id="BoxMesh_u4dg3"]
+material = SubResource("StandardMaterial3D_2h38c")
+size = Vector3(0.01171875, 0.01171875, 0.01171875)
 
 [sub_resource type="MultiMesh" id="MultiMesh_e3o65"]
 transform_format = 1
 mesh = SubResource("BoxMesh_u4dg3")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e3o65"]
-transparency = 1
-albedo_color = Color(0, 1, 0, 0.196078)
-
 [node name="FlightNavigation3D" type="CSGBox3D"]
 calculate_tangents = false
 material = SubResource("StandardMaterial3D_u4dg3")
 script = ExtResource("1_28b6r")
-voxelization_mask = 1
-
-[node name="DebugCubes" type="MultiMeshInstance3D" parent="."]
-multimesh = SubResource("MultiMesh_e3o65")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 visible = false
 material_override = SubResource("StandardMaterial3D_e3o65")
 
 [node name="SVOLinkCubes" type="Node3D" parent="."]
+
+[node name="DebugDraw" type="Node3D" parent="."]
+
+[node name="Voxel" type="MultiMeshInstance3D" parent="DebugDraw"]
+visible = false
+multimesh = SubResource("MultiMesh_e3o65")
+
+[node name="SVONode" type="Node3D" parent="DebugDraw"]

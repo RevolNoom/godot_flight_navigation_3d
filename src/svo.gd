@@ -24,27 +24,28 @@
 ## [br][br]
 ## - After construction, SVO are best used to read only. 
 ## Due to its tightly-packed nature, there's no way to trivially update a voxel 
-## solid/free state. You must always reconstruct it, using FlightNavigation3D.[br]
+## solid/free state. You must always reconstruct it, using FlightNavigation3D.
+## [br]
 ## - Current implementation only do a surface voxelization. 
 ## It means SVO only knows whether a position is On The Surface of an object.
-## SVO doesn't know whether a position is inside an object. [br]
+## SVO doesn't know whether a position is inside an object.
 
 extends Resource
 class_name SVO
 
-## The number of SVONode layers of the tree (doesn't count subgrid voxel layers). [br]
-##
+## [b]NOTE:[/b] This value is read-only. Used for editor convenience.
+## [br]
+## The number of SVONode layers of the tree (doesn't count subgrid voxel layers). 
+## [br]
 ## Higher depth rasterizes collision shapes in more details,
 ## but also consumes more memory. Each layer adds upto 
 ## 8 times more memory consumption.
 ## (But thought analysis says it is only about 4 times).[br]
-##
-## [b]NOTE:[/b] This value is read-only. Used for editor convenience.[br]
 @export var depth: int:
 	get:
 		return morton.size()
 
-## [class Morton3] coordinate of this node in the octree.
+## [class Morton3] coordinates
 @export var morton: Array[PackedInt64Array] = []
 
 ## [class SVOLink] to the parent SVONode in the upper layer.
@@ -74,15 +75,25 @@ class_name SVO
 ## [class SVOLink] of Z-Negative neighbor
 @export var zn: Array[PackedInt64Array] = []
 
+## True if this [SVO] supports inside/outside state query.
+@export var support_inside: bool:
+	get:
+		return inside.size()
+
 ## Determine whether a node is inside or outside an object. [br]
 ## [b]NOTE:[/b] Although it is possible to pack each inside state as a bit 
 ## (8 inside states in 1 byte),
 ## it was thought that the trade off between memory saved 
 ## and code coherence was not worth it. 
-## As such, this array is indexed similar to other arrays ([member xn], [member yn], [member zn]...).
+## As such, this array is indexed similarly to other arrays ([member xn], [member yn], [member zn]...).
 ## @experimental: TODO
 @export var inside: Array[PackedByteArray] = []
 
+## True if this [SVO] supports solid percentage coverage per node.
+@export var support_coverage: bool:
+	get:
+		return coverage.size()
+		
 ## Coverage factor (the percentage of the voxel covered by the object).
 ## Is a number between 0 and 1.
 ## @experimental: TODO
@@ -191,61 +202,6 @@ func get_center(svolink: int) -> Vector3:
 	return (node_corner_position + half_a_node) * node_size 
 
 
-## [STATIC]
-## [br]
-## Helper function.
-## [br]
-## Return all subgrid voxels which has morton code coordinate
-## equals to some of [param v]'s x, y, z components.
-## [br]
-## [param v]'s component is -1 if you want to disable checking that component.
-static func _get_subgrid_voxels_where_component_equals(v: Vector3i) -> PackedInt64Array:
-	var result: PackedInt64Array = []
-	for i in range(64):
-		var mv = Morton3.decode_vec3i(i)
-		if (v.x == -1 or mv.x == v.x) and\
-			(v.y == -1 or mv.y == v.y) and\
-			(v.z == -1 or mv.z == v.z):
-			result.push_back(i)
-	return result
-
-
-## [STATIC]
-## [br]
-## Indexes of subgrid voxel that makes up a face of a layer-0 node
-## e.g. face_subgrid[Face.X_NEG] for all indexes of voxel on negative-x face
-static var _face_subgrid: Dictionary[StringName, PackedInt64Array] = {
-	"xn": _get_subgrid_voxels_where_component_equals(Vector3i(0, -1, -1)),
-	"xp": _get_subgrid_voxels_where_component_equals(Vector3i(3, -1, -1)),
-	"yn": _get_subgrid_voxels_where_component_equals(Vector3i(-1, 0, -1)),
-	"yp": _get_subgrid_voxels_where_component_equals(Vector3i(-1, 3, -1)),
-	"zn": _get_subgrid_voxels_where_component_equals(Vector3i(-1, -1, 0)),
-	"zp": _get_subgrid_voxels_where_component_equals(Vector3i(-1, -1, 3)),
-}
-
-## [STATIC]
-## [br]
-## Helper function
-static func shift_to_svolink_index_field(list_index: PackedInt64Array) -> PackedInt64Array:
-	var new_list: PackedInt64Array = []
-	new_list.resize(list_index.size())
-	for i in range(new_list.size()):
-		new_list[i] = list_index[i] << 6
-	return new_list
-
-
-## [STATIC]
-## [br]
-## Each face of a node has 4 children. Their indexes are listed here.
-## Each index are shifted 6 bits to be added to SVOLink index field directly 
-static var _children_node_by_face: Dictionary[StringName, PackedInt64Array] = {
-	"xn": shift_to_svolink_index_field([0, 2, 4, 6]),
-	"xp": shift_to_svolink_index_field([1, 3, 5, 7]),
-	"yn": shift_to_svolink_index_field([0, 1, 4, 5]),
-	"yp": shift_to_svolink_index_field([2, 3, 6, 7]),
-	"zn": shift_to_svolink_index_field([0, 1, 2, 3]),
-	"zp": shift_to_svolink_index_field([4, 5, 6, 7]),
-}
 
 
 ## Return all highest-resolution voxels that make up the face of node [param svolink][br]
@@ -259,23 +215,23 @@ func _get_voxels_on_face(
 	var offset = SVOLink.offset(svolink)
 	
 	if layer == 0:
-		var face_subgrid: PackedInt64Array
+		var subgrid_voxels: PackedInt32Array
 		if face == xn:
-			face_subgrid = _face_subgrid["xn"]
+			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["xn"]
 		elif face == xp:
-			face_subgrid = _face_subgrid["xp"]
+			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["xp"]
 		elif face == yn:
-			face_subgrid = _face_subgrid["yn"]
+			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["yn"]
 		elif face == yp:
-			face_subgrid = _face_subgrid["yp"]
+			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["yp"]
 		elif face == zn:
-			face_subgrid = _face_subgrid["zn"]
+			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["zn"]
 		elif face == zp:
-			face_subgrid = _face_subgrid["zp"]
+			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["zp"]
 		var subgrid_voxel_on_face: PackedInt64Array = []
-		subgrid_voxel_on_face.resize(face_subgrid.size())
-		for i in range(face_subgrid.size()):
-			subgrid_voxel_on_face[i] = SVOLink.set_subgrid(face_subgrid[i], svolink) 
+		subgrid_voxel_on_face.resize(subgrid_voxels.size())
+		for i in range(subgrid_voxels.size()):
+			subgrid_voxel_on_face[i] = SVOLink.set_subgrid(subgrid_voxels[i], svolink) 
 		return subgrid_voxel_on_face
 	
 	var first_child_svolink = first_child[layer][offset]
@@ -289,17 +245,17 @@ func _get_voxels_on_face(
 		[first_child_svolink, first_child_svolink, first_child_svolink, first_child_svolink]
 	var children_indexes: PackedInt64Array
 	if face == xn:
-		children_indexes = _children_node_by_face["xn"]
+		children_indexes = Fn3dLookupTable.children_node_by_face["xn"]
 	elif face == xp:
-		children_indexes = _children_node_by_face["xp"]
+		children_indexes = Fn3dLookupTable.children_node_by_face["xp"]
 	elif face == yn:
-		children_indexes = _children_node_by_face["yn"]
+		children_indexes = Fn3dLookupTable.children_node_by_face["yn"]
 	elif face == yp:
-		children_indexes = _children_node_by_face["yp"]
+		children_indexes = Fn3dLookupTable.children_node_by_face["yp"]
 	elif face == zn:
-		children_indexes = _children_node_by_face["zn"]
+		children_indexes = Fn3dLookupTable.children_node_by_face["zn"]
 	elif face == zp:
-		children_indexes = _children_node_by_face["zp"]
+		children_indexes = Fn3dLookupTable.children_node_by_face["zp"]
 	
 	var voxels_on_face: PackedInt64Array = []
 	for i in range(4):
@@ -308,6 +264,25 @@ func _get_voxels_on_face(
 	
 	return voxels_on_face
 
+
+## Head nodes are nodes without -z neighbors
+func _get_list_offset_of_head_node_of_layer(layer: int) -> PackedInt64Array:
+	var list_size = 0
+	var zn_layer = zn[layer]
+	for i in range(0, zn_layer.size(), 2):
+		if zn_layer[i] == SVOLink.NULL:
+			list_size += 1
+			
+	var list_head_node_offset: PackedInt64Array = []
+	list_head_node_offset.resize(list_size)
+	
+	# Identify head nodes
+	var list_head_node_offset_index = 0
+	for i in range(0, zn_layer.size(), 2):
+		if zn_layer[i] == SVOLink.NULL:
+			list_head_node_offset[list_head_node_offset_index] = i
+			list_head_node_offset_index += 1
+	return list_head_node_offset
 
 #static func _comprehensive_test(svo: SVO) -> void:
 	#print("Testing SVO Validity")
