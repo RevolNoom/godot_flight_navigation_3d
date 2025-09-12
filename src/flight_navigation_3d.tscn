@@ -38,7 +38,6 @@ material_override = SubResource("StandardMaterial3D_e3o65")
 [node name="DebugDraw" type="Node3D" parent="."]
 
 [node name="Voxel" type="MultiMeshInstance3D" parent="DebugDraw"]
-visible = false
 multimesh = SubResource("MultiMesh_e3o65")
 
 [node name="SVONode" type="Node3D" parent="DebugDraw"]

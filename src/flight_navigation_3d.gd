@@ -7,6 +7,13 @@ class_name FlightNavigation3D
 ## [param time_elapsed]: milliseconds since last log
 signal build_log(message: String, time_string: String, time_elapsed: int)
 
+signal progress(step: ProgressStep, svo: SVO, work_completed: int, total_work: int)
+
+## Enum used in tandem with [member progress] signal,
+## for logging, testing, debugging purpose.
+enum ProgressStep {
+	XY_PLANE_RASTERIZATION,
+}
 
 @export var sparse_voxel_octree: SVO:
 	set(value):
@@ -27,14 +34,6 @@ func is_build_navigation_data_running() -> bool:
 
 #region Voxelization parameters
 @export_group("Voxelization parameters")
-@export_subgroup("Debug")
-## Whether CSG nodes created for each Voxelization targets 
-## are deleted after voxelization.
-## [br]
-## Used to visualize and debug CSG nodes creation.
-@export var delete_csg: bool = true
-@export_subgroup("")
-
 @export_subgroup("Multi-threading", "")
 ## Enable multi-threading while building navigation data. [br]
 ## Set to false for easier debugging in single-threading.
@@ -114,6 +113,16 @@ func is_build_navigation_data_running() -> bool:
 	TriangleBoxTest.Separability = TriangleBoxTest.Separability.SEPARATING_26
 @export_subgroup("", "")
 
+@export_subgroup("Debug")
+
+## Whether CSG nodes created for each Voxelization targets 
+## are deleted after voxelization.
+## [br]
+## Used to visualize and debug CSG nodes creation.
+@export var delete_csg: bool = true
+
+@export_subgroup("")
+
 @export_subgroup("", "")
 @export_group("", "")
 #endregion
@@ -132,9 +141,11 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	return vec3_path
 
 #region Build navigation
+## Margin used for float comparisons
+const epsilon: float = 0.00001
+
 ## Construct an SVO that can be assigned to [member sparse_voxel_octree] later.[br]
-## [b]NOTE:[/b] If the last call to build_navigation_data is unfinished,
-## it is dangerous to change parameters then call this function again.
+## [b]NOTE:[/b] Only one build process can be run at a time for each FlightNavigation3D.
 func build_navigation_data() -> SVO:
 	if _is_build_navigation_data_running:
 		printerr("build_navigation_data is already running. Please wait until the last call is done.")
@@ -403,154 +414,25 @@ func build_navigation_data() -> SVO:
 	#endregion
 	
 	#region Fill neighbor links from top down
-	# Fill neighbor link from the second-to-top layer, 
-	# because the top layer has no neighbors.
-	
 	if multi_threading:
 		var threads: Array[Thread] = []
-		# Negative X neighbor
-		threads.push_back(Thread.new())
-		var err = threads.back().start(
-			func ():
-				for layer in range(tree_depth - 2, -1, -1):
-					for offset in range(svo.morton[layer].size()):
-						var current_node_morton = svo.morton[layer][offset]
-						var parent_svolink = svo.parent[layer][offset]
-						var parent_layer = SVOLink.layer(parent_svolink)
-						var parent_offset = SVOLink.offset(parent_svolink)
-						var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-						
-						var xn = Morton3.dec_x(current_node_morton)
-						
-						if _mortons_different_parent(xn, current_node_morton):
-							svo.xn[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-								parent_layer, parent_offset, svo.xn, xn)
-						else:
-							svo.xn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (xn & 0b111))
-						,
-				thread_priority)
-		if err != OK:
-			printerr("Error creating thread for xn neighbor filling")
-			
-		# Positive X neighbor
-		threads.push_back(Thread.new())
-		err = threads.back().start(
-			func ():
-				for layer in range(tree_depth - 2, -1, -1):
-					for offset in range(svo.morton[layer].size()):
-						var current_node_morton = svo.morton[layer][offset]
-						var parent_svolink = svo.parent[layer][offset]
-						var parent_layer = SVOLink.layer(parent_svolink)
-						var parent_offset = SVOLink.offset(parent_svolink)
-						var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-						
-						var xp = Morton3.inc_x(current_node_morton)
-						
-						if _mortons_different_parent(xp, current_node_morton):
-							svo.xp[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-								parent_layer, parent_offset, svo.xp, xp)
-						else:
-							svo.xp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (xp & 0b111))
-						,
-				thread_priority)
-		if err != OK:
-			printerr("Error creating thread for xp neighbor filling")
-
-		# Negative Y Neighbor
-		threads.push_back(Thread.new())
-		err = threads.back().start(
-			func ():
-				for layer in range(tree_depth - 2, -1, -1):
-					for offset in range(svo.morton[layer].size()):
-						var current_node_morton = svo.morton[layer][offset]
-						var parent_svolink = svo.parent[layer][offset]
-						var parent_layer = SVOLink.layer(parent_svolink)
-						var parent_offset = SVOLink.offset(parent_svolink)
-						var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-						
-						var yn = Morton3.dec_y(current_node_morton)
-						
-						if _mortons_different_parent(yn, current_node_morton):
-							svo.yn[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-								parent_layer, parent_offset, svo.yn, yn)
-						else:
-							svo.yn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (yn & 0b111))
-						,
-				thread_priority)
-		if err != OK:
-			printerr("Error creating thread for yn neighbor filling")
-			
-		# Positive Y Neighbor
-		threads.push_back(Thread.new())
-		err = threads.back().start(
-			func ():
-				for layer in range(tree_depth - 2, -1, -1):
-					for offset in range(svo.morton[layer].size()):
-						var current_node_morton = svo.morton[layer][offset]
-						var parent_svolink = svo.parent[layer][offset]
-						var parent_layer = SVOLink.layer(parent_svolink)
-						var parent_offset = SVOLink.offset(parent_svolink)
-						var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-						
-						var yp = Morton3.inc_y(current_node_morton)
-						
-						if _mortons_different_parent(yp, current_node_morton):
-							svo.yp[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-								parent_layer, parent_offset, svo.yp, yp)
-						else:
-							svo.yp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (yp & 0b111))
-						,
-				thread_priority)
-		if err != OK:
-			printerr("Error creating thread for yp neighbor filling")
-			
-		# Positive Z Neighbor
-		threads.push_back(Thread.new())
-		err = threads.back().start(
-			func ():
-				for layer in range(tree_depth - 2, -1, -1):
-					for offset in range(svo.morton[layer].size()):
-						var current_node_morton = svo.morton[layer][offset]
-						var parent_svolink = svo.parent[layer][offset]
-						var parent_layer = SVOLink.layer(parent_svolink)
-						var parent_offset = SVOLink.offset(parent_svolink)
-						var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-						
-						var zp = Morton3.inc_z(current_node_morton)
-						
-						if _mortons_different_parent(zp, current_node_morton):
-							svo.zp[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-								parent_layer, parent_offset, svo.zp, zp)
-						else:
-							svo.zp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zp & 0b111))
-						,
-				thread_priority)
-		if err != OK:
-			printerr("Error creating thread for zp neighbor filling")
-		
-		# Negative Z Neighbor
-		threads.push_back(Thread.new())
-		err = threads.back().start(
-			func ():
-				for layer in range(tree_depth - 2, -1, -1):
-					for offset in range(svo.morton[layer].size()):
-						var current_node_morton = svo.morton[layer][offset]
-						var parent_svolink = svo.parent[layer][offset]
-						var parent_layer = SVOLink.layer(parent_svolink)
-						var parent_offset = SVOLink.offset(parent_svolink)
-						var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-						
-						var zn = Morton3.dec_z(current_node_morton)
-						
-						if _mortons_different_parent(zn, current_node_morton):
-							svo.zn[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-								parent_layer, parent_offset, svo.zn, zn)
-						else:
-							svo.zn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zn & 0b111))
-						,
-				thread_priority)
-		if err != OK:
-			printerr("Error creating thread for zn neighbor filling")
+		var err: Error
+		for direction in [
+			[svo.xn, Morton3.dec_x],
+			[svo.yn, Morton3.dec_y],
+			[svo.zn, Morton3.dec_z],
+			[svo.xp, Morton3.inc_x],
+			[svo.yp, Morton3.inc_y],
+			[svo.zp, Morton3.inc_z],
+		]:
+			var neighbor_direction = direction[0]
+			var next_morton3_calculator = direction[1]
+			threads.push_back(Thread.new())
+			err = threads.back().start(
+				_fill_neighbor_in_direction.bind(svo, neighbor_direction, next_morton3_calculator), 
+					thread_priority)
+			if err != OK:
+				printerr("Error creating thread for xp neighbor filling")
 		for t in threads:
 			while true:
 				if not t.is_alive():
@@ -560,62 +442,17 @@ func build_navigation_data() -> SVO:
 					# Unblock the main thread, so that the editor won't freeze
 					await get_tree().process_frame
 	else:
-		for layer in range(tree_depth - 2, -1, -1):
-			for offset in range(svo.morton[layer].size()):
-				var current_node_morton = svo.morton[layer][offset]
-				var xn = Morton3.dec_x(current_node_morton)
-				var yn = Morton3.dec_y(current_node_morton)
-				var zn = Morton3.dec_z(current_node_morton)
-				var xp = Morton3.inc_x(current_node_morton)
-				var yp = Morton3.inc_y(current_node_morton)
-				var zp = Morton3.inc_z(current_node_morton)
-				
-				var parent_svolink = svo.parent[layer][offset]
-				var parent_layer = SVOLink.layer(parent_svolink)
-				var parent_offset = SVOLink.offset(parent_svolink)
-				var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
-				
-				# Negative X neighbor
-				if _mortons_different_parent(xn, current_node_morton):
-					svo.xn[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-						parent_layer, parent_offset, svo.xn, xn)
-				else:
-					svo.xn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (xn & 0b111))
-				
-				# Negative Y neighbor
-				if _mortons_different_parent(yn, current_node_morton):
-					svo.yn[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-						parent_layer, parent_offset, svo.yn, yn)
-				else:
-					svo.yn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (yn & 0b111))
-				
-				# Negative Z neighbor
-				if _mortons_different_parent(zn, current_node_morton):
-					svo.zn[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-						parent_layer, parent_offset, svo.zn, zn)
-				else:
-					svo.zn[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zn & 0b111))
-					
-				# Positive X neighbor
-				if _mortons_different_parent(xp, current_node_morton):
-					svo.xp[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-						parent_layer, parent_offset, svo.xp, xp)
-				else:
-					svo.xp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (xp & 0b111))
-					
-				# Positive Y neighbor
-				if _mortons_different_parent(yp, current_node_morton):
-					svo.yp[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-						parent_layer, parent_offset, svo.yp, yp)
-				else:
-					svo.yp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (yp & 0b111))
-					
-				# Positive Z neighbor
-				if _mortons_different_parent(zp, current_node_morton):
-					svo.zp[layer][offset] = _ask_parent_for_neighbor_svolink(svo, 
-						parent_layer, parent_offset, svo.zp, zp)
-				else:
-					svo.zp[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (zp & 0b111))
+		for direction in [
+			[svo.xn, Morton3.dec_x],
+			[svo.yn, Morton3.dec_y],
+			[svo.zn, Morton3.dec_z],
+			[svo.xp, Morton3.inc_x],
+			[svo.yp, Morton3.inc_y],
+			[svo.zp, Morton3.inc_z],
+		]:
+			var neighbor_direction = direction[0]
+			var next_morton3_calculator = direction[1]
+			_fill_neighbor_in_direction(svo, neighbor_direction, next_morton3_calculator)
 	#endregion
 	
 	_write_build_log("[Done] Constructing SVO")
@@ -632,137 +469,35 @@ func build_navigation_data() -> SVO:
 		# It helps mapping Vec3 to Vec2 less confusing.
 		
 		# Used to convert from meter unit to voxel unit
-		var voxel_size = _voxel_size()
+		var voxel_size = _node_size(-2, tree_depth)
 		var inv_voxel_size = 1 / voxel_size
-		
-		const epsilon: float = 0.00001
 		
 		_write_build_log("Spawning %d threads to rasterize triangles in xy plane." % [triangles.size()/3])
 		
-		var threads: Array[Thread] = []
-		threads.resize(triangles.size()/3)
-		threads.resize(0)
-		for i in range(threads.size()):
-			threads.push_back(Thread.new())
-			threads.back().start(func ():
-				var v0xyz: Vector3 = triangles[i*3+0]
-				var v1xyz: Vector3 = triangles[i*3+1]
-				var v2xyz: Vector3 = triangles[i*3+2]
-				
-				var v0: Vector2 = Vector2(v0xyz.x, v0xyz.y)
-				var v1: Vector2 = Vector2(v1xyz.x, v1xyz.y)
-				var v2: Vector2 = Vector2(v2xyz.x, v2xyz.y)
-				
-				var e0: Vector2 = v1 - v0
-				var e1: Vector2 = v2 - v1
-				var e2: Vector2 = v0 - v2
-				
-				#region Ensure consistent counter-clockwise order of vertices
-				var not_is_ccw = e2.x * e0.y - e0.x * e2.y < 0
-				if not_is_ccw:
-					# Swap v1 and v2
-					var v_temp = v1
-					v1 = v2
-					v2 = v_temp
-					
-					# Recalculate edge equations
-					e0 = v1 - v0
-					e1 = v2 - v1
-					e2 = v0 - v2
-				#endregion
-				
-				var n: Vector3 = v0xyz.cross(v1xyz)
-				
-				var n_xy_e0: Vector2 = Vector2(-e0.y, e0.x)
-				var n_xy_e1: Vector2 = Vector2(-e1.y, e1.x)
-				var n_xy_e2: Vector2 = Vector2(-e2.y, e2.x)
-				
-				if n.z < 0:
-					n_xy_e0 = Vector2(e0.y, -e0.x)
-					n_xy_e1 = Vector2(e1.y, -e1.x)
-					n_xy_e2 = Vector2(e2.y, -e2.x)
-					
-				var d_xy_e0: float = -n_xy_e0.dot(v0)
-				var d_xy_e1: float = -n_xy_e1.dot(v1)
-				var d_xy_e2: float = -n_xy_e2.dot(v2)
-				
-				var is_left_edge_e0: bool = n_xy_e0.x > 0
-				var is_left_edge_e1: bool = n_xy_e1.x > 0
-				var is_left_edge_e2: bool = n_xy_e2.x > 0
-				
-				var is_top_edge_e0: bool = n_xy_e0.x == 0 and n_xy_e0.y < 0
-				var is_top_edge_e1: bool = n_xy_e1.x == 0 and n_xy_e1.y < 0
-				var is_top_edge_e2: bool = n_xy_e2.x == 0 and n_xy_e2.y < 0
-				
-				var f_xy_e0: float = 0
-				var f_xy_e1: float = 0
-				var f_xy_e2: float = 0
-				
-				if is_left_edge_e0 or is_top_edge_e0:
-					f_xy_e0 = epsilon
-				if is_left_edge_e1 or is_top_edge_e1:
-					f_xy_e1 = epsilon
-				if is_left_edge_e2 or is_top_edge_e2:
-					f_xy_e2 = epsilon
-				
-				# Bounding box in voxel coordinate
-				#
-				# Use floori(x + 0.) instead of roundi(x) to make sure that 
-				# 0.5 cases are handled consistently
-				#
-				# Voxel coordinates are offseted by 0.5 
-				# because we are considering voxel centers
-				var rect2i: Rect2i = Rect2i()
-				rect2i.position = Vector2i(
-					floori(min(v0.x, v1.x, v2.x) * inv_voxel_size + 0.5-epsilon), 
-					floori(min(v0.y, v1.y, v2.y) * inv_voxel_size + 0.5-epsilon))
-				rect2i.end = Vector2i(
-					floori(max(v0.x, v1.x, v2.x) * inv_voxel_size + 0.5+epsilon), 
-					floori(max(v0.y, v1.y, v2.y) * inv_voxel_size + 0.5+epsilon))
-				
-				if not rect2i.has_area:
-					return
-				
-				for voxel_x in range(rect2i.position.x, rect2i.end.x):
-					for voxel_y in range(rect2i.position.y, rect2i.end.y):
-						var p_xy: Vector2 = Vector2(voxel_x, voxel_y) * voxel_size + Vector2(0.5, 0.5)
-						
-						var triangle_overlap_voxel_center =\
-							(n_xy_e0.dot(p_xy) + d_xy_e0 + f_xy_e0 > 0)\
-							and (n_xy_e1.dot(p_xy) + d_xy_e1 + f_xy_e1 > 0)\
-							and (n_xy_e2.dot(p_xy) + d_xy_e2 + f_xy_e2 > 0)
-						
-						if not triangle_overlap_voxel_center:
-							continue
-						
-						# n = (a, b, c)
-						# Plane equation: ax + by + cz = 0
-						# z = -(ax+by)/c
-						var projected_z = (- n.x * p_xy.x - n.y * p_xy.y)/n.z
-						
-						var voxel_z: int = floori(projected_z * inv_voxel_size)
-						
-						var voxel_morton = Morton3.encode64(voxel_x, voxel_y, voxel_z)
-						var voxel_svolink = svo.svolink_from_morton(0, voxel_morton)
-						
-						var offset = SVOLink.offset(voxel_svolink)
-						var subgrid = SVOLink.subgrid(voxel_svolink)
-						
-						var flip_mask: int = Fn3dLookupTable.\
-							z_column_flip_bitmask_by_subgrid_index[subgrid]
-						svo.subgrid[offset] = \
-							svo.subgrid[offset] ^ flip_mask
-				, thread_priority)
+		progress.emit(ProgressStep.XY_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
+		if multi_threading:
+			var threads: Array[Thread] = []
+			threads.resize(triangles.size()/3)
+			threads.resize(0)
+			for i in range(threads.size()):
+				threads.push_back(Thread.new())
+				threads.back().start(
+					xy_plane_rasterization.bind(svo, triangles, i*3, voxel_size, inv_voxel_size),
+					thread_priority)
+			
+			for thread in threads:
+				while true:
+					if thread.is_alive():
+						await get_tree().process_frame
+					else:
+						thread.wait_to_finish()
+						break
+		else:
+			for i in range(triangles.size()/3):
+				xy_plane_rasterization(svo, triangles, i*3, voxel_size, inv_voxel_size)
 		
-		for thread in threads:
-			while true:
-				if thread.is_alive():
-					await get_tree().process_frame
-				else:
-					thread.wait_to_finish()
-					break
+		progress.emit(ProgressStep.XY_PLANE_RASTERIZATION, svo, triangles.size()/3, triangles.size()/3)
 		_write_build_log("[Done] XY plane rasterization.")
-		
 		#endregion
 		
 		#region Hierarchical inside/outside propagation
@@ -800,6 +535,7 @@ func build_navigation_data() -> SVO:
 		var svo_subgrid = svo.subgrid
 		var svo_zp = svo.zp
 		
+		var threads: Array[Thread] = []
 		threads.resize(list_head_node_offset_of_layer_0.size())
 		threads.resize(0)
 		for i in range(list_head_node_offset_of_layer_0.size()):
@@ -1071,65 +807,56 @@ static func _mortons_different_parent(
 	# Thus, m1 ^ m2 should have them == 0
 	return (m1^m2) & 0x7FFF_FFFF_FFFF_FFF8
 
+#region Multithreading functions
 
-## [param parent_layer]: Layer index of parent node.
-## [br]
-## [param parent_offset]: Offset index of parent node.
-## [br]
-## [param face]: The direction to ask parent node for neighbor.
-## [br]
-## [param neighbor_morton]: Morton code of the neighbor whose SVOLink needed to find.
-func _ask_parent_for_neighbor_svolink(
-		svo: SVO,
-		parent_layer: int, 
-		parent_offset: int, 
-		neighbor_face: Array[PackedInt64Array], # SVO.xn/yn/zn/xp/yp/zp
-		neighbor_morton: int) -> int:	
-	var parent_neighbor_svolink = neighbor_face[parent_layer][parent_offset]
-	
-	if parent_neighbor_svolink == SVOLink.NULL:
-		return SVOLink.NULL
-		
-	var parent_neighbor_layer = SVOLink.layer(parent_neighbor_svolink)
-	
-	# If parent's neighbor is on upper layer,
-	# then that upper layer node is our neighbor.
-	if parent_layer != parent_neighbor_layer:
-		return parent_neighbor_svolink
-	
-	var parent_neighbor_offset = SVOLink.offset(parent_neighbor_svolink)
-	
-	# If parent's neighbor has no child,
-	# Then parent's neighbor is our neighbor.
-	# Note: Layer 0 node always has no children. They contain only voxels.
-	if parent_neighbor_layer == 0 or\
-		svo.first_child[parent_neighbor_layer][parent_neighbor_offset] == SVOLink.NULL:
-		return parent_neighbor_svolink
-	
-	var parent_neighbor_first_child_svolink = svo.first_child[parent_neighbor_layer][parent_neighbor_offset]
-	return SVOLink.from(parent_layer - 1, 
-		(SVOLink.offset(parent_neighbor_first_child_svolink) & ~0b111)\
-		| (neighbor_morton & 0b111))
-
-
-#region Voxelize Triangles
-	
-## Merge triangles overlapping a node from [param append] to [param base].[br]
-##
-## Both [param base] and [param append] are dictionaries of: [br] 
-## Morton code - Array of vertices [br]
-## every 3 elements in Array of vertices make a triangle.[br]
-##
-## [b]NOTE:[/b] Duplicated triangles are not removed from [param base].
-func _merge_triangle_overlap_node_dicts(
-	base: Dictionary[int, PackedVector3Array], 
-	append: Dictionary[int, PackedVector3Array]) -> void:
-	for key in append.keys():
-		if base.has(key):
-			base[key].append_array(append[key])
-		else:
-			base[key] = append[key].duplicate()
+func _fill_neighbor_in_direction(
+	svo: SVO, 
+	neighbor_direction: Array[PackedInt64Array], # svo.xn/yn/zn/xp/yp/zp
+	next_morton3_calculator: Callable # Morton3.dec_x/inc_x/dec_y/inc_y/dec_z/inc_z
+	):
+	for layer in range(svo.depth - 2, -1, -1):
+		for offset in range(svo.morton[layer].size()):
+			var current_node_morton = svo.morton[layer][offset]
+			var parent_svolink = svo.parent[layer][offset]
+			var parent_layer = SVOLink.layer(parent_svolink)
+			var parent_offset = SVOLink.offset(parent_svolink)
+			var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
 			
+			var neighbor_morton = next_morton3_calculator.call(current_node_morton)
+			
+			if _mortons_different_parent(neighbor_morton, current_node_morton):
+				#region Ask parent for neighbor SVOLink
+				var parent_neighbor_svolink = neighbor_direction[parent_layer][parent_offset]
+				
+				if parent_neighbor_svolink == SVOLink.NULL:
+					return SVOLink.NULL
+					
+				var parent_neighbor_layer = SVOLink.layer(parent_neighbor_svolink)
+				
+				# If parent's neighbor is on upper layer,
+				# then that upper layer node is our neighbor.
+				if parent_layer != parent_neighbor_layer:
+					return parent_neighbor_svolink
+				
+				var parent_neighbor_offset = SVOLink.offset(parent_neighbor_svolink)
+				
+				# If parent's neighbor has no child,
+				# Then parent's neighbor is our neighbor.
+				# Note: Layer 0 node always has no children. They contain only voxels.
+				if parent_neighbor_layer == 0 or\
+					svo.first_child[parent_neighbor_layer][parent_neighbor_offset] == SVOLink.NULL:
+					return parent_neighbor_svolink
+				
+				var parent_neighbor_first_child_svolink = svo.first_child[parent_neighbor_layer][parent_neighbor_offset]
+	
+				neighbor_direction[layer][offset] = SVOLink.from(parent_layer - 1, 
+					(SVOLink.offset(parent_neighbor_first_child_svolink) & ~0b111)\
+					| (neighbor_morton & 0b111))
+				#endregion
+			else:
+				neighbor_direction[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (neighbor_morton & 0b111))
+
+
 # Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
 func voxelize_triangle(
 	vox_size: float, 
@@ -1152,49 +879,6 @@ func voxelize_triangle(
 					
 	#_write_build_log("Voxelize triangle Done. Result: %s" % result.keys().size())
 	return result
-
-## Return two Vector3i as bounding box for a range of voxels that's intersection
-## between FlyingNavigation3D and [param t_aabb].
-## [br]
-## The first vector (begin) contains the start voxel index (inclusive).
-## [br]
-## The second vector (end) is the end index (exclusive).
-## [br]
-## [b]NOTE:[/b]: (end - begin) is non-negative.
-## [br]
-## The voxel range is inside FlyingNavigation3D area.
-## [br]
-## The result includes also voxels merely touched by [param t_aabb].
-func _voxels_overlapped_by_aabb(
-	voxel_size_length: float, 
-	triangle_aabb: AABB, 
-	voxel_bound: Vector3) -> Array[Vector3i]:
-	# Begin & End
-	var b: Vector3 = triangle_aabb.position/voxel_size_length
-	var e: Vector3 = triangle_aabb.end/voxel_size_length
-	# Clamps the result between 0 and vb (exclusive)
-	var vb = voxel_bound/voxel_size_length
-	
-	# Include voxels merely touched by t_aabb
-	b.x = b.x - (1.0 if b.x == floorf(b.x) else 0.0)
-	b.y = b.y - (1.0 if b.y == floorf(b.y) else 0.0)
-	b.z = b.z - (1.0 if b.z == floorf(b.z) else 0.0)
-	e.x = e.x + (1.0 if e.x == roundf(e.x) else 0.0)
-	e.y = e.y + (1.0 if e.y == roundf(e.y) else 0.0)
-	e.z = e.z + (1.0 if e.z == roundf(e.z) else 0.0)
-	
-	#b.x = b.x - (1.0 if is_equal_approx(b.x, floorf(b.x)) else 0.0)
-	#b.y = b.y - (1.0 if is_equal_approx(b.y, floorf(b.y)) else 0.0)
-	#b.z = b.z - (1.0 if is_equal_approx(b.z, floorf(b.z)) else 0.0)
-	#e.x = e.x + (1.0 if is_equal_approx(e.x, ceilf(e.x)) else 0.0)
-	#e.y = e.y + (1.0 if is_equal_approx(e.y, ceilf(e.y)) else 0.0)
-	#e.z = e.z + (1.0 if is_equal_approx(e.z, ceilf(e.z)) else 0.0)
-	
-	# Clamp to fit inside Navigation Space
-	var bi: Vector3i = Vector3i(b.clamp(Vector3(), vb).floor())
-	var ei: Vector3i = Vector3i(e.clamp(Vector3(), vb).ceil())
-	
-	return [bi, ei]
 
 
 func _voxelize_tree_node0(
@@ -1240,6 +924,196 @@ func _voxelize_tree_node0(
 								node0_solid_state |= 1<<morton
 				svo.subgrid[offset] = node0_solid_state
 				#endregion
+				
+				
+func xy_plane_rasterization(
+	svo: SVO,
+	triangles: PackedVector3Array, 
+	triangle_start_idx: int,
+	voxel_size: float,
+	inv_voxel_size: float):
+	var v0xyz: Vector3 = triangles[triangle_start_idx+0]
+	var v1xyz: Vector3 = triangles[triangle_start_idx+1]
+	var v2xyz: Vector3 = triangles[triangle_start_idx+2]
+
+	var e0xyz: Vector3 = v1xyz - v0xyz
+	var e1xyz: Vector3 = v2xyz - v1xyz
+	var e2xyz: Vector3 = v0xyz - v2xyz
+	
+	var v0: Vector2 = Vector2(v0xyz.x, v0xyz.y)
+	var v1: Vector2 = Vector2(v1xyz.x, v1xyz.y)
+	var v2: Vector2 = Vector2(v2xyz.x, v2xyz.y)
+
+	#region Ensure consistent counter-clockwise order of vertices
+	var not_is_ccw = e2xyz.x * e0xyz.y - e0xyz.x * e2xyz.y < 0
+	if not_is_ccw:
+		# Swap v1 and v2
+		var v_temp = v1
+		v1 = v2
+		v2 = v_temp
+		
+		# Recalculate edge equations. Turn v1 into v2 and vice versa.
+		e0xyz = v2xyz - v0xyz
+		e1xyz = v1xyz - v2xyz
+		e2xyz = v0xyz - v1xyz
+	#endregion
+
+	var n: Vector3 = e0xyz.cross(e1xyz)
+
+	# Ignore projected triangles that are too thin.
+	if n.z < epsilon:
+		return
+
+	var n_xy_e0: Vector2 = Vector2(-e0xyz.y, e0xyz.x)
+	var n_xy_e1: Vector2 = Vector2(-e1xyz.y, e1xyz.x)
+	var n_xy_e2: Vector2 = Vector2(-e2xyz.y, e2xyz.x)
+
+	if n.z < 0:
+		n_xy_e0 = Vector2(e0xyz.y, -e0xyz.x)
+		n_xy_e1 = Vector2(e1xyz.y, -e1xyz.x)
+		n_xy_e2 = Vector2(e2xyz.y, -e2xyz.x)
+		
+	var d_xy_e0: float = -n_xy_e0.dot(v0)
+	var d_xy_e1: float = -n_xy_e1.dot(v1)
+	var d_xy_e2: float = -n_xy_e2.dot(v2)
+
+	var is_left_edge_e0: bool = n_xy_e0.x > 0
+	var is_left_edge_e1: bool = n_xy_e1.x > 0
+	var is_left_edge_e2: bool = n_xy_e2.x > 0
+
+	var is_top_edge_e0: bool = n_xy_e0.x == 0 and n_xy_e0.y < 0
+	var is_top_edge_e1: bool = n_xy_e1.x == 0 and n_xy_e1.y < 0
+	var is_top_edge_e2: bool = n_xy_e2.x == 0 and n_xy_e2.y < 0
+
+	var f_xy_e0: float = 0
+	var f_xy_e1: float = 0
+	var f_xy_e2: float = 0
+
+	if is_left_edge_e0 or is_top_edge_e0:
+		f_xy_e0 = epsilon
+	if is_left_edge_e1 or is_top_edge_e1:
+		f_xy_e1 = epsilon
+	if is_left_edge_e2 or is_top_edge_e2:
+		f_xy_e2 = epsilon
+
+	# Bounding box in voxel coordinate
+	#
+	# Use floori(x + 0.) instead of roundi(x) to make sure that 
+	# 0.5 cases are handled consistently
+	#
+	# Voxel coordinates are offseted by 0.5 
+	# because we are considering voxel centers
+	var rect2i: Rect2i = Rect2i()
+	rect2i.position = Vector2i(
+		floori(min(v0.x, v1.x, v2.x) * inv_voxel_size + 0.5), 
+		floori(min(v0.y, v1.y, v2.y) * inv_voxel_size + 0.5))
+	rect2i.end = Vector2i(
+		ceili(max(v0.x, v1.x, v2.x) * inv_voxel_size - 0.5), 
+		ceili(max(v0.y, v1.y, v2.y) * inv_voxel_size - 0.5))
+
+	if not rect2i.has_area:
+		return
+
+	for voxel_x in range(rect2i.position.x, rect2i.end.x):
+		for voxel_y in range(rect2i.position.y, rect2i.end.y):
+			var p_xy: Vector2 = Vector2(voxel_x+0.5, voxel_y+0.5) * voxel_size
+			#var p_xy: Vector2 = Vector2(voxel_x, voxel_y) * voxel_size + Vector2(0.5, 0.5)
+			
+			var triangle_overlap_voxel_center =\
+				(n_xy_e0.dot(p_xy) + d_xy_e0 + f_xy_e0 > 0)\
+				and (n_xy_e1.dot(p_xy) + d_xy_e1 + f_xy_e1 > 0)\
+				and (n_xy_e2.dot(p_xy) + d_xy_e2 + f_xy_e2 > 0)
+			
+			if not triangle_overlap_voxel_center:
+				continue
+			
+			# n = (a, b, c)
+			# Plane equation: ax + by + cz + d = 0
+			# z = -(ax + by + d)/c
+			# Also, shift the voxel position by size.z/2 (half the navigation cube),
+			# because the navigation cube originates from the center, 
+			# not from the corner of the cube (as we expect it to be)
+			var plane_equation_d = - n.dot(v0xyz)
+			var projected_z = -(n.x * p_xy.x + n.y * p_xy.y + plane_equation_d)/n.z
+			
+			var voxel_z: int = floori(projected_z * inv_voxel_size + 0.5)
+			
+			var voxel_morton = Morton3.encode64(voxel_x, voxel_y, voxel_z)
+			var voxel_svolink = svo.svolink_from_voxel_morton(voxel_morton)
+			
+			var offset = SVOLink.offset(voxel_svolink)
+			var subgrid = SVOLink.subgrid(voxel_svolink)
+			
+			var flip_mask: int = Fn3dLookupTable.\
+				z_column_flip_bitmask_by_subgrid_index[subgrid]
+			#var subgrid_vec3 = Morton3.decode_vec3i(subgrid)
+			#var flip_mask_str = Morton.int_to_bin(flip_mask)
+			svo.subgrid[offset] = svo.subgrid[offset] ^ flip_mask
+#endregion
+
+
+
+#region Voxelize Triangles
+	
+## Merge triangles overlapping a node from [param append] to [param base].[br]
+##
+## Both [param base] and [param append] are dictionaries of: [br] 
+## Morton code - Array of vertices [br]
+## every 3 elements in Array of vertices make a triangle.[br]
+##
+## [b]NOTE:[/b] Duplicated triangles are not removed from [param base].
+func _merge_triangle_overlap_node_dicts(
+	base: Dictionary[int, PackedVector3Array], 
+	append: Dictionary[int, PackedVector3Array]) -> void:
+	for key in append.keys():
+		if base.has(key):
+			base[key].append_array(append[key])
+		else:
+			base[key] = append[key].duplicate()
+			
+## Return two Vector3i as bounding box for a range of voxels that's intersection
+## between FlyingNavigation3D and [param t_aabb].
+## [br]
+## The first vector (begin) contains the start voxel index (inclusive).
+## [br]
+## The second vector (end) is the end index (exclusive).
+## [br]
+## [b]NOTE:[/b]: (end - begin) is non-negative.
+## [br]
+## The voxel range is inside FlyingNavigation3D area.
+## [br]
+## The result includes also voxels merely touched by [param t_aabb].
+func _voxels_overlapped_by_aabb(
+	voxel_size_length: float, 
+	triangle_aabb: AABB, 
+	voxel_bound: Vector3) -> Array[Vector3i]:
+	# Begin & End
+	var b: Vector3 = triangle_aabb.position/voxel_size_length
+	var e: Vector3 = triangle_aabb.end/voxel_size_length
+	# Clamps the result between 0 and vb (exclusive)
+	var vb = voxel_bound/voxel_size_length
+	
+	# Include voxels merely touched by t_aabb
+	b.x = b.x - (1.0 if b.x == floorf(b.x) else 0.0)
+	b.y = b.y - (1.0 if b.y == floorf(b.y) else 0.0)
+	b.z = b.z - (1.0 if b.z == floorf(b.z) else 0.0)
+	e.x = e.x + (1.0 if e.x == roundf(e.x) else 0.0)
+	e.y = e.y + (1.0 if e.y == roundf(e.y) else 0.0)
+	e.z = e.z + (1.0 if e.z == roundf(e.z) else 0.0)
+	
+	#b.x = b.x - (1.0 if is_equal_approx(b.x, floorf(b.x)) else 0.0)
+	#b.y = b.y - (1.0 if is_equal_approx(b.y, floorf(b.y)) else 0.0)
+	#b.z = b.z - (1.0 if is_equal_approx(b.z, floorf(b.z)) else 0.0)
+	#e.x = e.x + (1.0 if is_equal_approx(e.x, ceilf(e.x)) else 0.0)
+	#e.y = e.y + (1.0 if is_equal_approx(e.y, ceilf(e.y)) else 0.0)
+	#e.z = e.z + (1.0 if is_equal_approx(e.z, ceilf(e.z)) else 0.0)
+	
+	# Clamp to fit inside Navigation Space
+	var bi: Vector3i = Vector3i(b.clamp(Vector3(), vb).floor())
+	var ei: Vector3i = Vector3i(e.clamp(Vector3(), vb).ceil())
+	
+	return [bi, ei]
+
 
 #endregion
 #endregion
@@ -1361,7 +1235,12 @@ func _initialize_debug_draw_multimesh():
 		var boxmesh = BoxMesh.new()
 		boxmesh.size = Vector3.ONE * _node_size(layer, sparse_voxel_octree.depth)
 		boxmesh.material = StandardMaterial3D.new()
-		
+		boxmesh.material.albedo_color = Color(
+			255*(layer+1)/sparse_voxel_octree.depth,
+			255,
+			255,
+			0.2)
+			
 		var multimesh = MultiMesh.new()
 		multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
 		multimesh.mesh = boxmesh
@@ -1371,6 +1250,7 @@ func _initialize_debug_draw_multimesh():
 		
 		debug_draw_svonode.add_child(multimesh_instance)
 	
+	debug_draw_voxel.multimesh.instance_count = 0
 	debug_draw_voxel.multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
 	
 	debug_draw_voxel.multimesh.mesh.size = Vector3.ONE * _voxel_size()

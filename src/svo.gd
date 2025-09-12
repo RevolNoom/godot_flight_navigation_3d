@@ -103,7 +103,7 @@ func _init():
 	pass
 
 
-## Return the node with [param target_morton] in SVO's [param layer].
+## Return the SVONode with [param target_morton] in SVO's [param layer].
 ## [br]
 ## If no node with such [param target_morton] exists, return [SVOLink.NULL].
 func svolink_from_morton(layer: int, target_morton: int) -> int:
@@ -113,6 +113,18 @@ func svolink_from_morton(layer: int, target_morton: int) -> int:
 		return SVOLink.NULL
 	return SVOLink.from(layer, offset)
 
+
+## Return the SVOLink corresponding to a subgrid voxel.
+## [br]
+## If no voxel with such [param target_morton] exists in [member subgrid],
+## return [SVOLink.NULL].
+func svolink_from_voxel_morton(voxel_morton: int) -> int:
+	var layer0_morton_idx = voxel_morton >> 6
+	var subgrid_idx = voxel_morton & 0b11_1111
+	var offset = Algorithm.binary_search(morton[0], layer0_morton_idx)
+	if offset == -1:
+		return SVOLink.NULL
+	return SVOLink.from(0, offset, subgrid_idx)
 
 ## Return array of neighbors' [SVOLink]s.
 ## [br]

@@ -2,15 +2,21 @@
 class_name Fn3dLookupTable
 
 ## Used to quickly flip subgrid when rasterize triangles on xy plane.
-static var z_column_flip_bitmask_by_subgrid_index: PackedInt64Array = _generate_z_column_flip_bitmask_by_subgrid_index()
+static var z_column_flip_bitmask_by_subgrid_index: PackedInt64Array = \
+	_generate_z_column_flip_bitmask_by_subgrid_index()
+
 static func _generate_z_column_flip_bitmask_by_subgrid_index() -> PackedInt64Array:
 	var list_bitmask: PackedInt64Array = []
-	for i in range(63):
+	for i in range(64):
 		var bitmask = _get_z_column_flip_bitmask_by_subgrid_index(i)
 		list_bitmask.push_back(bitmask)
+	#var list_bitmask_str = Array(list_bitmask).map(
+		#func (bitmask): 
+			#return Morton.int_to_bin(bitmask))
 	return list_bitmask
+	
 static func _get_z_column_flip_bitmask_by_subgrid_index(subgrid_idx: int):
-	var start_z = Morton3.decode_vec3(subgrid_idx).z
+	var start_z = Morton3.decode_vec3i(subgrid_idx).z
 	var list_flip_index: PackedInt32Array = []
 	for next_z in range(start_z, 4):
 		list_flip_index.push_back(Morton3.set_z(subgrid_idx, next_z))
