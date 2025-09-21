@@ -39,8 +39,12 @@ var d_zx_e0: float = 0
 var d_zx_e1: float = 0
 var d_zx_e2: float = 0
 
-## Distance factor
+## Critical point factor.
+## Determine whether triangle plane separates two critical points.
 var d1: float = 0
+
+## (Opposite) Critical point factor
+## Determine whether triangle plane separates two critical points.
 var d2: float = 0
 
 ## Determines how "thick" the surface voxelization is.
@@ -72,7 +76,7 @@ func _init(
 	v_f32: PackedVector3Array, 
 	dp_f32: Vector3, 
 	separability: Separability, 
-	critical_point_max_x_face_shift: float = 0):
+	shift_amount_for_critical_point_on_max_x_face: float = 0):
 		
 	# Bounding box
 	aabb = AABB(v_f32[0], Vector3()).expand(v_f32[1]).expand(v_f32[2]).abs()
@@ -82,6 +86,11 @@ func _init(
 	var v2 = Dvector._new_v3(v_f32[2])
 	
 	var dp: PackedFloat64Array = Dvector._new_v3(dp_f32)
+	
+	# Schwarz's modification for active level-1 nodes:
+	# shifting all critical points that are on the voxel’s max x face
+	# in +x direction by one subgrid voxel
+	dp[0] += shift_amount_for_critical_point_on_max_x_face
 	
 	# Edge equations
 	var e0: PackedFloat64Array = [0, 0, 0]
@@ -370,22 +379,13 @@ func _init(
 				0.0 if n[2] <= 0 else dp[2]]
 			
 			# Critical point 1: c
-			# Critical point 2: dp - c
-			Dvector.sub(temp_v3_1, dp, c)
-			
-			# Schwarz's modification for active level-1 nodes:
-			# shifting all critical points that are on the voxel’s max x face
-			# in +x direction by one subgrid voxel
-			if c[0] > temp_v3_1[0]:
-				c[0] += critical_point_max_x_face_shift
-			else:
-				temp_v3_1[0] += critical_point_max_x_face_shift
-			
 			# d1 = n.dot(c-v0)
 			Dvector.sub(temp_v3_0, c, v0)
 			d1 = Dvector.dot(n, temp_v3_0)
 			
+			# Critical point 2: dp - c
 			# d2 = n.dot((dp-c)-v0)
+			Dvector.sub(temp_v3_1, dp, c)
 			Dvector.sub(temp_v3_1, temp_v3_1, v0)
 			d2 = Dvector.dot(n, temp_v3_1)
 			
@@ -432,23 +432,24 @@ func _init(
 			# temp_v2_0 = v0_zx
 			temp_v2_0[0] = v0[2]
 			temp_v2_0[1] = v0[0]
-			d_zx_e0 = maxf(0, dp[0]*n_zx_e0[0])\
-					+ maxf(0, dp[2]*n_zx_e0[1])\
+			d_zx_e0 = maxf(0, dp[2]*n_zx_e0[0])\
+					+ maxf(0, dp[0]*n_zx_e0[1])\
 					- Dvector.dot(n_zx_e0, temp_v2_0)
 					
 			temp_v2_0[0] = v1[2]
 			temp_v2_0[1] = v1[0]
-			d_zx_e1 = maxf(0, dp[0]*n_zx_e1[0])\
-					+ maxf(0, dp[2]*n_zx_e1[1])\
+			d_zx_e1 = maxf(0, dp[2]*n_zx_e1[0])\
+					+ maxf(0, dp[0]*n_zx_e1[1])\
 					- Dvector.dot(n_zx_e1, temp_v2_0)
 					
 			temp_v2_0[0] = v2[2]
 			temp_v2_0[1] = v2[0]
-			d_zx_e2 = maxf(0, dp[0]*n_zx_e2[0])\
-					+ maxf(0, dp[2]*n_zx_e2[1])\
+			d_zx_e2 = maxf(0, dp[2]*n_zx_e2[0])\
+					+ maxf(0, dp[0]*n_zx_e2[1])\
 					- Dvector.dot(n_zx_e2, temp_v2_0)
 			#endregion
-
+	
+	pass # Debug breakpoint
 
 ## Return true if triangle overlaps voxel at position [param p].[br]
 ## [br]
@@ -481,6 +482,21 @@ func _projection_2d_overlaps(p: Vector3) -> bool:
 	
 	temp_v2_2[0] = p[2]
 	temp_v2_2[1] = p[0]
+	
+	#var bxy0 = Dvector.dot(n_xy_e0, temp_v2_0) + d_xy_e0
+	#var bxy1 = Dvector.dot(n_xy_e1, temp_v2_0) + d_xy_e1
+	#var bxy2 = Dvector.dot(n_xy_e2, temp_v2_0) + d_xy_e2
+	#
+	#var byz0 = Dvector.dot(n_yz_e0, temp_v2_1) + d_yz_e0
+	#var byz1 = Dvector.dot(n_yz_e1, temp_v2_1) + d_yz_e1
+	#var byz2 = Dvector.dot(n_yz_e2, temp_v2_1) + d_yz_e2
+	#
+	#var bzx0 = Dvector.dot(n_zx_e0, temp_v2_2) + d_zx_e0
+	#var bzx1 = Dvector.dot(n_zx_e1, temp_v2_2) + d_zx_e1
+	#var bzx2 = Dvector.dot(n_zx_e2, temp_v2_2) + d_zx_e2
+	#var b = bxy0 >= 0 and bxy1 >= 0 and bxy2 >= 0 and\
+	#byz0 >= 0 and byz1 >= 0 and byz2 >= 0 and \
+	#bzx0 >= 0 and bzx1 >= 0 and bzx2 >= 0 
 	
 	return Dvector.dot(n_xy_e0, temp_v2_0) + d_xy_e0 >= 0\
 	and Dvector.dot(n_xy_e1, temp_v2_0) + d_xy_e1 >= 0\

@@ -33,7 +33,7 @@ script = ExtResource("5_kem5a")
 metadata/_custom_type_script = "uid://w5m2mbfn0dai"
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_c6xj6"]
-points = PackedVector3Array(1.451, 1.002, 1.5, 1.5, 1.5, 1.5, 1.5, 1, 1.5, 1.46, 1.02, 1.499)
+points = PackedVector3Array(-0.049, 0.002, 0, 0, 0.5, 0, 0, 0, 0, -0.04, 0.02, -0.001)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_c6xj6"]
 
@@ -86,14 +86,17 @@ transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(3, 3, 3)
 sparse_voxel_octree = ExtResource("4_6bw2v")
 pathfinder = SubResource("Resource_kem5a")
+multi_threading = false
+remove_thin_triangles = false
 depth = 6
-resolution = "256 x 256 x 256"
-perform_solid_voxelization = false
+resolution = "128 x 128 x 128"
+perform_surface_voxelization = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false
 
 [node name="SingleTriangle" type="StaticBody3D" parent="VoxelizationTargets"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5454793, 0.815619)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/SingleTriangle"]
 shape = SubResource("ConvexPolygonShape3D_c6xj6")

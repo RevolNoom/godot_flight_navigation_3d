@@ -1,0 +1,62 @@
+[gd_scene load_steps=12 format=3 uid="uid://cp82pl6sb0klp"]
+
+[ext_resource type="Script" uid="uid://kj88gtqgri1k" path="res://tests/solid_voxelization_test_solid_voxelization.gd" id="1_ocejr"]
+[ext_resource type="Script" uid="uid://bb6ejyrqomja3" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="2_qanl2"]
+[ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="3_jqjjq"]
+[ext_resource type="Resource" uid="uid://03uoqpnlgv4w" path="res://FlightNavigation3D.res" id="4_dx0yo"]
+[ext_resource type="Script" uid="uid://w5m2mbfn0dai" path="res://src/greedy_a_star.gd" id="5_8kk2d"]
+[ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="6_t1r45"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m0rpm"]
+sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+ground_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+
+[sub_resource type="Sky" id="Sky_c6xj6"]
+sky_material = SubResource("ProceduralSkyMaterial_m0rpm")
+
+[sub_resource type="Environment" id="Environment_6bw2v"]
+background_mode = 2
+sky = SubResource("Sky_c6xj6")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="Resource" id="Resource_kem5a"]
+script = ExtResource("5_8kk2d")
+metadata/_custom_type_script = "uid://w5m2mbfn0dai"
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fnnri"]
+size = Vector3(39.8, 39.8, 39.8)
+
+[node name="SolidVoxelizationTestSolidVoxelization" type="Node3D"]
+script = ExtResource("1_ocejr")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_6bw2v")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(-0.738699, -0.322985, 0.591612, 0.00995162, 0.872394, 0.488702, -0.673962, 0.366891, -0.641222, 4.39076, 2.49727, -3.36855)
+script = ExtResource("2_qanl2")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
+
+[node name="FlightNavigation3D" parent="." instance=ExtResource("3_jqjjq")]
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 32, 32, 32)
+size = Vector3(64, 64, 64)
+sparse_voxel_octree = ExtResource("4_dx0yo")
+pathfinder = SubResource("Resource_kem5a")
+multi_threading = false
+depth = 5
+resolution = "64 x 64 x 64"
+perform_surface_voxelization = false
+debug_delete_flip_flag = false
+
+[node name="VoxelizationTargets" type="Node3D" parent="."]
+
+[node name="Box" type="StaticBody3D" parent="VoxelizationTargets"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 20, 20)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box"]
+shape = SubResource("BoxShape3D_fnnri")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("6_t1r45")]

@@ -20,7 +20,7 @@ enum ProgressStep {
 	CONSTRUCT_SVO,
 	SOLID_VOXELIZATION,
 	HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
-	XY_PLANE_RASTERIZATION,
+	YZ_PLANE_RASTERIZATION,
 	PREPARE_FLAGS_AND_HEAD_NODES,
 	XP_BIT_FLIP_PROPAGATION,
 	PREPARE_FLIP_FLAG_LAYER_1,
@@ -83,15 +83,15 @@ func is_build_navigation_data_running() -> bool:
 @export_range(2, 15, 1) var depth: int = 7:
 	set(value):
 		depth = value
-		var res = 2**(value+2)
+		var res = 2**(value+1)
 		resolution = "%d x %d x %d" % [res, res, res]
 
 
 ## (Readonly) The amount of subgrid voxels on each dimension.
 ## The higher the resolution, the better the space can capture fine details.
-@export var resolution: String = "512 x 512 x 512":
+@export var resolution: String = "256 x 256 x 256":
 	set(value):
-		var res = 2**(depth+2)
+		var res = 2**(depth+1)
 		resolution = "%d x %d x %d" % [res, res, res]
 
 ## The [Resource] format to save, when voxelized via editor addon.[br]
@@ -314,7 +314,7 @@ func build_navigation_data() -> SVO:
 				else:
 					await get_tree().process_frame
 	else:
-		for i in range(0, triangles.size(), 3):
+		for i in range(0, triangles_shifted.size(), 3):
 			# TODO: Change slice() into indexing into triangle array
 			var triangle_overlap_node_dictionary = voxelize_triangle_node_1(
 				node1_size, voxel_size, triangles_shifted.slice(i, i+3))
@@ -510,17 +510,12 @@ func build_navigation_data() -> SVO:
 					# Unblock the main thread, so that the editor won't freeze
 					await get_tree().process_frame
 	else:
-		for direction in [
-			[svo.xn, Morton3.dec_x],
-			[svo.yn, Morton3.dec_y],
-			[svo.zn, Morton3.dec_z],
-			[svo.xp, Morton3.inc_x],
-			[svo.yp, Morton3.inc_y],
-			[svo.zp, Morton3.inc_z],
-		]:
-			var neighbor_direction = direction[0]
-			var next_morton3_calculator = direction[1]
-			_fill_neighbor_in_direction(svo, neighbor_direction, next_morton3_calculator)
+		_fill_neighbor_in_direction(svo, svo.xn, Morton3.dec_x)
+		_fill_neighbor_in_direction(svo, svo.yn, Morton3.dec_y)
+		_fill_neighbor_in_direction(svo, svo.zn, Morton3.dec_z)
+		_fill_neighbor_in_direction(svo, svo.xp, Morton3.inc_x)
+		_fill_neighbor_in_direction(svo, svo.yp, Morton3.inc_y)
+		_fill_neighbor_in_direction(svo, svo.zp, Morton3.inc_z)
 	#endregion
 	
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 2, 2)
@@ -543,7 +538,7 @@ func build_navigation_data() -> SVO:
 		
 		_write_build_log("Spawning %d threads to rasterize triangles in xy plane." % [triangles.size()/3])
 		
-		progress.emit(ProgressStep.XY_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
+		progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
 		if multi_threading:
 			var threads: Array[Thread] = []
 			threads.resize(triangles.size()/3)
@@ -565,7 +560,7 @@ func build_navigation_data() -> SVO:
 			for i in range(triangles.size()/3):
 				yz_plane_rasterization(svo, triangles, i*3, voxel_size, inv_voxel_size)
 		
-		progress.emit(ProgressStep.XY_PLANE_RASTERIZATION, svo, triangles.size()/3, triangles.size()/3)
+		progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, triangles.size()/3, triangles.size()/3)
 		_write_build_log("[Done] XY plane rasterization.")
 		#endregion
 		
@@ -599,7 +594,6 @@ func build_navigation_data() -> SVO:
 		var list_head_node_offset_of_layer: Array[PackedInt64Array] = []
 		list_head_node_offset_of_layer.resize(svo.morton.size())
 		for layer in range(0, svo.morton.size()):
-			list_head_node_offset_of_layer[layer].resize(svo.morton[layer].size())
 			list_head_node_offset_of_layer[layer] = svo._get_list_offset_of_head_node_in_x_direction_of_layer(layer)
 		
 		progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 3, 3)
@@ -668,8 +662,8 @@ func build_navigation_data() -> SVO:
 		var svo_inside = svo.inside
 		var children_index_on_xp_face = [1, 3, 5, 7]
 		for i in range(0, flip_flag[1].size()):
-			var first_child = svo_first_child[1][i]
-			if first_child == SVOLink.NULL:
+			var first_child_svolink = svo_first_child[1][i]
+			if first_child_svolink == SVOLink.NULL:
 				continue
 				
 			var not_is_end_of_x_linked_node_string = true
@@ -687,18 +681,44 @@ func build_navigation_data() -> SVO:
 			if not_is_end_of_x_linked_node_string:
 				continue
 			
-			var first_child_offset = SVOLink.offset(first_child)
+			var first_child_offset = SVOLink.offset(first_child_svolink)
 			var flip: int = 1
-			for child_on_xp_face_index in children_index_on_xp_face:
-				var child_on_xp_face_offset = first_child_offset + child_on_xp_face_index
-				var child_subgrid = svo_subgrid[child_on_xp_face_offset]
-				var bitmask_of_subgrid_voxels_on_face_xp = Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_xp
-				flip = flip and\
-					(bitmask_of_subgrid_voxels_on_face_xp == 
+			# Schwarz:
+			# "Note that after that, at the end of such node strings, where no
+			# more level-0 nodes abut, all four level-0 nodes with the same level-1
+			# parent have all their SG voxels with local x index 3 in agreement."
+			#
+			# Explanation: 
+			# All four level-0 nodes (at the end of x-linked string)
+			# with the same level-1 parent have all their SG voxels 
+			# with local x index 3 either all free or all solid.
+			#
+			# To prove this by contrast, let's assume that they are not in agreement.
+			# It means that the surface of the object are snuggly bounded in 
+			# those 4 level-0 nodes. 
+			# And since we have modified the surface voxelization
+			# to ensure that the final voxelization boundary consists solely
+			# of level-0 nodes, the level-0 nodes will have level-0 x+ neighbors.
+			# Because they have level-0 neighbors, they are not at the end of x-linked string.
+			#
+			# This argument proves that it is correct to only set flip flag based on 1 child.
+			# It also applies to upper layers.
+			
+			#for child_on_xp_face_index in children_index_on_xp_face:
+				#var child_on_xp_face_offset = first_child_offset + child_on_xp_face_index
+				#var child_subgrid = svo_subgrid[child_on_xp_face_offset]
+				#var bitmask_of_subgrid_voxels_on_face_xp = Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_xp
+				#flip = flip and\
+					#(bitmask_of_subgrid_voxels_on_face_xp == 
+					#(child_subgrid & bitmask_of_subgrid_voxels_on_face_xp))
+			#if flip:
+				#flip_flag[1][i] = flip
+			var child_on_xp_offset = first_child_offset + 1
+			var child_subgrid = svo_subgrid[child_on_xp_offset]
+			var bitmask_of_subgrid_voxels_on_face_xp = Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_xp
+			flip_flag[1][i] = int(bitmask_of_subgrid_voxels_on_face_xp == 
 					(child_subgrid & bitmask_of_subgrid_voxels_on_face_xp))
-					
-			if flip:
-				flip_flag[1][i] = flip
+			
 		progress.emit(ProgressStep.PREPARE_FLIP_FLAG_LAYER_1, svo, flip_flag[1].size(), flip_flag[1].size())
 		_write_build_log("[Done] Prepare layer 1 flip flag")
 		#endregion
@@ -729,20 +749,6 @@ func build_navigation_data() -> SVO:
 						thread.wait_to_finish()
 						break
 		else:
-			var list_x_link = {}
-			for head_node_offset in list_head_node_offset_of_layer_1:
-				var x_link = _get_x_link_from_head_node(svo, 1, head_node_offset)
-				list_x_link[head_node_offset] = x_link
-			var list_x_link_flat = []
-			for head_node_offset in list_x_link.keys():
-				list_x_link_flat.append_array(list_x_link[head_node_offset])
-				list_x_link_flat.push_back(SVOLink.NULL)
-			var list_offset = []
-			for svolink in list_x_link_flat:
-				if svolink != SVOLink.NULL:
-					list_offset.push_back(SVOLink.offset(svolink))
-				else:
-					list_offset.push_back(SVOLink.NULL)
 			for head_node_offset in list_head_node_offset_of_layer_1:
 				_propagate_flip_information_of_layer(1, 
 					head_node_offset, svo_xp, flip_flag, svo_inside)
@@ -772,8 +778,8 @@ func build_navigation_data() -> SVO:
 			var flip_flag_child_layer = flip_flag[layer-1]
 			progress.emit(ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2, svo, 0, flip_flag_layer.size())
 			for i in range(0, flip_flag_layer.size()):
-				var first_child = svo_first_child[layer][i]
-				if first_child == SVOLink.NULL:
+				var first_child_svolink = svo_first_child[layer][i]
+				if first_child_svolink == SVOLink.NULL:
 					continue
 				var not_is_end_of_x_linked_node_string = true
 				
@@ -790,13 +796,15 @@ func build_navigation_data() -> SVO:
 				if not_is_end_of_x_linked_node_string:
 					continue
 				
-				var first_child_offset = SVOLink.offset(first_child)
-				var flip: int = 1
-				for child_on_xp_face_index in children_index_on_xp_face:
-					var child_on_xp_face_offset = first_child_offset + child_on_xp_face_index
-					flip = flip and flip_flag_child_layer[child_on_xp_face_offset]
-				if flip:
-					flip_flag_layer[i] = flip
+				var first_child_offset = SVOLink.offset(first_child_svolink)
+				#var flip: int = 1
+				#for child_on_xp_face_index in children_index_on_xp_face:
+					#var child_on_xp_face_offset = first_child_offset + child_on_xp_face_index
+					#flip = flip and flip_flag_child_layer[child_on_xp_face_offset]
+				#if flip:
+					#flip_flag_layer[i] = flip
+				var child_on_xp_offset = first_child_offset + 1
+				flip_flag_layer[i] = flip_flag_child_layer[child_on_xp_offset]
 			progress.emit(ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2, 
 				svo, flip_flag_layer.size(), flip_flag_layer.size())
 			_write_build_log("[Done] Prepare flip flag layer %d" % [layer])
@@ -857,11 +865,12 @@ func build_navigation_data() -> SVO:
 			var svo_first_child_layer = svo.first_child[layer]
 			for offset in range(svo_inside_layer.size()):
 				if svo_inside_layer[offset]:
-					var first_child = svo_first_child_layer[offset]
-					var first_child_offset = SVOLink.offset(first_child)
+					var first_child_svolink = svo_first_child_layer[offset]
+					if first_child_svolink == SVOLink.NULL:
+						continue
+					var first_child_offset = SVOLink.offset(first_child_svolink)
 					for child in range(first_child_offset, first_child_offset + 8):
-						svo_inside_layer_child[child] =\
-							1 ^ svo_inside_layer_child[child]
+						svo_inside_layer_child[child] = svo_inside_layer_child[child] ^ 1
 							
 		progress.emit(ProgressStep.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES, svo, 
 			depth-1, depth-1)
@@ -904,6 +913,11 @@ func build_navigation_data() -> SVO:
 		# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
 		if not act1node_triangles.is_empty():
 			var act1node_triangles_keys: Array[int] = act1node_triangles.keys()
+			# Reshift triangles back to their place.
+			# TODO: Flatten dictionary into array
+			for key in act1node_triangles_keys:
+				for i in range(act1node_triangles[key].size()):
+					act1node_triangles[key][i].x -= voxel_size_x_half
 			_write_build_log("Spawning %d threads" % act1node_triangles_keys.size())
 			if multi_threading:
 				var threads: Array[Thread] = []
@@ -1015,9 +1029,14 @@ func voxelize_triangle_node_1(
 		TriangleBoxTest.Separability.SEPARATING_26,
 		voxel_x_size)
 		
+	#var aabb_before = tbt.aabb
+	
 	# Schwarz's modification: 
 	# Enlarge the triangle’s bounding box in −x direction by one SG voxel
 	tbt.aabb.position.x -= voxel_x_size
+	tbt.aabb.size.x += voxel_x_size
+	
+	#var aabb_after = tbt.aabb
 	
 	#_write_build_log("Voxelize triangle started.")
 	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, tbt.aabb, size)
@@ -1195,6 +1214,9 @@ func yz_plane_rasterization(
 			var voxel_morton = Morton3.encode64(voxel_x, voxel_y, voxel_z)
 			var voxel_svolink = svo.svolink_from_voxel_morton(voxel_morton)
 			
+			if voxel_svolink == SVOLink.NULL:
+				printerr("yz_plane_rasterization error")
+				continue
 			var offset = SVOLink.offset(voxel_svolink)
 			var subgrid = SVOLink.subgrid(voxel_svolink)
 			
@@ -1206,12 +1228,12 @@ func yz_plane_rasterization(
 
 
 func _propagate_bit_flip(
-	head_node_svolink: int, #list_head_node_offset_of_layer_0[i]
+	head_node_offset: int, #list_head_node_offset_of_layer_0[i]
 	subgrid_voxel_indexes_on_face_direction: PackedInt32Array,
 	neighbor_direction_to_flip: Array[PackedInt64Array], # svo.xp
 	svo_subgrid: PackedInt64Array, # svo.subgrid
 ):
-	var current_node_offset = head_node_svolink
+	var current_node_offset = head_node_offset
 	while true:
 		var neighbor_svolink = neighbor_direction_to_flip[0][current_node_offset]
 		if neighbor_svolink == SVOLink.NULL:

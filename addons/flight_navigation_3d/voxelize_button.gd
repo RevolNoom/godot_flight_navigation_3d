@@ -42,4 +42,5 @@ func _on_progress_dialog_close_requested() -> void:
 
 func _exit_tree() -> void:
 	if flight_navigation_3d_scene != null:
-		flight_navigation_3d_scene.build_log.disconnect(_on_log_received)
+		pass
+		#flight_navigation_3d_scene.build_log.disconnect(_on_log_received)

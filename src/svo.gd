@@ -288,8 +288,14 @@ func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> Packed
 	var list_size = 0
 	var xn_layer = xn[layer]
 	for i in range(0, xn_layer.size(), 2):
-		if xn_layer[i] == SVOLink.NULL:
+		var xn_layer_neighbor_svolink = xn_layer[i]
+		if xn_layer_neighbor_svolink == SVOLink.NULL:
 			list_size += 1
+			continue
+		var xn_layer_neighbor_layer = SVOLink.layer(xn_layer_neighbor_svolink)
+		if xn_layer_neighbor_layer > layer:
+			list_size += 1
+			continue
 			
 	var list_head_node_offset: PackedInt64Array = []
 	list_head_node_offset.resize(list_size)
@@ -297,8 +303,13 @@ func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> Packed
 	
 	# Identify head nodes
 	for i in range(0, xn_layer.size(), 2):
-		if xn_layer[i] == SVOLink.NULL:
+		var xn_layer_neighbor_svolink = xn_layer[i]
+		if xn_layer_neighbor_svolink == SVOLink.NULL:
 			list_head_node_offset.push_back(i)
+		var xn_layer_neighbor_layer = SVOLink.layer(xn_layer_neighbor_svolink)
+		if xn_layer_neighbor_layer > layer:
+			list_head_node_offset.push_back(i)
+			continue
 	return list_head_node_offset
 
 #static func _comprehensive_test(svo: SVO) -> void:
