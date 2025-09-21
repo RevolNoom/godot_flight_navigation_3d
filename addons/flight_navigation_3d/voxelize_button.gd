@@ -7,7 +7,8 @@ var flight_navigation_3d_scene: FlightNavigation3D = null:
 	set(value):
 		flight_navigation_3d_scene = value
 		if flight_navigation_3d_scene != null:
-			flight_navigation_3d_scene.build_log.connect(_on_log_received)
+			pass
+			#flight_navigation_3d_scene.build_log.connect(_on_log_received)
 			
 var th := Thread.new()
 

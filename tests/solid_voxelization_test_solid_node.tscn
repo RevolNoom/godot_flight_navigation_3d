@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://e8orjin48bd2"]
+[gd_scene load_steps=14 format=3 uid="uid://e8orjin48bd2"]
 
 [ext_resource type="Script" uid="uid://cmhh66f2dxmfw" path="res://tests/solid_voxelization_test_solid_node.gd" id="1_fnnri"]
 [ext_resource type="Script" uid="uid://bb6ejyrqomja3" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="2_t2xt8"]
@@ -24,8 +24,14 @@ glow_enabled = true
 script = ExtResource("5_slpus")
 metadata/_custom_type_script = "uid://w5m2mbfn0dai"
 
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_fnnri"]
+points = PackedVector3Array(0, 0, 0, 0, 1.998, 0, 0, 0, 1.998, -0.001, 0, 0)
+
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_c6xj6"]
-points = PackedVector3Array(0.001, 0.001, 0.001, 2.999, 0.001, 0.001, 0.001, 2.999, 0.001, 0.001, 0.001, 2.999)
+points = PackedVector3Array(0.001, 0.001, 0.001, 3.999, 0.001, 0.001, 0.001, 3.999, 0.001, 0.001, 0.001, 3.999)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fnnri"]
+size = Vector3(1.999, 1.999, 1.999)
 
 [node name="SolidVoxelizationTestSolidNode" type="Node3D"]
 script = ExtResource("1_fnnri")
@@ -52,8 +58,28 @@ perform_surface_voxelization = false
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 
 [node name="SingleTriangle" type="StaticBody3D" parent="VoxelizationTargets"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.999, -0.999, -0.999)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/SingleTriangle"]
-shape = SubResource("ConvexPolygonShape3D_c6xj6")
+shape = SubResource("ConvexPolygonShape3D_fnnri")
 
 [node name="VoxelizationTarget" parent="VoxelizationTargets/SingleTriangle" instance=ExtResource("6_flf64")]
+voxelization_mask = 0
+
+[node name="Pyramid" type="StaticBody3D" parent="VoxelizationTargets"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1)
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Pyramid"]
+shape = SubResource("ConvexPolygonShape3D_c6xj6")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Pyramid" instance=ExtResource("6_flf64")]
+voxelization_mask = 0
+
+[node name="Box" type="StaticBody3D" parent="VoxelizationTargets"]
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box"]
+shape = SubResource("BoxShape3D_fnnri")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" instance=ExtResource("6_flf64")]

@@ -45,34 +45,34 @@ class_name SVO
 	get:
 		return morton.size()
 
-## [class Morton3] coordinates
+## [Morton3] coordinates
 @export var morton: Array[PackedInt64Array] = []
 
-## [class SVOLink] to the parent SVONode in the upper layer.
+## [SVOLink] to the parent SVONode in the upper layer.
 @export var parent: Array[PackedInt64Array] = []
 
-## [class SVOLink] to the first of the 8 children SVONode in the lower layer.
+## [SVOLink] to the first of the 8 children SVONode in the lower layer.
 @export var first_child: Array[PackedInt64Array] = []
 
 ## Subgrid voxels of the deepest SVONode layer.
 @export var subgrid: PackedInt64Array = []
 
-## [class SVOLink] of X-Positive neighbor
+## [SVOLink] of X-Positive neighbor
 @export var xp: Array[PackedInt64Array] = []
 
-## [class SVOLink] of Y-Positive neighbor
+## [SVOLink] of Y-Positive neighbor
 @export var yp: Array[PackedInt64Array] = []
 
-## [class SVOLink] of Z-Positive neighbor
+## [SVOLink] of Z-Positive neighbor
 @export var zp: Array[PackedInt64Array] = []
 
-## [class SVOLink] of X-Negative neighbor
+## [SVOLink] of X-Negative neighbor
 @export var xn: Array[PackedInt64Array] = []
 
-## [class SVOLink] of Y-Negative neighbor
+## [SVOLink] of Y-Negative neighbor
 @export var yn: Array[PackedInt64Array] = []
 
-## [class SVOLink] of Z-Negative neighbor
+## [SVOLink] of Z-Negative neighbor
 @export var zn: Array[PackedInt64Array] = []
 
 ## True if this [SVO] supports inside/outside state query.
@@ -88,6 +88,12 @@ class_name SVO
 ## As such, this array is indexed similarly to other arrays ([member xn], [member yn], [member zn]...).
 ## @experimental: TODO
 @export var inside: Array[PackedByteArray] = []
+
+## [b][DEBUG][/b] Flip flags used for solid voxelization,
+## in Hierarchical inside/outside propagation step.[br]
+## It should be removed after [member FlightNavigation3D.build_navigation_data]
+## by enabling [member FlightNavigation3D.debug_delete_flip_flag].
+@export var flip: Array[PackedByteArray] = []
 
 ## True if this [SVO] supports solid percentage coverage per node.
 @export var support_coverage: bool:
@@ -277,23 +283,22 @@ func _get_voxels_on_face(
 	return voxels_on_face
 
 
-## Head nodes are nodes without -z neighbors
-func _get_list_offset_of_head_node_of_layer(layer: int) -> PackedInt64Array:
+## Head nodes are nodes without -x neighbors
+func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> PackedInt64Array:
 	var list_size = 0
-	var zn_layer = zn[layer]
-	for i in range(0, zn_layer.size(), 2):
-		if zn_layer[i] == SVOLink.NULL:
+	var xn_layer = xn[layer]
+	for i in range(0, xn_layer.size(), 2):
+		if xn_layer[i] == SVOLink.NULL:
 			list_size += 1
 			
 	var list_head_node_offset: PackedInt64Array = []
 	list_head_node_offset.resize(list_size)
+	list_head_node_offset.resize(0)
 	
 	# Identify head nodes
-	var list_head_node_offset_index = 0
-	for i in range(0, zn_layer.size(), 2):
-		if zn_layer[i] == SVOLink.NULL:
-			list_head_node_offset[list_head_node_offset_index] = i
-			list_head_node_offset_index += 1
+	for i in range(0, xn_layer.size(), 2):
+		if xn_layer[i] == SVOLink.NULL:
+			list_head_node_offset.push_back(i)
 	return list_head_node_offset
 
 #static func _comprehensive_test(svo: SVO) -> void:

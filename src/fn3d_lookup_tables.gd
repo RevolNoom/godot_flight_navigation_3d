@@ -2,24 +2,24 @@
 class_name Fn3dLookupTable
 
 ## Used to quickly flip subgrid when rasterize triangles on xy plane.
-static var z_column_flip_bitmask_by_subgrid_index: PackedInt64Array = \
-	_generate_z_column_flip_bitmask_by_subgrid_index()
+static var x_column_flip_bitmask_by_subgrid_index: PackedInt64Array = \
+	_generate_x_column_flip_bitmask_by_subgrid_index()
 
-static func _generate_z_column_flip_bitmask_by_subgrid_index() -> PackedInt64Array:
+static func _generate_x_column_flip_bitmask_by_subgrid_index() -> PackedInt64Array:
 	var list_bitmask: PackedInt64Array = []
 	for i in range(64):
-		var bitmask = _get_z_column_flip_bitmask_by_subgrid_index(i)
+		var bitmask = _get_x_column_flip_bitmask_by_subgrid_index(i)
 		list_bitmask.push_back(bitmask)
 	#var list_bitmask_str = Array(list_bitmask).map(
 		#func (bitmask): 
 			#return Morton.int_to_bin(bitmask))
 	return list_bitmask
 	
-static func _get_z_column_flip_bitmask_by_subgrid_index(subgrid_idx: int):
-	var start_z = Morton3.decode_vec3i(subgrid_idx).z
+static func _get_x_column_flip_bitmask_by_subgrid_index(subgrid_idx: int):
+	var start_x = Morton3.decode_vec3i(subgrid_idx).x
 	var list_flip_index: PackedInt32Array = []
-	for next_z in range(start_z, 4):
-		list_flip_index.push_back(Morton3.set_z(subgrid_idx, next_z))
+	for next_x in range(start_x, 4):
+		list_flip_index.push_back(Morton3.set_x(subgrid_idx, next_x))
 	var bitmask = _compress_subgrid_indexes_into_bitmask(list_flip_index)
 	return bitmask
 
@@ -35,8 +35,9 @@ static var subgrid_voxel_indexes_on_face: Dictionary[StringName, PackedInt32Arra
 	"zp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 3)),
 }
 
-static var bitmask_of_subgrid_voxels_on_face_zp: int = \
-	_compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 3)))
+static var bitmask_of_subgrid_voxels_on_face_xp: int = \
+	_compress_subgrid_indexes_into_bitmask(
+		_get_subgrid_voxel_indexes_where_component_equals(Vector3i(3, -1, -1)))
 
 ## Return all subgrid voxels which has morton code coordinate
 ## equals to some of [param v]'s x, y, z components.
@@ -71,23 +72,23 @@ static func _shift_to_svolink_index_field(list_index: PackedInt64Array) -> Packe
 	return new_list
 
 ## Used for hierarchical inside/outside propagation.
-static var neighbor_node_z_column_bits_by_subgrid_index: Dictionary[int, int] = {
-	Morton3.encode64(0,0,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(0,0,-1))),
-	Morton3.encode64(0,1,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(0,1,-1))),
-	Morton3.encode64(0,2,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(0,2,-1))),
-	Morton3.encode64(0,3,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(0,3,-1))),
-	Morton3.encode64(1,0,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(1,0,-1))),
-	Morton3.encode64(1,1,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(1,1,-1))),
-	Morton3.encode64(1,2,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(1,2,-1))),
-	Morton3.encode64(1,3,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(1,3,-1))),
-	Morton3.encode64(2,0,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(2,0,-1))),
-	Morton3.encode64(2,1,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(2,1,-1))),
-	Morton3.encode64(2,2,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(2,2,-1))),
-	Morton3.encode64(2,3,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(2,3,-1))),
-	Morton3.encode64(3,0,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(3,0,-1))),
-	Morton3.encode64(3,1,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(3,1,-1))),
-	Morton3.encode64(3,2,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(3,2,-1))),
-	Morton3.encode64(3,3,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(3,3,-1))),
+static var neighbor_node_x_column_bits_by_subgrid_index: Dictionary[int, int] = {
+	Morton3.encode64(3,0,0): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,0))),
+	Morton3.encode64(3,1,0): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,0))),
+	Morton3.encode64(3,2,0): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,0))),
+	Morton3.encode64(3,3,0): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,0))),
+	Morton3.encode64(3,0,1): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,1))),
+	Morton3.encode64(3,1,1): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,1))),
+	Morton3.encode64(3,2,1): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,1))),
+	Morton3.encode64(3,3,1): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,1))),
+	Morton3.encode64(3,0,2): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,2))),
+	Morton3.encode64(3,1,2): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,2))),
+	Morton3.encode64(3,2,2): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,2))),
+	Morton3.encode64(3,3,2): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,2))),
+	Morton3.encode64(3,0,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,3))),
+	Morton3.encode64(3,1,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,3))),
+	Morton3.encode64(3,2,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,3))),
+	Morton3.encode64(3,3,3): _compress_subgrid_indexes_into_bitmask(_get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,3))),
 }
 
 static func _compress_subgrid_indexes_into_bitmask(list_index: PackedInt32Array) -> int:
