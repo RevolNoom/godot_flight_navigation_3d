@@ -9,7 +9,7 @@ func _ready() -> void:
 	flight_nav.sparse_voxel_octree = svo
 	flight_nav.draw()
 	print("Done")
-	#_find_path_test()
+	_find_path_test()
 
 ######## TEST #############
 

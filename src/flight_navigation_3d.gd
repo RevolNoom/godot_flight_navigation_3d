@@ -32,6 +32,7 @@ enum ProgressStep {
 	PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES,
 	PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS,
 	SURFACE_VOXELIZATION,
+	CALCULATE_COVERAGE_FACTOR,
 	
 	## If used for [draw_on_step_completion], nothing will be drawn.
 	MAX_STEP,
@@ -152,7 +153,7 @@ func is_build_navigation_data_running() -> bool:
 @export_group("", "")
 #endregion
 
-func _ready():
+func _enter_tree():
 	progress.connect(_debug_draw_on_step_completion)
 	
 	
@@ -939,6 +940,51 @@ func build_navigation_data() -> SVO:
 		_write_build_log("[Done] Surface voxelization")
 	#endregion
 	
+	if calculate_coverage_factor:
+		progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 0, 2)
+		var new_svo_coverage: Array[PackedFloat64Array] = []
+		new_svo_coverage.resize(svo.morton.size())
+		for layer in range(svo.morton.size()):
+			new_svo_coverage[layer].resize(svo.morton[layer].size())
+			new_svo_coverage[layer].fill(0.0)
+		#region Calculate layer 0 coverage
+		#TODO: Speed up by breaking int64 into 8 int8,
+		# and create a look up table 
+		# of solid bits for integers from 0 to 255
+		for i in range(svo.subgrid.size()):
+			var solid_bit_count: float = 0.0
+			var current_subgrid: int = svo.subgrid[i]
+			while current_subgrid != 0:
+				var bit_str = Morton.int_to_bin(current_subgrid)
+				if current_subgrid & 1:
+					solid_bit_count += 1
+				current_subgrid = (current_subgrid >> 1) & 0x7FFF_FFFF_FFFF_FFFF
+			new_svo_coverage[0][i] = solid_bit_count / 64.0
+			#print("SG: %d. Coverage: %f" % [svo.subgrid[i], new_svo_coverage[0][i]])
+			
+		progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 1, 2)
+		#endregion
+		#region Calculate coverage for layer 1 and up
+		for layer in range(1, new_svo_coverage.size()):
+			for i in range(new_svo_coverage[layer].size()):
+				var first_child_svolink = svo.first_child[layer][i]
+				if first_child_svolink == SVOLink.NULL:
+					if svo.inside[layer][i]:
+						new_svo_coverage[layer][i] = 1.0
+					else:
+						new_svo_coverage[layer][i] = 0.0
+					continue
+				var total_coverage: float = 0
+				var first_child_offset = SVOLink.offset(first_child_svolink)
+				var child_layer = layer-1
+				for child_offset in range(first_child_offset, first_child_offset+8):
+					total_coverage += new_svo_coverage[child_layer][child_offset]
+				new_svo_coverage[layer][i] = total_coverage / 8
+		svo.coverage = new_svo_coverage
+		#endregion 
+		
+		progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 2, 2)
+		
 	_is_build_navigation_data_running = false
 	return svo
 
