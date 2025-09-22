@@ -86,11 +86,9 @@ transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(3, 3, 3)
 sparse_voxel_octree = ExtResource("4_6bw2v")
 pathfinder = SubResource("Resource_kem5a")
-multi_threading = false
 remove_thin_triangles = false
 depth = 6
 resolution = "128 x 128 x 128"
-perform_surface_voxelization = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false
@@ -151,6 +149,8 @@ transform = Transform3D(1, 1.4901161e-08, 2.9802322e-08, 0, 1, 0, 2.9802322e-08,
 mesh = SubResource("CapsuleMesh_gt65f")
 
 [node name="VoxelizationTarget" parent="VoxelizationTargets/Capsule" instance=ExtResource("3_m0rpm")]
+radial_segments = 32
+rings = 16
 
 [node name="Cylinder" type="AnimatableBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(1, 0, 0, 0, 0.822204, 0.569193, 0, -0.569193, 0.822204, 1.39317, 0.545422, 1.65847)

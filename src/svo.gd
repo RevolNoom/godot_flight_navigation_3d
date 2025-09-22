@@ -235,17 +235,17 @@ func _get_voxels_on_face(
 	if layer == 0:
 		var subgrid_voxels: PackedInt32Array
 		if face == xn:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["xn"]
+			subgrid_voxels = subgrid_voxel_indexes_on_face["xn"]
 		elif face == xp:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["xp"]
+			subgrid_voxels = subgrid_voxel_indexes_on_face["xp"]
 		elif face == yn:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["yn"]
+			subgrid_voxels = subgrid_voxel_indexes_on_face["yn"]
 		elif face == yp:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["yp"]
+			subgrid_voxels = subgrid_voxel_indexes_on_face["yp"]
 		elif face == zn:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["zn"]
+			subgrid_voxels = subgrid_voxel_indexes_on_face["zn"]
 		elif face == zp:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face["zp"]
+			subgrid_voxels = subgrid_voxel_indexes_on_face["zp"]
 		var subgrid_voxel_on_face: PackedInt64Array = []
 		subgrid_voxel_on_face.resize(subgrid_voxels.size())
 		for i in range(subgrid_voxels.size()):
@@ -263,17 +263,17 @@ func _get_voxels_on_face(
 		[first_child_svolink, first_child_svolink, first_child_svolink, first_child_svolink]
 	var children_indexes: PackedInt64Array
 	if face == xn:
-		children_indexes = Fn3dLookupTable.children_node_by_face["xn"]
+		children_indexes = children_node_by_face["xn"]
 	elif face == xp:
-		children_indexes = Fn3dLookupTable.children_node_by_face["xp"]
+		children_indexes = children_node_by_face["xp"]
 	elif face == yn:
-		children_indexes = Fn3dLookupTable.children_node_by_face["yn"]
+		children_indexes = children_node_by_face["yn"]
 	elif face == yp:
-		children_indexes = Fn3dLookupTable.children_node_by_face["yp"]
+		children_indexes = children_node_by_face["yp"]
 	elif face == zn:
-		children_indexes = Fn3dLookupTable.children_node_by_face["zn"]
+		children_indexes = children_node_by_face["zn"]
 	elif face == zp:
-		children_indexes = Fn3dLookupTable.children_node_by_face["zp"]
+		children_indexes = children_node_by_face["zp"]
 	
 	var voxels_on_face: PackedInt64Array = []
 	for i in range(4):
@@ -312,59 +312,66 @@ func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> Packed
 			continue
 	return list_head_node_offset
 
-#static func _comprehensive_test(svo: SVO) -> void:
-	#print("Testing SVO Validity")
-	#_test_for_orphan(svo)
-	#_test_for_null_morton(svo)
-	#print("SVO Validity Test completed")
-#
-#
-#static func _test_for_null_morton(svo: SVO):
-	#print("Testing SVO for null morton")
-	#var unnamed = 0
-	#var v_it = SVOIteratorSequential.v_begin(svo)
-	#while not v_it.end():
-		#var h_it = SVOIteratorSequential.h_begin(svo, v_it.svolink)
-		#if h_it.morton == SVOLink.NULL:
-			#unnamed += 1
-			#printerr("NULL morton: Layer %d Node %d" % [h_it.layer, h_it.offset])
-	#var err_str = "Completed with %d null mortons%s found" \
-					#% [unnamed, "s" if unnamed > 1 else ""]
-	#if unnamed:
-		#printerr(err_str)
-	#else:
-		#print(err_str)
-		
-		
-## Create a debug svo with only voxels on the surfaces
-#static func get_debug_svo(layer: int) -> SVO:
-	#var layer1_side_length = 2 ** (layer-4)
-	#var act1nodes = []
-	#for i in range(8**(layer-4)):
-		#var node1 = Morton3.decode_vec3i(i)
-		#if node1.x in [0, layer1_side_length - 1]\
-		#or node1.y in [0, layer1_side_length - 1]\
-		#or node1.z in [0, layer1_side_length - 1]:
-			#act1nodes.append(i)
-			#
-	#var svo:= SVO.create_new(layer, act1nodes)
-	#
-	#var layer0_side_length = 2 ** (layer-3)
-	#for node0 in svo.layers[0]:
-		#node0 = node0 as SVONode
-		#var n0pos := Morton3.decode_vec3i(node0.morton)
-		#if n0pos.x in [0, layer0_side_length - 1]\
-		#or n0pos.y in [0, layer0_side_length - 1]\
-		#or n0pos.z in [0, layer0_side_length - 1]:
-			#for i in range(64):
-				## Voxel position (relative to its node0 origin)
-				#var vpos := Morton3.decode_vec3i(i)
-				#if (n0pos.x == 0 and vpos.x == 0)\
-				#or (n0pos.y == 0 and vpos.y == 0)\
-				#or (n0pos.z == 0 and vpos.z == 0)\
-				#or (n0pos.x == layer0_side_length - 1 and vpos.x == 3)\
-				#or (n0pos.y == layer0_side_length - 1 and vpos.y == 3)\
-				#or (n0pos.z == layer0_side_length - 1 and vpos.z == 3):
-					#node0.subgrid |= 1<<i
-	#return svo
+#region Lookup Tables
+# Lookup tables are not marked 'static'
+# because static vars don't work when used in editor mode.
+
+## Indexes of subgrid voxel that makes up a face of a layer-0 node
+var subgrid_voxel_indexes_on_face: Dictionary[StringName, PackedInt32Array] =\
+	generate_lut_subgrid_voxel_indexes_on_face()
+
+## Each face of a node has 4 children. Their indexes are listed here.
+## Each index are shifted 6 bits to be added to SVOLink index field directly
+var children_node_by_face: Dictionary[StringName, PackedInt64Array] =\
+	generate_lut_children_node_by_face()
+
+#endregion
+
+#region Generate Lookup Tables
+
+## Indexes of subgrid voxel that makes up a face of a layer-0 node
+static func generate_lut_subgrid_voxel_indexes_on_face() -> Dictionary[StringName, PackedInt32Array]:
+	return {
+		"xn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(0, -1, -1)),
+		"xp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(3, -1, -1)),
+		"yn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, 0, -1)),
+		"yp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, 3, -1)),
+		"zn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 0)),
+		"zp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 3)),
+	}
+
+## Return all subgrid voxels which has morton code coordinate
+## equals to some of [param v]'s x, y, z components.
+## [br]
+## [param v]'s component is -1 if you want to disable checking that component.
+static func _get_subgrid_voxel_indexes_where_component_equals(v: Vector3i) -> PackedInt32Array:
+	var result: PackedInt32Array = []
+	for i in range(64):
+		var mv = Morton3.decode_vec3i(i)
+		if (v.x == -1 or mv.x == v.x) and\
+			(v.y == -1 or mv.y == v.y) and\
+			(v.z == -1 or mv.z == v.z):
+			result.push_back(i)
+	return result
+
+
+static func generate_lut_children_node_by_face() -> Dictionary[StringName, PackedInt64Array]:
+	return {
+		"xn": _shift_to_svolink_index_field([0, 2, 4, 6]),
+		"xp": _shift_to_svolink_index_field([1, 3, 5, 7]),
+		"yn": _shift_to_svolink_index_field([0, 1, 4, 5]),
+		"yp": _shift_to_svolink_index_field([2, 3, 6, 7]),
+		"zn": _shift_to_svolink_index_field([0, 1, 2, 3]),
+		"zp": _shift_to_svolink_index_field([4, 5, 6, 7]),
+	}
+	
+	
+static func _shift_to_svolink_index_field(list_index: PackedInt64Array) -> PackedInt64Array:
+	var new_list: PackedInt64Array = []
+	new_list.resize(list_index.size())
+	for i in range(new_list.size()):
+		new_list[i] = list_index[i] << 6
+	return new_list
+
+#endregion
 	
