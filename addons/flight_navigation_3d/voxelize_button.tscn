@@ -11,10 +11,10 @@ text = "Voxelize"
 script = ExtResource("1_3cbmt")
 
 [node name="ProgressDialog" type="Window" parent="."]
-mode = 1
+oversampling_override = 1.0
 title = "Progress Log"
-initial_position = 5
-size = Vector2i(500, 300)
+initial_position = 4
+size = Vector2i(800, 600)
 visible = false
 always_on_top = true
 
@@ -24,6 +24,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+vertical_scroll_mode = 2
 
 [node name="Log" type="Label" parent="ProgressDialog/ScrollContainer"]
 custom_minimum_size = Vector2(100, 100)

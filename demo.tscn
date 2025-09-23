@@ -83,12 +83,11 @@ mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
 transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
-size = Vector3(3, 3, 3)
+size = Vector3(4, 4, 4)
 sparse_voxel_octree = ExtResource("4_6bw2v")
 pathfinder = SubResource("Resource_kem5a")
-remove_thin_triangles = false
-depth = 6
-resolution = "128 x 128 x 128"
+depth = 9
+resolution = "1024 x 1024 x 1024"
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false

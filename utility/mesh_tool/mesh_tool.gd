@@ -260,36 +260,13 @@ static func convert_local_aabb_to_global(local_aabb: AABB, global_transform: Tra
 	global_aabb.end *= global_transform
 	return global_aabb
 
+
 static func print_faces(faces: PackedVector3Array):
 	var faces_str = ""
 	for i in range(0, faces.size(), 3):
 		faces_str += "\t%v, %v, %v,\n\n" % [faces[i], faces[i+1], faces[i+2]]
 	print("[\n%s\n]" % faces_str)
 
-## Clean up generated faces from CSG shapes by doing these things:[br]
-## - Remove all faces with 2 or more vertices identical to each other [br]
-## - Remove all faces with 3 vertices lie on the same line[br]
-## - [NOT YET SUPPORTED] Remove identical faces (same set of 3 points)[br]
-static func remove_thin_triangles(faces: PackedVector3Array) -> PackedVector3Array:
-	#print("Before remove: %d faces" % [faces.size()/3])
-	var result: PackedVector3Array = []
-	result.resize(faces.size())
-	result.resize(0)
-	for i in range(0, faces.size(), 3):
-		var p0 = faces[i]
-		var p1 = faces[i+1]
-		var p2 = faces[i+2]
-		var line_direction = p1-p0
-		if line_direction == Vector3.ZERO\
-			or p2 == p1\
-			or p2 == p0:
-			continue # 2 identical vertices
-		var t = (p2-p0)/line_direction
-		if t.x == t.y and t.y == t.z:
-			continue # 3 vertices on a line
-		result.append_array([p0, p1, p2])
-	#print("After remove: %d faces" % [result.size()/3])
-	return result
 
 static func create_array_mesh_from_faces(faces: PackedVector3Array) -> ArrayMesh:
 	var arrays = []

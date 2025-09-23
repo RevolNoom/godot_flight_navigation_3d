@@ -80,13 +80,12 @@ class_name SVO
 	get:
 		return inside.size()
 
-## Determine whether a node is inside or outside an object. [br]
+## Use [member is_solid()] to determine whether a node is inside or outside an object. [br]
 ## [b]NOTE:[/b] Although it is possible to pack each inside state as a bit 
 ## (8 inside states in 1 byte),
 ## it was thought that the trade off between memory saved 
 ## and code coherence was not worth it. 
 ## As such, this array is indexed similarly to other arrays ([member xn], [member yn], [member zn]...).
-## @experimental: TODO
 @export var inside: Array[PackedByteArray] = []
 
 ## [b][DEBUG][/b] Flip flags used for solid voxelization,
@@ -194,12 +193,14 @@ func neighbors_of(svolink: int) -> PackedInt64Array:
 	return neighbors
 
 
-## Return true if [param svolink] refers to a solid voxel
+## Return true if [param svolink] refers to a solid voxel or a solid node.
 func is_solid(svolink: int) -> bool:
 	var layer = SVOLink.layer(svolink)
 	var offset = SVOLink.offset(svolink)
-	var subgrid_index = SVOLink.subgrid(svolink)
-	return layer == 0 and subgrid[offset] & (1 << subgrid_index)
+	if layer == 0:
+		var subgrid_index = SVOLink.subgrid(svolink)
+		return subgrid[offset] & (1 << subgrid_index)
+	return inside[layer][offset] and first_child[layer][offset] == SVOLink.NULL
 
 
 ## Calculate the center of the voxel/node
@@ -218,8 +219,6 @@ func get_center(svolink: int) -> Vector3:
 	
 	var half_a_node = Vector3(0.5, 0.5, 0.5)
 	return (node_corner_position + half_a_node) * node_size 
-
-
 
 
 ## Return all highest-resolution voxels that make up the face of node [param svolink][br]
@@ -311,6 +310,48 @@ func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> Packed
 			list_head_node_offset.push_back(i)
 			continue
 	return list_head_node_offset
+	
+
+func get_list_solid_bit_count_by_subgrid(
+	async_context: Signal, 
+	thread_priority: Thread.Priority) -> PackedInt64Array:
+	var list_solid_bit_count_by_subgrid: PackedInt64Array = \
+		subgrid.duplicate()
+	list_solid_bit_count_by_subgrid.fill(0)
+	await Parallel.execute_batched(
+		async_context, 
+		list_solid_bit_count_by_subgrid.size(),
+		thread_priority,
+		100000,
+		_parallel_count_solid_bit_by_subgrid.bind(
+			subgrid,
+			list_solid_bit_count_by_subgrid
+			))
+	return list_solid_bit_count_by_subgrid
+
+
+func _parallel_count_solid_bit_by_subgrid(
+	_batch_index: int,
+	batch_start: int,
+	batch_end: int,
+	svo_subgrid: PackedInt64Array,
+	list_solid_bit_count_by_subgrid: PackedInt64Array):
+		for layer0_offset in range(batch_start, batch_end):
+			list_solid_bit_count_by_subgrid[layer0_offset] = \
+				_count_bit_1(svo_subgrid[layer0_offset])
+
+
+#TODO: Speed up by breaking int64 into 8 int8,
+# and create a look up table 
+# of solid bits for integers from 0 to 255
+func _count_bit_1(number: int) -> int:
+	var bit_1_count: int = 0
+	while number != 0:
+		if number & 1:
+			bit_1_count += 1
+		number = (number >> 1) & 0x7FFF_FFFF_FFFF_FFFF
+	return bit_1_count
+
 
 #region Lookup Tables
 # Lookup tables are not marked 'static'
