@@ -10,7 +10,6 @@ var flight_navigation_3d_scene: FlightNavigation3D = null:
 		flight_navigation_3d_scene = value
 		if flight_navigation_3d_scene != null:
 			flight_navigation_3d_scene.progress.connect(_on_progress)
-			
 
 func _exit_tree() -> void:
 	if flight_navigation_3d_scene != null:

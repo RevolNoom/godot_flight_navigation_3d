@@ -7,6 +7,16 @@
 extends RefCounted
 class_name Parallel
 
+
+static func make_start_write_index_array_from_count_array(
+	count_array: PackedInt64Array) -> PackedInt64Array:
+	var start_write_index_array: PackedInt64Array = count_array.duplicate()
+	start_write_index_array[0] = 0
+	for i in range(count_array.size()-1):
+		start_write_index_array[i+1] = start_write_index_array[i] + count_array[i]
+	return start_write_index_array
+
+
 ## Count the number of elements in [param array_type]
 ## that equals to [param value], using operator==.
 static func count(
@@ -111,8 +121,7 @@ static func count_if_by_batch(
 		max_batch_size,
 		_parallel_count_if_by_batch.bind(
 			list_count_if_by_batch, 
-			predicate, 
-			batch_size))
+			predicate))
 	
 	return {
 		"batch_size": batch_size,

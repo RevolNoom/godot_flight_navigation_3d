@@ -113,8 +113,8 @@ func _init():
 ## If no node with such [param target_morton] exists, return [SVOLink.NULL].
 func svolink_from_morton(layer: int, target_morton: int) -> int:
 	var morton_layer = morton[layer]
-	var offset = Algorithm.binary_search(morton_layer, target_morton)
-	if offset == -1:
+	var offset = morton_layer.bsearch(target_morton)
+	if offset >= morton_layer.size() or morton_layer[offset] != target_morton:
 		return SVOLink.NULL
 	return SVOLink.from(layer, offset)
 
@@ -126,8 +126,9 @@ func svolink_from_morton(layer: int, target_morton: int) -> int:
 func svolink_from_voxel_morton(voxel_morton: int) -> int:
 	var layer0_morton_idx = voxel_morton >> 6
 	var subgrid_idx = voxel_morton & 0b11_1111
-	var offset = Algorithm.binary_search(morton[0], layer0_morton_idx)
-	if offset == -1:
+	var morton_layer = morton[0]
+	var offset = morton_layer.bsearch(layer0_morton_idx)
+	if offset >= morton_layer.size() or morton_layer[offset] != layer0_morton_idx:
 		return SVOLink.NULL
 	return SVOLink.from(0, offset, subgrid_idx)
 
@@ -305,6 +306,7 @@ func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> Packed
 		var xn_layer_neighbor_svolink = xn_layer[i]
 		if xn_layer_neighbor_svolink == SVOLink.NULL:
 			list_head_node_offset.push_back(i)
+			continue
 		var xn_layer_neighbor_layer = SVOLink.layer(xn_layer_neighbor_svolink)
 		if xn_layer_neighbor_layer > layer:
 			list_head_node_offset.push_back(i)

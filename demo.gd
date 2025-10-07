@@ -5,7 +5,7 @@ extends Node3D
 func _ready() -> void:
 	#TriangleBoxTest_ReferenceCode._automated_test()
 	#TriangleBoxTest._automated_test()
-	var svo = await flight_nav.build_navigation_data()
+	var svo = await flight_nav.build_navigation()
 	flight_nav.sparse_voxel_octree = svo
 	flight_nav.draw()
 	print("Done")

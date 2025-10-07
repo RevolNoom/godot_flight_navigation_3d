@@ -47,7 +47,7 @@ sparse_voxel_octree = ExtResource("4_d5vvn")
 pathfinder = SubResource("Resource_kem5a")
 multi_threading = false
 depth = 4
-resolution = "64 x 64 x 64"
+resolution = "32 x 32 x 32"
 perform_surface_voxelization = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]

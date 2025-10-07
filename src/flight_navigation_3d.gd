@@ -1,11 +1,10 @@
 ## Voxelize all FlightNavigationTarget inside this area
+##
+## TODO: Remove redundant .fill() in initialization
 @tool
 @warning_ignore_start("integer_division")
 extends CSGBox3D
 class_name FlightNavigation3D
-
-## [param time_elapsed]: milliseconds since last log
-signal build_log(message: String, time_string: String, time_elapsed: int)
 
 signal progress(step: ProgressStep, svo: SVO, work_completed: int, total_work: int)
 
@@ -137,28 +136,18 @@ enum ProgressStep {
 ## Used for testing purpose
 @export var debug_delete_flip_flag: bool = true
 
-## Used for testing purpose
-@export var debug_draw_on_step_completion: ProgressStep = ProgressStep.MAX_STEP
-
 @export_subgroup("")
 
 @export_subgroup("", "")
 @export_group("", "")
 #endregion
 
-func _enter_tree():
-	progress.connect(_debug_draw_on_step_completion)
-	
-	
-func _exit_tree():
-	progress.disconnect(_debug_draw_on_step_completion)
-
 
 ## Return a path that connects [param from] and [param to].[br]
 ## [param from], [param to] are in global coordinate.[br]
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
-	var from_svolink = get_svolink_of(from)
-	var to_svolink = get_svolink_of(to)
+	var from_svolink: int = get_svolink_of(from)
+	var to_svolink: int = get_svolink_of(to)
 	var svolink_path: Array = pathfinder.find_path(
 		from_svolink, to_svolink, sparse_voxel_octree)
 	var vec3_path = PackedVector3Array()
@@ -177,13 +166,16 @@ const epsilon: float = 0.0000001
 func build_navigation() -> SVO:
 	#region Copy variables to make build_navigation() reentrant 
 	var new_depth = depth
+	var new_thread_priority = thread_priority
 	var new_voxelization_mask = voxelization_mask
-
-	var voxel_size = _node_size(-2, new_depth)
-	var node0_size = _node_size(0, new_depth)
-	var node1_size = _node_size(1, new_depth)
-	var node0_size_vec3 = Vector3(node0_size, node0_size, node0_size)
-	var offset_by_half_voxel_size_x = Vector3(voxel_size/2, 0, 0)
+	var flight_navigation_size = size
+	#endregion
+	
+	#region Commonly used variables
+	var async_context = get_tree().process_frame
+	var voxel_size: Vector3 = _node_size(flight_navigation_size, -2, new_depth)
+	
+	var offset_by_half_voxel_size_x = Vector3(voxel_size.x/2, 0, 0)
 	var origin_offset = _origin_offset()
 	#endregion
 	
@@ -211,7 +203,7 @@ func build_navigation() -> SVO:
 	#
 	# call_deferred() is used to work in multithreading
 	add_child.call_deferred(union_voxelization_target_shapes)
-	await get_tree().process_frame # Wait for call_deferred to complete
+	await async_context # Wait for call_deferred to complete
 	
 	for target in target_array:
 		var csg_shapes = target.get_csg()
@@ -223,7 +215,7 @@ func build_navigation() -> SVO:
 	# Since CSG nodes do not update immediately, calling bake_static_mesh() 
 	# right away does not return the actual result.
 	# So we must wait until next frame.
-	await get_tree().process_frame
+	await async_context
 	var mesh = bake_static_mesh()
 	if debug_delete_csg:
 		remove_child(union_voxelization_target_shapes)
@@ -244,41 +236,36 @@ func build_navigation() -> SVO:
 		var cleaned_triangles: PackedVector3Array
 		if multi_threading:
 			var count_result = await Parallel.count_if_by_batch(
-				get_tree().process_frame, 
+				async_context, 
 				triangles.size()/3, 
-				thread_priority,
+				new_thread_priority,
 				10000,
 				_parallel_is_non_zero_area_triangle.bind(triangles)
 			)
 			var batch_size = count_result.batch_size
 			var list_count_if_by_batch = count_result.list_count_if_by_batch
-			for count in list_count_if_by_batch:
-				fat_triangle_count += count
+			fat_triangle_count = Fn3dUtility.sum_array_number(list_count_if_by_batch)
 			cleaned_triangles.resize(fat_triangle_count*3)
 			
-			var list_start_write_index: PackedInt64Array = [0]
-			list_start_write_index.append_array(list_count_if_by_batch.duplicate())
-			list_start_write_index.resize(list_count_if_by_batch.size())
-			
-			for i in range(1, list_start_write_index.size()):
-				list_start_write_index[i] += list_start_write_index[i-1]
+			var list_start_write_index: PackedInt64Array = \
+				Parallel.make_start_write_index_array_from_count_array(
+					list_count_if_by_batch)
 			
 			await Parallel.execute_batched(
-				get_tree().process_frame, 
-				list_start_write_index.size(),
-				thread_priority,
+				async_context, 
+				triangles.size()/3,
+				new_thread_priority,
 				batch_size,
 				_parallel_batched_write_clean_triangles.bind(
 					triangles,
 					cleaned_triangles,
-					list_start_write_index,
-					batch_size,
+					list_start_write_index
 				))
 		else:
 			for i in range(triangles.size()/3):
 				if _parallel_is_non_zero_area_triangle(i, triangles):
 					fat_triangle_count += 1
-			cleaned_triangles.resize(fat_triangle_count)
+			cleaned_triangles.resize(fat_triangle_count*3)
 			cleaned_triangles.resize(0)
 			for i in range(triangles.size()/3):
 				if _parallel_is_non_zero_area_triangle(i, triangles):
@@ -296,9 +283,9 @@ func build_navigation() -> SVO:
 	progress.emit(ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE, null, 0, triangles.size())
 	if multi_threading:
 		await Parallel.execute_batched(
-			get_tree().process_frame, 
+			async_context, 
 			triangles.size(),
-			thread_priority,
+			new_thread_priority,
 			1000000,
 			_parallel_batched_offset_triangle.bind(
 				triangles,
@@ -344,9 +331,9 @@ func build_navigation() -> SVO:
 	
 	if multi_threading:
 		await Parallel.execute_batched(
-			get_tree().process_frame, 
+			async_context, 
 			triangles_shifted.size(),
-			thread_priority,
+			new_thread_priority,
 			100000,
 			_parallel_batched_offset_triangle.bind(
 				triangles_shifted,
@@ -357,6 +344,9 @@ func build_navigation() -> SVO:
 			triangles_shifted[i] += offset_by_half_voxel_size_x
 	#endregion
 	
+	# TODO: Make this PackedInt64Array
+	var list_active_layer_1_morton: Array = []
+	
 	if multi_threading:
 		var threads: Array[Thread] = []
 		threads.resize(triangles_shifted.size() / 3)
@@ -366,10 +356,9 @@ func build_navigation() -> SVO:
 			# TODO: Change slice() into indexing into triangle array
 			var err = threads.back().start(
 				voxelize_triangle_node_1.bind(
-					node1_size, 
 					voxel_size, 
 					triangles_shifted.slice(i, i+3)), 
-					thread_priority)
+					new_thread_priority)
 			if err != OK:
 				pass
 		
@@ -382,24 +371,24 @@ func build_navigation() -> SVO:
 					_merge_triangle_overlap_node_dicts(act1node_triangles, triangles_overlap_node_dictionary)
 					break
 				else:
-					await get_tree().process_frame
+					await async_context
 	else:
 		for i in range(0, triangles_shifted.size(), 3):
 			# TODO: Change slice() into indexing into triangle array
 			var triangle_overlap_node_dictionary = voxelize_triangle_node_1(
-				node1_size, voxel_size, triangles_shifted.slice(i, i+3))
+				voxel_size, triangles_shifted.slice(i, i+3))
 			_merge_triangle_overlap_node_dicts(act1node_triangles, triangle_overlap_node_dictionary)
 	progress.emit(ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES, null, triangles.size()/3, triangles.size()/3)
 	#endregion
 	
-	var list_active_layer_1_node_morton_code = act1node_triangles.keys()
+	list_active_layer_1_morton = act1node_triangles.keys()
 	
 	#region Construct SVO
 	var svo = SVO.new()
 	
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 0, 2)
 	
-	if list_active_layer_1_node_morton_code.size() == 0:
+	if list_active_layer_1_morton.size() == 0:
 		printerr("No layer 1 node found")
 		return null
 		
@@ -415,10 +404,10 @@ func build_navigation() -> SVO:
 	svo.zn.resize(new_depth)
 	
 	#region Construct from bottom up
-	list_active_layer_1_node_morton_code.sort()
+	list_active_layer_1_morton.sort()
 	
 	#region Initialize layer 0
-	var layer_0_size = list_active_layer_1_node_morton_code.size() * 8
+	var layer_0_size = list_active_layer_1_morton.size() * 8
 	
 	svo.morton[0].resize(layer_0_size)
 	svo.parent[0].resize(layer_0_size)
@@ -443,7 +432,7 @@ func build_navigation() -> SVO:
 	svo.zn[0].fill(SVOLink.NULL)
 	#endregion
 	
-	var current_active_layer_nodes = list_active_layer_1_node_morton_code
+	var current_active_layer_nodes = list_active_layer_1_morton
 	
 	# An array to hold the parent index on above layer of the current layer in building.
 	# It is kept outside the for-loop to reduce memory re-allocation.
@@ -557,9 +546,9 @@ func build_navigation() -> SVO:
 		Morton3.inc_x, Morton3.inc_y, Morton3.inc_z]
 	if multi_threading:
 		await Parallel.execute(
-			get_tree().process_frame, 
+			async_context, 
 			list_neighbor_direction.size(),
-			thread_priority,
+			new_thread_priority,
 			_parallel_fill_neighbor_in_direction.bind(
 				svo, 
 				list_neighbor_direction, 
@@ -581,22 +570,23 @@ func build_navigation() -> SVO:
 		progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 0, 2)
 		
 		#region YZ plane rasterization, and projection on x column
-		# Used to convert from meter unit to voxel unit
-		var inv_voxel_size = 1 / voxel_size
 		progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
 		if multi_threading:
 			await Parallel.execute(
-				get_tree().process_frame, 
+				async_context, 
 				triangles.size()/3,
-				thread_priority,
-				yz_plane_rasterization.bind(
+				new_thread_priority,
+				_parallel_yz_plane_rasterization.bind(
 					svo, 
 					triangles, 
-					voxel_size, 
-					inv_voxel_size))
+					voxel_size,
+					_x_column_flip_bitmask_by_subgrid_index,
+					flight_navigation_size))
 		else:
 			for i in range(triangles.size()/3):
-				yz_plane_rasterization(i, svo, triangles, voxel_size, inv_voxel_size)
+				_parallel_yz_plane_rasterization(i, svo, triangles, voxel_size,
+				_x_column_flip_bitmask_by_subgrid_index,
+				flight_navigation_size)
 		
 		progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, triangles.size()/3, triangles.size()/3)
 		#endregion
@@ -648,9 +638,9 @@ func build_navigation() -> SVO:
 		
 		if multi_threading:
 			await Parallel.execute(
-				get_tree().process_frame, 
+				async_context, 
 				list_head_node_offset_of_layer_0.size(),
-				thread_priority,
+				new_thread_priority,
 				_parallel_propagate_bit_flip.bind(
 						list_head_node_offset_of_layer_0,
 						subgrid_voxel_indexes_on_face_xp,
@@ -737,9 +727,9 @@ func build_navigation() -> SVO:
 			
 		if multi_threading:
 			await Parallel.execute(
-				get_tree().process_frame, 
+				async_context, 
 				list_head_node_offset_of_layer[1].size(),
-				thread_priority,
+				new_thread_priority,
 				_parallel_propagate_flip_and_inside.bind(
 					1, 
 					list_head_node_offset_of_layer,
@@ -807,9 +797,9 @@ func build_navigation() -> SVO:
 				svo, 0, list_head_node_offset_of_layer[layer].size())
 			if multi_threading:
 				await Parallel.execute(
-					get_tree().process_frame, 
+					async_context, 
 					list_head_node_offset_of_layer[layer].size(),
-					thread_priority,
+					new_thread_priority,
 					_parallel_propagate_flip_and_inside.bind(
 						layer, 
 						list_head_node_offset_of_layer,
@@ -897,28 +887,22 @@ func build_navigation() -> SVO:
 					act1node_triangles[key][i] -= offset_by_half_voxel_size_x
 			if multi_threading:
 				await Parallel.execute(
-					get_tree().process_frame, 
+					async_context, 
 					act1node_triangles_keys.size(),
-					thread_priority,
-					_voxelize_tree_node0.bind(
+					new_thread_priority,
+					_parallel_voxelize_tree_node0.bind(
 						act1node_triangles_keys,
 						act1node_triangles,
 						svo,
-						voxel_size,
-						node0_size,
-						node1_size,
-						node0_size_vec3))
+						voxel_size))
 			else:
-				for i in act1node_triangles_keys.size():
-					_voxelize_tree_node0(
+				for i in range(act1node_triangles_keys.size()):
+					_parallel_voxelize_tree_node0(
 						i,
 						act1node_triangles_keys,
 						act1node_triangles,
 						svo,
-						voxel_size,
-						node0_size,
-						node1_size,
-						node0_size_vec3)
+						voxel_size)
 					
 		progress.emit(ProgressStep.SURFACE_VOXELIZATION, svo, 
 			 act1node_triangles.keys().size(), act1node_triangles.keys().size())
@@ -934,8 +918,8 @@ func build_navigation() -> SVO:
 		#region Calculate layer 0 coverage
 		var list_solid_bit_count_by_subgrid: PackedInt64Array = \
 			await svo.get_list_solid_bit_count_by_subgrid(
-				get_tree().process_frame, 
-				thread_priority)
+				async_context, 
+				new_thread_priority)
 		for i in range(list_solid_bit_count_by_subgrid.size()):
 			new_svo_coverage[0][i] = list_solid_bit_count_by_subgrid[i] / 64.0
 			
@@ -965,7 +949,7 @@ func build_navigation() -> SVO:
 	return svo
 
 
-## Return true if svo nodes with codes m1 and m2 have the same parent
+## Return non-zero if svo nodes with codes m1 and m2 have different parents
 static func _mortons_different_parent(
 	m1: int, # Morton3 
 	m2: int # Morton3 
@@ -1072,34 +1056,208 @@ static func _parallel_fill_neighbor_in_direction(
 				neighbor_direction[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (neighbor_morton & 0b111))
 
 
+static func _parallel_batched_initialize_active_layer_1_triangle_box_test(
+	_batch_index: int,
+	batch_start: int,
+	batch_end: int,
+	triangles: PackedVector3Array,
+	list_triangle_box_test: Array[TriangleBoxTest],
+	modified_node_1_size: Vector3,
+	voxel_size: Vector3,
+) -> void:
+	for triangle_index in range(batch_start, batch_end):
+		var start_index = triangle_index*3
+		var triangle_box_test = TriangleBoxTest.new(
+			triangles[start_index], 
+			triangles[start_index+1], 
+			triangles[start_index+2], 
+			modified_node_1_size,
+			TriangleBoxTest.Separability.SEPARATING_26)
+			
+		# Schwarz's modification: 
+		# Enlarge the triangle’s bounding box in −x direction by one SG voxel
+		triangle_box_test.aabb.position.x -= voxel_size.x
+		triangle_box_test.aabb.size.x += voxel_size.x
+		
+		list_triangle_box_test[triangle_index] = triangle_box_test
+			
 
+static func _parallel_batched_count_active_layer_1_node_by_triangle(
+	_batch_index: int,
+	batch_start: int,
+	batch_end: int,
+	list_triangle_box_test: Array[TriangleBoxTest],
+	list_active_layer_1_node_overlap_count_by_triangle: PackedInt64Array,
+	node_1_size: Vector3,
+	flight_navigation_size: Vector3,
+) -> void:
+	for test_index in range(batch_start, batch_end):
+		var triangle_box_test = list_triangle_box_test[test_index]
+		var voxel_range: Array[Vector3i] = _voxels_overlapped_by_aabb(
+			node_1_size, 
+			triangle_box_test.aabb, 
+			flight_navigation_size)
+		
+		var minimum_corner: Vector3 = Vector3()
+		for x in range(voxel_range[0].x, voxel_range[1].x):
+			minimum_corner.x = node_1_size.x * x
+			for y in range(voxel_range[0].y, voxel_range[1].y):
+				minimum_corner.y = node_1_size.y * y
+				for z in range(voxel_range[0].z, voxel_range[1].z):
+					minimum_corner.z = node_1_size.z * z
+					list_active_layer_1_node_overlap_count_by_triangle[test_index] +=\
+						int(triangle_box_test.overlap_voxel(minimum_corner))
+
+
+static func _parallel_batched_write_active_layer_1_node_by_triangle(
+	_batch_index: int,
+	batch_start: int,
+	batch_end: int,
+	list_triangle_box_test: Array[TriangleBoxTest],
+	list_morton_layer_1_overlapped_by_triangle_start_index: PackedInt64Array,
+	list_morton_layer_1_overlapped_by_triangle: PackedInt64Array,
+	node_1_size: Vector3,
+	flight_navigation_size: Vector3
+):
+	for test_index in range(batch_start, batch_end):
+		var triangle_box_test = list_triangle_box_test[test_index]
+		
+		var voxel_range: Array[Vector3i] = _voxels_overlapped_by_aabb(
+			node_1_size, 
+			triangle_box_test.aabb, 
+			flight_navigation_size)
+		
+		var minimum_corner: Vector3 = Vector3()
+		var start_write_index = list_morton_layer_1_overlapped_by_triangle_start_index[test_index]
+		var overlapped_node_1_count: int = 0
+		for x in range(voxel_range[0].x, voxel_range[1].x):
+			minimum_corner.x = node_1_size.x * x
+			for y in range(voxel_range[0].y, voxel_range[1].y):
+				minimum_corner.y = node_1_size.y * y
+				for z in range(voxel_range[0].z, voxel_range[1].z):
+					minimum_corner.z = node_1_size.z * z
+					if triangle_box_test.overlap_voxel(minimum_corner):
+						var write_index = start_write_index + overlapped_node_1_count
+						var node_1_morton: int = Morton3.encode64(x, y, z)
+						list_morton_layer_1_overlapped_by_triangle[write_index] = node_1_morton
+						overlapped_node_1_count += 1
+		
+		
 ## Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
 func voxelize_triangle_node_1(
-	node_1_size: float,
-	voxel_x_size: float,
+	voxel_size: Vector3,
 	triangle: PackedVector3Array) -> Dictionary[int, PackedVector3Array]:
+	var node_1_size: Vector3 = voxel_size * 8
 	var result: Dictionary[int, PackedVector3Array] = {}
-	var tbt = TriangleBoxTest.new(
-		triangle, 
-		Vector3.ONE * node_1_size, 
+	var triangle_box_test = TriangleBoxTest.new(
+		triangle[0], 
+		triangle[1], 
+		triangle[2], 
+		node_1_size, 
 		TriangleBoxTest.Separability.SEPARATING_26,
-		voxel_x_size)
+	)
 		
-	#var aabb_before = tbt.aabb
+	#var aabb_before = triangle_box_test.aabb
 	
 	# Schwarz's modification: 
 	# Enlarge the triangle’s bounding box in −x direction by one SG voxel
-	tbt.aabb.position.x -= voxel_x_size
-	tbt.aabb.size.x += voxel_x_size
+	triangle_box_test.aabb.position.x -= voxel_size.x
+	triangle_box_test.aabb.size.x += voxel_size.x
 	
-	#var aabb_after = tbt.aabb
-	
-	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, tbt.aabb, size)
+	#var aabb_after = triangle_box_test.aabb
+	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, triangle_box_test.aabb, size)
 	
 	for x in range(vox_range[0].x, vox_range[1].x):
 		for y in range(vox_range[0].y, vox_range[1].y):
 			for z in range(vox_range[0].z, vox_range[1].z):
-				if tbt.overlap_voxel(Vector3(x, y, z) * node_1_size):
+				if triangle_box_test.overlap_voxel(Vector3(x, y, z) * node_1_size):
+					var vox_morton: int = Morton3.encode64(x, y, z)
+					if result.has(vox_morton):
+						result[vox_morton].append_array(triangle)
+					else:
+						result[vox_morton] = triangle.duplicate()
+					
+	return result
+	
+	
+## Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
+static func _parallel_voxelize_triangle_node_1(
+	triangle_index: int,
+	voxel_size: Vector3,
+	triangle_shifted: PackedVector3Array,
+	flight_navigation_size: Vector3,
+	) -> Dictionary[int, PackedVector3Array]:
+	var node_1_size: Vector3 = voxel_size * 8
+	
+	var result: Dictionary[int, PackedVector3Array] = {}
+	var triangle_start_index: int = triangle_index * 3
+	var triangle_box_test = TriangleBoxTest.new(
+		triangle_shifted[triangle_start_index], 
+		triangle_shifted[triangle_start_index+1], 
+		triangle_shifted[triangle_start_index+2], 
+		node_1_size, 
+		TriangleBoxTest.Separability.SEPARATING_26,
+		)
+		
+	#var aabb_before = triangle_box_test.aabb
+	
+	# Schwarz's modification: 
+	# Enlarge the triangle’s bounding box in −x direction by one SG voxel
+	triangle_box_test.aabb.position.x -= voxel_size.x
+	triangle_box_test.aabb.size.x += voxel_size.x
+	
+	#var aabb_after = triangle_box_test.aabb
+	
+	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(
+		node_1_size, triangle_box_test.aabb, flight_navigation_size)
+	
+	for x in range(vox_range[0].x, vox_range[1].x):
+		for y in range(vox_range[0].y, vox_range[1].y):
+			for z in range(vox_range[0].z, vox_range[1].z):
+				if triangle_box_test.overlap_voxel(Vector3(x, y, z) * node_1_size):
+					var vox_morton: int = Morton3.encode64(x, y, z)
+					if result.has(vox_morton):
+						result[vox_morton].append_array(triangle_shifted
+							.slice(triangle_start_index, triangle_start_index + 3))
+					else:
+						result[vox_morton] = triangle_shifted.slice(
+							triangle_start_index, triangle_start_index + 3)
+					
+	return result
+
+
+func _parallel_count_active_node_1_by_triangle(
+	triangle_index: int,
+	triangle: PackedVector3Array,
+	voxel_size: Vector3) -> Dictionary[int, PackedVector3Array]:
+	var node_1_size: Vector3 = voxel_size * 8
+	
+	var result: Dictionary[int, PackedVector3Array] = {}
+	var triangle_start_index = triangle_index*3
+	var triangle_box_test = TriangleBoxTest.new(
+		triangle[triangle_start_index], 
+		triangle[triangle_start_index+1], 
+		triangle[triangle_start_index+2], 
+		node_1_size, 
+		TriangleBoxTest.Separability.SEPARATING_26,
+		)
+		
+	#var aabb_before = triangle_box_test.aabb
+	
+	# Schwarz's modification: 
+	# Enlarge the triangle’s bounding box in −x direction by one SG voxel
+	triangle_box_test.aabb.position.x -= voxel_size.x
+	triangle_box_test.aabb.size.x += voxel_size.x
+	
+	#var aabb_after = triangle_box_test.aabb
+	
+	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(
+		node_1_size, triangle_box_test.aabb, size)
+	
+	for x in range(vox_range[0].x, vox_range[1].x):
+		for y in range(vox_range[0].y, vox_range[1].y):
+			for z in range(vox_range[0].z, vox_range[1].z):
+				if triangle_box_test.overlap_voxel(Vector3(x, y, z) * node_1_size):
 					var vox_morton: int = Morton3.encode64(x, y, z)
 					if result.has(vox_morton):
 						result[vox_morton].append_array(triangle)
@@ -1109,39 +1267,38 @@ func voxelize_triangle_node_1(
 	return result
 
 
-func _voxelize_tree_node0(
+func _parallel_voxelize_tree_node0(
 	index: int,
 	act1node_triangles_keys: Array,
 	act1node_triangles: Dictionary[int, PackedVector3Array],
 	svo: SVO,
-	voxel_size: float,
-	node0_size: float,
-	node1_size: float,
-	node0_size_vec3: Vector3,
+	voxel_size: Vector3
 	):
+	var node_0_size: Vector3 = voxel_size * 4
+	var node_1_size: Vector3 = voxel_size * 8
 	var node1_morton = act1node_triangles_keys[index]
 	var triangles = act1node_triangles[node1_morton]
-	var node1_position = Morton3.decode_vec3(node1_morton) * node1_size
+	var node1_position = Morton3.decode_vec3(node1_morton) * node_1_size
 	
 	for i in range(0, triangles.size(), 3):
 		var triangle = triangles.slice(i, i+3)
 		
-		var triangle_node0_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * node0_size, surface_separability)
-		var triangle_voxel_test = TriangleBoxTest.new(triangle, Vector3(1,1,1) * voxel_size, surface_separability)
+		var triangle_node0_test = TriangleBoxTest.new(triangle[0], triangle[1], triangle[2], Vector3(1,1,1) * node_0_size, surface_separability)
+		var triangle_voxel_test = TriangleBoxTest.new(triangle[0], triangle[1], triangle[2], Vector3(1,1,1) * voxel_size, surface_separability)
 		
 		for m in range(8): # Test overlap on all 8 nodes layer 0 within node layer 1
 			var node0_svolink = svo.svolink_from_morton(0, (node1_morton << 3) | m)
 			var offset = SVOLink.offset(node0_svolink)
-			var node0_position = node1_position + Morton3.decode_vec3(m) * node0_size
+			var node0_position = node1_position + Morton3.decode_vec3(m) * node_0_size
 			if triangle_node0_test.overlap_voxel(node0_position):
 				#region Voxelize tree leaves
 				var node0_solid_state: int = svo.subgrid[offset]
 				
-				var node0_aabb = AABB(node0_position, node0_size_vec3)
+				var node0_aabb = AABB(node0_position, node_0_size)
 				var intersection = triangle_voxel_test.aabb.intersection(node0_aabb)
 				intersection.position -= node0_position
 				
-				var vox_range = _voxels_overlapped_by_aabb(voxel_size, intersection, node0_size_vec3)
+				var vox_range = _voxels_overlapped_by_aabb(voxel_size, intersection, node_0_size)
 				
 				for x in range(vox_range[0].x, vox_range[1].x):
 					for y in range(vox_range[0].y, vox_range[1].y):
@@ -1157,12 +1314,14 @@ func _voxelize_tree_node0(
 				#endregion
 				
 				
-func yz_plane_rasterization(
+static func _parallel_yz_plane_rasterization(
 	triangle_index: int,
 	svo: SVO,
 	triangles: PackedVector3Array, 
-	voxel_size: float,
-	inv_voxel_size: float):
+	voxel_size: Vector3,
+	x_column_flip_bitmask_by_subgrid_index: PackedInt64Array,
+	flight_navigation_size: Vector3):
+	var inverted_voxel_size: Vector3 = Vector3.ONE / voxel_size
 	var triangle_start_idx: int = triangle_index * 3
 		
 	var v0xyz: Vector3 = triangles[triangle_start_idx+0]
@@ -1194,8 +1353,8 @@ func yz_plane_rasterization(
 	var n: Vector3 = e0xyz.cross(e1xyz)
 
 	# Ignore projected triangles that are too thin.
-	#if n.x < epsilon:
-		#return
+	if is_zero_approx(n.x):
+		return
 
 	var n_yz_e0: Vector2 = Vector2(-e0xyz.z, e0xyz.y)
 	var n_yz_e1: Vector2 = Vector2(-e1xyz.z, e1xyz.y)
@@ -1238,18 +1397,20 @@ func yz_plane_rasterization(
 	# because we are considering voxel centers
 	var rect2i: Rect2i = Rect2i()
 	rect2i.position = Vector2i(
-		floori(min(v0[0], v1[0], v2[0]) * inv_voxel_size + 0.5), 
-		floori(min(v0[1], v1[1], v2[1]) * inv_voxel_size + 0.5))
+		floori(min(v0[0], v1[0], v2[0]) * inverted_voxel_size.y + 0.5), 
+		floori(min(v0[1], v1[1], v2[1]) * inverted_voxel_size.z + 0.5)
+		)
 	rect2i.end = Vector2i(
-		ceili(max(v0[0], v1[0], v2[0]) * inv_voxel_size - 0.5), 
-		ceili(max(v0[1], v1[1], v2[1]) * inv_voxel_size - 0.5))
+		ceili(max(v0[0], v1[0], v2[0]) * inverted_voxel_size.y - 0.5), 
+		ceili(max(v0[1], v1[1], v2[1]) * inverted_voxel_size.z - 0.5))
 
-	if not rect2i.has_area:
+	if not rect2i.has_area():
 		return
 
+	var voxel_size_yz = Vector2(voxel_size.y, voxel_size.z)
 	for voxel_y in range(rect2i.position[0], rect2i.end[0]):
 		for voxel_z in range(rect2i.position[1], rect2i.end[1]):
-			var p_yz: Vector2 = Vector2(voxel_y+0.5, voxel_z+0.5) * voxel_size
+			var p_yz: Vector2 = Vector2(voxel_y+0.5, voxel_z+0.5) * voxel_size_yz
 			
 			var triangle_overlap_voxel_center =\
 				(n_yz_e0.dot(p_yz) + d_yz_e0 + f_yz_e0 > 0)\
@@ -1268,11 +1429,16 @@ func yz_plane_rasterization(
 			var plane_equation_d = - n.dot(v0xyz)
 			var projected_x = -(n.y * p_yz[0] + n.z * p_yz[1] + plane_equation_d)/n.x
 			
-			var voxel_x: int = floori(projected_x * inv_voxel_size + 0.5)
+			var voxel_x: int = floori(projected_x * inverted_voxel_size.x + 0.5)
 			
-			var voxel_morton = Morton3.encode64(voxel_x, voxel_y, voxel_z)
-			var voxel_svolink = svo.svolink_from_voxel_morton(voxel_morton)
+
+			# clamp to valid x range
+			var grid_x: int = int(flight_navigation_size.x / voxel_size.x)
+			voxel_x = clamp(voxel_x, 0, grid_x - 1)
 			
+			var voxel_morton: int = Morton3.encode64(voxel_x, voxel_y, voxel_z)
+			var voxel_svolink: int  = svo.svolink_from_voxel_morton(voxel_morton)
+
 			# Could be null, because triangles on the face of navigation space
 			# might be projected to an outside voxel.
 			if voxel_svolink == SVOLink.NULL:
@@ -1302,13 +1468,13 @@ func _parallel_propagate_bit_flip(
 		if neighbor_layer != 0:
 			break
 		
-		var flip_buffer = 0
+		var flip_buffer: int = 0
 		for subgrid_index in subgrid_voxel_indexes_on_face_direction:
 			var last_bit_in_the_column_is_solid = \
 				svo_subgrid[current_node_offset] & (1 << subgrid_index)
 			if last_bit_in_the_column_is_solid:
 				flip_buffer = flip_buffer | neighbor_node_x_column_bits_by_subgrid_index[subgrid_index]
-		var neighbor_offset = SVOLink.offset(neighbor_svolink)
+		var neighbor_offset: int = SVOLink.offset(neighbor_svolink)
 		svo_subgrid[neighbor_offset] = svo_subgrid[neighbor_offset] ^ flip_buffer
 		
 		# Increment condition
@@ -1377,15 +1543,17 @@ func _merge_triangle_overlap_node_dicts(
 ## The voxel range is inside FlyingNavigation3D area.
 ## [br]
 ## The result includes also voxels merely touched by [param t_aabb].
-func _voxels_overlapped_by_aabb(
-	voxel_size_length: float, 
+static func _voxels_overlapped_by_aabb(
+	voxel_size: Vector3, 
 	triangle_aabb: AABB, 
-	voxel_bound: Vector3) -> Array[Vector3i]:
+	flight_navigation_size: Vector3) -> Array[Vector3i]:
+	var inverted_voxel_size: Vector3 = Vector3.ONE / voxel_size
+	
 	# Begin & End
-	var b: Vector3 = triangle_aabb.position/voxel_size_length
-	var e: Vector3 = triangle_aabb.end/voxel_size_length
+	var b: Vector3 = triangle_aabb.position*inverted_voxel_size
+	var e: Vector3 = triangle_aabb.end*inverted_voxel_size
 	# Clamps the result between 0 and vb (exclusive)
-	var vb = voxel_bound/voxel_size_length
+	var vb = flight_navigation_size*inverted_voxel_size
 	
 	# Include voxels merely touched by t_aabb
 	b.x = b.x - (1.0 if b.x == floorf(b.x) else 0.0)
@@ -1420,7 +1588,7 @@ func _get_x_link_from_head_node(svo: SVO, layer: int, head_node_offset: int):
 ## Return global position of center of the node or subgrid voxel identified as [param svolink].[br]
 ## [member sparse_voxel_octree] must not be null.[br]
 func get_global_position_of(svolink: int) -> Vector3:
-	var voxel_size = _node_size(-2, sparse_voxel_octree.depth)
+	var voxel_size = _node_size(size, -2, sparse_voxel_octree.depth)
 	var layer = SVOLink.layer(svolink)
 	var offset = SVOLink.offset(svolink)
 	
@@ -1436,7 +1604,7 @@ func get_global_position_of(svolink: int) -> Vector3:
 	var result = global_transform\
 			* (
 				(Morton3.decode_vec3(morton_code) + half_a_node)
-			 	* _node_size(layer, sparse_voxel_octree.depth) 
+			 	* _node_size(size, layer, sparse_voxel_octree.depth) 
 				+ _origin_offset()
 			)
 	return result
@@ -1450,8 +1618,8 @@ func get_global_position_of(svolink: int) -> Vector3:
 ## [param gposition]: Global position that needs conversion to [SVOLink].
 func get_svolink_of(gposition: Vector3) -> int:
 	var local_pos = to_local(gposition) - _origin_offset()
-	var extent = size.x
-	var aabb := AABB(Vector3.ZERO, Vector3.ONE*extent)
+	var extent: Vector3 = size
+	var aabb := AABB(Vector3.ZERO, extent)
 	
 	# Points outside Navigation Space
 	if not aabb.has_point(local_pos):
@@ -1499,12 +1667,13 @@ func _origin_offset() -> Vector3:
 	return -size/2
 	
 ## Return the size (in local meter) of a node at [param layer]
-func _node_size(layer: int, svo_depth: int) -> float:
-	return size.x * (2.0 ** (layer - svo_depth + 1))
+static func _node_size(
+	flight_navigation_size: Vector3, 
+	layer: int, 
+	svo_depth: int) -> Vector3:
+	return flight_navigation_size * (2.0 ** (layer - svo_depth + 1))
 
 func _initialize_debug_draw_multimesh():
-	var voxel_size = _node_size(-2, sparse_voxel_octree.depth)
-	
 	var debug_draw_svonode = $DebugDraw/SVONode
 	var debug_draw_voxel = $DebugDraw/Voxel
 	for multimesh_instance in debug_draw_svonode.get_children():
@@ -1514,9 +1683,11 @@ func _initialize_debug_draw_multimesh():
 	if sparse_voxel_octree == null:
 		return
 		
+	var voxel_size: Vector3 = _node_size(size, -2, sparse_voxel_octree.depth)
+		
 	for layer in range(sparse_voxel_octree.depth):
 		var boxmesh = BoxMesh.new()
-		boxmesh.size = Vector3.ONE * _node_size(layer, sparse_voxel_octree.depth)\
+		boxmesh.size = _node_size(size, layer, sparse_voxel_octree.depth)\
 			* 0.95
 		boxmesh.material = StandardMaterial3D.new()
 		boxmesh.material.albedo_color = Color(
@@ -1536,7 +1707,7 @@ func _initialize_debug_draw_multimesh():
 	debug_draw_voxel.multimesh.instance_count = 0
 	debug_draw_voxel.multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
 	
-	debug_draw_voxel.multimesh.mesh.size = Vector3.ONE * voxel_size\
+	debug_draw_voxel.multimesh.mesh.size = voxel_size\
 			* 0.95
 	#debug_draw_voxel.multimesh.mesh.material = StandardMaterial3D.new()
 	#debug_draw_voxel.multimesh.mesh.material.albedo_color = Color(1, 1, 1, 0.1)
@@ -1554,7 +1725,7 @@ func draw_svolink_box(svolink: int,
 		node_color: Color = Color.RED, 
 		leaf_color: Color = Color.GREEN,
 		text = null) -> MeshInstance3D:
-	var voxel_size = _node_size(-2, sparse_voxel_octree.depth)
+	var voxel_size: Vector3 = _node_size(size, -2, sparse_voxel_octree.depth)
 	
 	var cube = MeshInstance3D.new()
 	cube.mesh = BoxMesh.new()
@@ -1571,14 +1742,14 @@ func draw_svolink_box(svolink: int,
 	# Draw voxel
 	if layer == 0 and not(sparse_voxel_octree.support_inside
 		and sparse_voxel_octree.inside[layer][offset]):
-		cube.mesh.size = Vector3.ONE * voxel_size
+		cube.mesh.size = voxel_size
 		cube.mesh.material.albedo_color = leaf_color
-		label.pixel_size = voxel_size / 400
+		label.pixel_size = voxel_size.x / 400
 	# Draw node
 	else:
-		cube.mesh.size = Vector3.ONE * _node_size(layer, sparse_voxel_octree.depth)
+		cube.mesh.size = _node_size(size, layer, sparse_voxel_octree.depth)
 		cube.mesh.material.albedo_color = node_color
-		label.pixel_size = _node_size(layer, sparse_voxel_octree.depth) / 400
+		label.pixel_size = _node_size(size, layer, sparse_voxel_octree.depth).x / 400
 	cube.mesh.material.albedo_color.a = 0.2
 	
 	$SVOLinkCubes.add_child(cube)
@@ -1593,6 +1764,9 @@ func draw():
 	
 	if not sparse_voxel_octree.support_inside:
 		return
+		
+	var async_context: Signal = get_tree().process_frame
+	var new_thread_priority = thread_priority
 	
 	var draw_flag_by_layer: Array[PackedByteArray] = []
 	draw_flag_by_layer.resize(sparse_voxel_octree.depth)
@@ -1603,8 +1777,6 @@ func draw():
 		
 	for layer in range(1, draw_flag_by_layer.size()):
 		for offset in range(draw_flag_by_layer[layer].size()):
-			if offset == 102:
-				pass
 			draw_flag_by_layer[layer][offset] = int(
 				sparse_voxel_octree.is_solid(SVOLink.from(layer, offset)))
 	
@@ -1614,12 +1786,12 @@ func draw():
 	
 	# TODO: Parallel.wait_all()
 	for layer in range(1, sparse_voxel_octree.depth):
-		var node_size: Vector3 = Vector3.ONE * _node_size(layer, sparse_voxel_octree.depth)
+		var node_size: Vector3 = _node_size(size, layer, sparse_voxel_octree.depth)
 		var multimesh: MultiMesh = debug_draw_node.get_child(layer).multimesh
 		
 		var count_result = await Parallel.count_by_batch(
-				get_tree().process_frame,
-				thread_priority,
+				async_context,
+				new_thread_priority,
 				draw_flag_by_layer[layer],
 				1
 			)
@@ -1627,26 +1799,22 @@ func draw():
 		var list_solid_node_count_by_batch: PackedInt64Array = count_result.list_count_by_batch
 		var batch_size: int = count_result.batch_size
 		
-		var total_instance_count: int = 0
-		for count in list_solid_node_count_by_batch:
-			total_instance_count += count
+		var total_instance_count: int = Fn3dUtility.sum_array_number(list_solid_node_count_by_batch)
 		
-		var list_start_write_index: PackedInt64Array = [0]
-		list_start_write_index.append_array(list_solid_node_count_by_batch.duplicate())
-		list_start_write_index.resize(list_solid_node_count_by_batch.size())
-		for i in range(1, list_start_write_index.size()):
-			list_start_write_index[i] += list_start_write_index[i-1]
+		var list_start_write_index: PackedInt64Array = \
+			Parallel.make_start_write_index_array_from_count_array(
+				list_solid_node_count_by_batch)
 		
 		# Allocate memory
 		multimesh.instance_count = total_instance_count
 		
 		if multi_threading:
 			await Parallel.execute_batched(
-					get_tree().process_frame,
+					async_context,
 					draw_flag_by_layer[layer].size(),
-					thread_priority,
+					new_thread_priority,
 					batch_size,
-					_parallel_batch_write_node_transforms.bind(
+					_parallel_batched_write_node_transforms.bind(
 						layer,
 						draw_flag_by_layer,
 						sparse_voxel_octree,
@@ -1658,7 +1826,7 @@ func draw():
 		else:
 			for i in range(draw_flag_by_layer[layer].size()):
 				var batch_index = i/batch_size
-				_parallel_batch_write_node_transforms(
+				_parallel_batched_write_node_transforms(
 					batch_index, i*batch_size, 
 					mini((i+1)*batch_size, draw_flag_by_layer[layer].size()),
 					layer,
@@ -1675,37 +1843,34 @@ func draw_solid_voxels():
 	if sparse_voxel_octree == null:
 		printerr(str(get_path()) + ".sparse_voxel_octree is null")
 		return
+		
+	var async_context: Signal = get_tree().process_frame
+	var new_thread_priority = thread_priority
 	
 	var list_solid_bit_count_by_subgrid: PackedInt64Array = \
 		await sparse_voxel_octree.get_list_solid_bit_count_by_subgrid(
-			get_tree().process_frame, thread_priority)
+			async_context, new_thread_priority)
 			
-	var total_solid_bit_count = 0
-	for count in list_solid_bit_count_by_subgrid:
-		total_solid_bit_count += count
+	var total_solid_bit_count: int = Fn3dUtility.sum_array_number(list_solid_bit_count_by_subgrid)
 	
-	var list_start_write_index = [0]
-	list_start_write_index.append_array(list_solid_bit_count_by_subgrid.duplicate())
-	list_start_write_index.resize(list_solid_bit_count_by_subgrid.size())
-	for i in range(1, list_start_write_index.size()):
-		list_start_write_index[i] += list_start_write_index[i-1]
+	var list_start_write_index: PackedInt64Array = \
+			Parallel.make_start_write_index_array_from_count_array(
+				list_solid_bit_count_by_subgrid)
 	
 	var list_voxel_transform: Array[Transform3D] = []
 	list_voxel_transform.resize(total_solid_bit_count)
 	
-	var node0_size = Vector3.ONE * _node_size(0, sparse_voxel_octree.depth)
-	var voxel_size = Vector3.ONE * _node_size(-2, sparse_voxel_octree.depth)
+	var voxel_size = _node_size(size, -2, sparse_voxel_octree.depth)
 	
 	await Parallel.execute_batched(
-		get_tree().process_frame, 
+		async_context, 
 		sparse_voxel_octree.subgrid.size(),
-		thread_priority,
+		new_thread_priority,
 		100000,
 		_parallel_batched_write_subgrid_voxel_transforms.bind(
 			sparse_voxel_octree.subgrid,
 			sparse_voxel_octree.morton[0],
 			voxel_size,
-			node0_size,
 			-size/2,
 			list_start_write_index,
 			list_voxel_transform))
@@ -1714,44 +1879,44 @@ func draw_solid_voxels():
 	debug_draw_voxel.multimesh.instance_count = total_solid_bit_count
 	
 	await Parallel.execute_batched(
-		get_tree().process_frame, 
-		list_voxel_transform.size(),
-		thread_priority,
+		async_context, 
+		total_solid_bit_count,
+		new_thread_priority,
 		100000,
 		_parallel_batched_write_multimesh_instance_transforms.bind(
 			debug_draw_voxel.multimesh,
 			list_voxel_transform))
 
 
-func _parallel_batched_write_subgrid_voxel_transforms(
+static func _parallel_batched_write_subgrid_voxel_transforms(
 	_batch_index: int,
 	batch_start: int,
 	batch_end: int,
 	svo_subgrid: PackedInt64Array,
 	svo_morton_layer0: PackedInt64Array,
 	voxel_size: Vector3,
-	node0_size: Vector3,
 	origin_offset: Vector3,
 	list_start_write_index: PackedInt64Array,
 	list_voxel_transform: Array[Transform3D]
 ):
+	var node_0_size: Vector3 = voxel_size * 4
 	for layer0_offset in range(batch_start, batch_end):
 		if svo_subgrid[layer0_offset] == 0:
 			continue
-		var start_write_index = list_start_write_index[layer0_offset]
-		var node_position = origin_offset + \
-			node0_size * Morton3.decode_vec3(svo_morton_layer0[layer0_offset])
-		var solid_voxel_count = 0
+		var start_write_index: int = list_start_write_index[layer0_offset]
+		var node_position: Vector3 = origin_offset + \
+			node_0_size * Morton3.decode_vec3(svo_morton_layer0[layer0_offset])
+		var solid_voxel_count: int = 0
 		for voxel_index in range(64):
 			if svo_subgrid[layer0_offset] & (1<<voxel_index):
-				var voxel_position_offset = voxel_size * (Morton3.decode_vec3(voxel_index) + Vector3(0.5,0.5,0.5))
-				var voxel_final_position = node_position + voxel_position_offset
-				var write_index = start_write_index + solid_voxel_count
+				var voxel_position_offset: Vector3 = voxel_size * (Morton3.decode_vec3(voxel_index) + Vector3(0.5,0.5,0.5))
+				var voxel_final_position: Vector3 = node_position + voxel_position_offset
+				var write_index: int = start_write_index + solid_voxel_count
 				list_voxel_transform[write_index] = Transform3D(Basis(), voxel_final_position)
 				solid_voxel_count += 1
 
 
-func _parallel_batch_write_node_transforms(
+func _parallel_batched_write_node_transforms(
 	batch_index: int,
 	batch_start: int,
 	batch_end: int,
@@ -1788,21 +1953,6 @@ func _parallel_batched_write_multimesh_instance_transforms(
 	for index in range(batch_start, batch_end):
 		multimesh.set_instance_transform(index, list_transform[index])
 	
-
-func _debug_draw_on_step_completion(
-	step: FlightNavigation3D.ProgressStep, 
-	svo: SVO, 
-	work_completed: int, 
-	total_work: int):
-	if work_completed != total_work:
-		return
-	if step != debug_draw_on_step_completion:
-		return
-	
-	var temp_svo = sparse_voxel_octree
-	sparse_voxel_octree = svo
-	draw()
-	sparse_voxel_octree = temp_svo
 #endregion
 #region Lookup Tables
 # Lookup tables are not marked 'static'
@@ -1813,7 +1963,7 @@ var subgrid_voxel_indexes_on_face: Dictionary[StringName, PackedInt32Array] =\
 	SVO.generate_lut_subgrid_voxel_indexes_on_face()
 	
 ## Used to quickly flip subgrid when rasterize triangles on xy plane.
-var x_column_flip_bitmask_by_subgrid_index: PackedInt64Array =\
+var _x_column_flip_bitmask_by_subgrid_index: PackedInt64Array =\
 	generate_x_column_flip_bitmask_by_subgrid_index()
 	
 var bitmask_of_subgrid_voxels_on_face_xp: int =\

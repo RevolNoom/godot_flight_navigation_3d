@@ -86,8 +86,7 @@ transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(4, 4, 4)
 sparse_voxel_octree = ExtResource("4_6bw2v")
 pathfinder = SubResource("Resource_kem5a")
-depth = 9
-resolution = "1024 x 1024 x 1024"
+remove_thin_triangles = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false
