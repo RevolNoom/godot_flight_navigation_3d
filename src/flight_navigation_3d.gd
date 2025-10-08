@@ -54,7 +54,7 @@ enum ProgressStep {
 @export var thread_priority: Thread.Priority = Thread.PRIORITY_LOW
 @export_subgroup("", "")
 
-@export_subgroup("Voxelization targets handling", "")
+@export_subgroup("Filters", "")
 ## Many [FlightNavigation3D] could coexist in one scene, 
 ## and you might decide that some objects will voxelize
 ## in one [FlightNavigation3D] but not the others.
@@ -158,8 +158,7 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 
 #region Build navigation
 ## The "smallest" floating point number.
-## Usually used for float comparisons.
-#const epsilon: float = 0.000_000_01
+## Used for float comparisons.
 const epsilon: float = 0.000_000_01
 
 

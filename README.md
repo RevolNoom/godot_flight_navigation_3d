@@ -1,8 +1,7 @@
 # Godot Flight Navigation 3D 
 
-This package provides flying/swimming navigation in free 3D space. It builds a
-Sparse Voxel Octree representing the solid/empty state, and then applies Greedy
-A* algorithm for path finding.
+Godot Flight Navigation 3D provides flying and swimming navigation in free 3D space for Godot Engine. 
+It builds a Sparse Voxel Octree (SVO) representing solid and empty space, and applies a Greedy A* algorithm for pathfinding.
 
 ## General Information
 
@@ -10,102 +9,92 @@ A* algorithm for path finding.
 
 ## Features
 
-- Multi-threading voxelization on CPU
+- **Multi-threaded CPU voxelization** for fast processing
+- Supports up to **9 layers of voxelization** (512 x 512 x 512) on 8GB RAM
+- Works with many node types:
+  - All `CollisionObject3D` nodes
+  - All `CSGShape3D` nodes
+  - Collision shapes: Box, Sphere, Capsule, Cylinder, ConcavePolygon, ConvexPolygon
+  - Meshes: BoxMesh, SphereMesh, CapsuleMesh, CylinderMesh, ArrayMesh, TorusMesh
+- **Editor integration**: Bake navigation data with a single click
+- **Customizable parameters**: Depth, solid voxelization, resource format, etc.
+- **Pathfinding API**: Find paths between arbitrary 3D positions
+- **Debug visualization**: Draw SVO nodes and voxel occupancy for inspection
 
-- Upto 9 layers of voxelization (512 x 512 x 512) on 8GB RAM
-
-- Works with many type of nodes:
-	+ All CollisionObject3D nodes
-	+ All CSGShape3D nodes
-	+ Collision shape:
-		* BoxShape3D
-		* SphereShape3D
-		* CapsuleShape3D
-		* CylinderShape3D
-		* ConcavePolygonShape3D
-		* ConvexPolygonShape3D
-	+ Mesh:
-		* BoxMesh
-		* SphereMesh
-		* CapsuleMesh
-		* CylinderMesh
-		* ArrayMesh
-		* TorusMesh
 
 ## How To Use
 
 ### Setup scene
 
-- In your scene, add VoxelizationTarget as a child to any obstacle objects.
-Note that all voxelize targets should be objects that never move, because of "No runtime update" limitation (see below).
 
-![Obstacles setup](imgs/obstacles_setup.png "Obstacles setup")
+1. **Add `VoxelizationTarget`** as a child to any static obstacle objects.  
+   > _Note: All voxelization targets should be static, due to "No runtime update" limitation (see below)._
 
-- Create a FlightNavigation3D, and set `CSGBox3D.size` property to encompass the navigation space. Make sure all sides are equals.
+   ![Obstacles setup](imgs/obstacles_setup.png "Obstacles setup")
 
-![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
+2. **Add a `FlightNavigation3D` node** and set its `CSGBox3D.size` property to encompass your navigation space (ensure all sides are equal).
+
+   ![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
+
+
+- Configure parameters for the navigation space. Some important parameters are:
+
++ `Depth`: controls how detailed the navigation space will be. 
+	Memory and computational power consumption rises exponentially per depth level.
+	It is recommended to start off small, and then increase depth only when you need finer-grained movement.
+
++ `Perform Solid Voxelization`: Enables inside/outside detection for navigation.
+
+
+![FlightNavigation3D parameter setup](imgs/flight_navigation_parameter_setup.png "FlightNavigation3D parameter setup")
 
 ### Build navigation space
 
 #### Using editor plugin
 
-- Select FlightNavigation3D node. On editor toolbar, a "Voxelize" button will appear. 
-Click the button to show the option dialog. 
+- Select the `FlightNavigation3D` node.  
+- Click the **"Voxelize"** button in the editor toolbar to start the process.
+  A progress popup will appear. When finished, the SVO resource will be visible in the Inspector.
 
-	+ `Depth` controls how detailed the navigation space will be. 
-	Memory and computational power consumption rises exponentially per depth level.
-	It is recommended to start off small, and then increase depth only when you need finer-grained movement. 
-
-	+ Resource file format should be one of Godot supported resource file extension (.tres or .res).
-
-- Click "Start voxelization" to start the baking process. A progress popup will show. 
-When it is done, you will see SVO resource in the Inspector tab.
-
-![Bake navigation using editor plugin](imgs/bake_navigation.png "Bake navigation using editor plugin")
+  ![Bake navigation using editor plugin](imgs/bake_navigation.png "Bake navigation using editor plugin")
 
 #### Using GDScript
 
 ```gdscript
-	var params = FlightNavigation3DParameter.new()
-	params.depth = 7
-	var svo = await $FlightNavigation3D.build_navigation_data(params)
+	var svo = await $FlightNavigation3D.build_navigation()
 	$FlightNavigation3D.sparse_voxel_octree = svo
 
-	# Use this for visual confirmation.
-	$FlightNavigation3D.draw_debug_boxes()
+    # Optional: Visualize the navigation space
+	$FlightNavigation3D.draw()
 ```
 
 ### Find path between two positions in space
 
-	```gdscript
-	# find_path works with global positions. 
+```gdscript
+    # find_path works with global positions
 	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
 
-	# Use this for visual confirmation
+	# Visualize the path
 	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
 	for svolink in svolink_path:
 		$FlightNavigation3D.draw_svolink_box(svolink)
-	```
+```
 
 ![Find path - Result illustration](imgs/find_path_result_illustration.png "Find path - Result illustration")
 
 ### Write your own pathfinding algorithm
 
 /TODO/
+You can implement your own pathfinding algorithm by extending the [`FlightPathfinder`](src/flight_pathfinder.gd) class.
 
 ## Limitations
 
-- No runtime update
+- **No runtime update**:
 
 By design, the SVO packs data tightly to save space and lookup neighbor quickly.
 Thus, addition/removal/transformation of objects inside the navigation space 
-cannot be updated trivially. You must re-voxelize every time there are 
-relative movements of static objects to FlightNavigation3D. 
-
-- No inside/outside state.
-
-The SVO doesn't store information or provide a way to figure out whether a position
-is inside an object. This could be a future improvement.
+cannot be updated easily. You must re-voxelize every time there are 
+relative movements of static objects to FlightNavigation3D (which is expensive).
 
 ## Future Improvements
 
@@ -115,13 +104,11 @@ is inside an object. This could be a future improvement.
 
 ## Credits
 
-- Schwarz, M., Seidel, H.-P. 2010. Fast parallel surface and solid voxelization on GPUs. ACM Transactions on Graphics, 29, 6 (Proceedings of SIGGRAPH Asia 2010), Article 179: http://research.michael-schwarz.com/publ/2010/vox/
+- [Schwarz, M., Seidel, H.-P. 2010. Fast parallel surface and solid voxelization on GPUs. ACM Transactions on Graphics, 29, 6 (Proceedings of SIGGRAPH Asia 2010), Article 179.](http://research.michael-schwarz.com/publ/2010/vox/)
 
-- 3D Flight Navigation Using Sparse Voxel Octrees, Daniel Brewer: https://www.gameaipro.com/GameAIPro3/GameAIPro3_Chapter21_3D_Flight_Navigation_Using_Sparse_Voxel_Octrees.pdf
+- [Daniel Brewer. 3D Flight Navigation Using Sparse Voxel Octrees.](https://www.gameaipro.com/GameAIPro3/GameAIPro3_Chapter21_3D_Flight_Navigation_Using_Sparse_Voxel_Octrees.pdf)
 
-- Forceflow's code on triangle/box test, without whose work I would have been stuck,
-	jerking hair out of my head wondering why my overlap test doesn't work:
-	https://github.com/Forceflow/cuda_voxelizer/blob/main/src/cpu_voxelizer.cpp
+- [Code reference from Forceflow's CUDA voxelizer](https://github.com/Forceflow/cuda_voxelizer)
 
 ## Modifications From Papers
 
@@ -129,21 +116,10 @@ is inside an object. This could be a future improvement.
 
 SVO Link is originally an int32, packed with: 
 
-+ 4 bits - layer index (0 to 15).
-
-+ 22 bits - node index (0 to 4,194,303).
-
-+ 6 bit - subnode index (0 to 63) (only used for indexing voxels inside leaf nodes).
-
-SVO Link implemented in GDScript is int64, packed with:
-
-+ 4 bits - layer index (0 to 15).
-
-+ 54 bits - node index 
-
-+ 6 bit - subnode index (0 to 63).
-
-It was felt that 54 is a beautiful number that can represent a full space of 2^18 x 2^18 x 2^18 SVO Node.
+- Original: 32 bits (4 bits layer, 22 bits node, 6 bits subnode)
+- GDScript: 64 bits (4 bits layer, 54 bits node, 6 bits subnode)
+- Allows for extremely large navigation spaces.
+- It was felt that 54 is a beautiful number that can represent a full space of 2^18 x 2^18 x 2^18 SVO Node.
 Such requirements does not exist in real life. Therefore, the number of bits for layer and node index might change in the future.
 
 ### Sparse voxel octree structure
