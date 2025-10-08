@@ -15,11 +15,11 @@ class_name VoxelizationTarget
 ## Used for [CSGShape3D] generation of:[br]
 ## - [SphereShape3D]/[SphereMesh] [br]
 ## - [CylinderShape3D]/[CylinderMesh] [br]
-@export var radial_segments = 64
+@export var radial_segments = 16
 
 ## Used for [CSGShape3D] generation of:[br]
 ## - [SphereShape3D]/[SphereMesh] [br]
-@export var rings = 32
+@export var rings = 8
 
 var _parent: 
 	get():

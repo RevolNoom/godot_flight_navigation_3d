@@ -15,6 +15,15 @@ func _enter_tree():
 	voxelize_button = preload("res://addons/flight_navigation_3d/voxelize_button.tscn").instantiate()
 
 
+func _exit_tree():
+	# Clean-up of the plugin goes here.
+	EditorInterface.get_selection().selection_changed.disconnect(_on_selection_changed)
+	
+	# Erase the control from the memory.
+	if flight_navigation_3d_scene != null:
+		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, voxelize_button)
+	voxelize_button.free()
+
 # Show the Voxelize button only if the editor is focusing on a [FlightNavigation3D]
 func _on_selection_changed():
 	var selected_nodes = EditorInterface.get_selection().get_selected_nodes()
@@ -34,13 +43,3 @@ func _on_selection_changed():
 		voxelize_button.flight_navigation_3d_scene = flight_navigation_3d_scene
 		#print("Add")
 		add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, voxelize_button)
-
-
-func _exit_tree():
-	# Clean-up of the plugin goes here.
-	EditorInterface.get_selection().selection_changed.disconnect(_on_selection_changed)
-	
-	# Erase the control from the memory.
-	if flight_navigation_3d_scene != null:
-		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, voxelize_button)
-	voxelize_button.free()

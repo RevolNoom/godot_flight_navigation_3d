@@ -8,29 +8,31 @@ func _ready():
 	
 
 func test():
-	var voxel_size_quarter = 1
-	var voxel_size_half = 2*voxel_size_quarter
-	var voxel_size = 2*voxel_size_half
-	var node_size_0 = 4*voxel_size
-	var node_size_1 = 2*node_size_0
-	var node_size_2 = 2*node_size_1
-	var node_size_3 = 2*node_size_2
+	var voxel_size_quarter: Vector3 = Vector3.ONE
+	var voxel_size_half: Vector3 = 2*voxel_size_quarter
+	var voxel_size: Vector3 = 2*voxel_size_half
+	var node_size_0: Vector3 = 4*voxel_size
+	var node_size_1: Vector3 = 2*node_size_0
+	var node_size_2: Vector3 = 2*node_size_1
+	var node_size_3: Vector3 = 2*node_size_2
 	
 	var triangle: PackedVector3Array = [
-		Vector3(node_size_2-voxel_size_quarter, 0, 0), 
-		Vector3(node_size_2-voxel_size_quarter, 0, node_size_1-2*voxel_size_quarter),
-		Vector3(node_size_2-voxel_size_quarter, node_size_1-2*voxel_size_quarter, 0) 
+		Vector3(node_size_2.x-voxel_size_quarter.x, 0, 0), 
+		Vector3(node_size_2.x-voxel_size_quarter.x, 0, node_size_1.x-2*voxel_size_quarter.x),
+		Vector3(node_size_2.x-voxel_size_quarter.x, node_size_1.x-2*voxel_size_quarter.x, 0) 
 	]
 	
 	var triangle_shifted: PackedVector3Array = triangle.duplicate()
 	for i in range(triangle_shifted.size()):
-		triangle_shifted[i].x += voxel_size_half
+		triangle_shifted[i].x += voxel_size_half.x
 	
 	var tbt = TriangleBoxTest.new(
-		triangle_shifted,
-		Vector3.ONE * node_size_1, 
+		triangle_shifted[0],
+		triangle_shifted[1],
+		triangle_shifted[2],
+		node_size_1, 
 		TriangleBoxTest.Separability.SEPARATING_26,
-		voxel_size)
+		)
 		
 	# Schwarz's modification: 
 	# Enlarge the triangle’s bounding box in −x direction by one SG voxel
@@ -40,7 +42,7 @@ func test():
 	var vox_range: Array[Vector3i] = flight_nav._voxels_overlapped_by_aabb(
 		node_size_1,
 		tbt.aabb, 
-		Vector3.ONE * node_size_3)
+		node_size_3)
 	
 	var overlap_result = []
 	for x in range(vox_range[0].x, vox_range[1].x):

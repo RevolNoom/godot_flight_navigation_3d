@@ -11,9 +11,10 @@ var flight_navigation_3d_scene: FlightNavigation3D = null:
 		if flight_navigation_3d_scene != null:
 			flight_navigation_3d_scene.progress.connect(_on_progress)
 
+
 func _exit_tree() -> void:
 	if flight_navigation_3d_scene != null:
-		flight_navigation_3d_scene.progress.disconnect(_on_progress)
+		flight_navigation_3d_scene = null
 		
 
 var step_start_time: Array[Dictionary] = []
@@ -66,7 +67,7 @@ func _on_pressed() -> void:
 	
 	_update_dialog_text()
 	
-	var svo = await flight_navigation_3d_scene.build_navigation_data()
+	var svo = await flight_navigation_3d_scene.build_navigation()
 	var existing_svo = flight_navigation_3d_scene.sparse_voxel_octree
 	var resource_path = ""
 	if existing_svo == null:

@@ -49,7 +49,6 @@ multi_threading = false
 depth = 5
 resolution = "64 x 64 x 64"
 perform_surface_voxelization = false
-debug_delete_flip_flag = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 

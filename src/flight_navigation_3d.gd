@@ -159,7 +159,9 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 #region Build navigation
 ## The "smallest" floating point number.
 ## Usually used for float comparisons.
-const epsilon: float = 0.0000001
+#const epsilon: float = 0.000_000_01
+const epsilon: float = 0.000_000_01
+
 
 ## Construct an SVO that can be assigned to [member sparse_voxel_octree] later.[br]
 ## [b]NOTE:[/b] Only one build process can be run at a time for each FlightNavigation3D.
@@ -1321,23 +1323,25 @@ static func _parallel_yz_plane_rasterization(
 	voxel_size: Vector3,
 	x_column_flip_bitmask_by_subgrid_index: PackedInt64Array,
 	flight_navigation_size: Vector3):
-	var inverted_voxel_size: Vector3 = Vector3.ONE / voxel_size
 	var triangle_start_idx: int = triangle_index * 3
-		
-	var v0xyz: Vector3 = triangles[triangle_start_idx+0]
-	var v1xyz: Vector3 = triangles[triangle_start_idx+1]
-	var v2xyz: Vector3 = triangles[triangle_start_idx+2]
-
-	var e0xyz: Vector3 = v1xyz - v0xyz
-	var e1xyz: Vector3 = v2xyz - v1xyz
-	var e2xyz: Vector3 = v0xyz - v2xyz
 	
-	var v0: Vector2 = Vector2(v0xyz.y, v0xyz.z)
-	var v1: Vector2 = Vector2(v1xyz.y, v1xyz.z)
-	var v2: Vector2 = Vector2(v2xyz.y, v2xyz.z)
+	var v0xyz: PackedFloat64Array = Dvector._new_v3(triangles[triangle_start_idx+0])
+	var v1xyz: PackedFloat64Array = Dvector._new_v3(triangles[triangle_start_idx+1])
+	var v2xyz: PackedFloat64Array = Dvector._new_v3(triangles[triangle_start_idx+2])
+
+	var e0xyz: PackedFloat64Array = [0.0, 0.0, 0.0]
+	var e1xyz: PackedFloat64Array = [0.0, 0.0, 0.0]
+	var e2xyz: PackedFloat64Array = [0.0, 0.0, 0.0]
+	Dvector.sub(e0xyz, v1xyz, v0xyz)
+	Dvector.sub(e1xyz, v2xyz, v1xyz)
+	Dvector.sub(e2xyz, v0xyz, v2xyz)
+	
+	var v0: PackedFloat64Array = [v0xyz[1], v0xyz[2]]
+	var v1: PackedFloat64Array = [v1xyz[1], v1xyz[2]]
+	var v2: PackedFloat64Array = [v2xyz[1], v2xyz[2]]
 
 	#region Ensure consistent counter-clockwise order of vertices
-	var not_is_ccw = e2xyz.y * e0xyz.z - e0xyz.y * e2xyz.z < 0
+	var not_is_ccw = e2xyz[1] * e0xyz[2] - e0xyz[1] * e2xyz[2] < 0
 	if not_is_ccw:
 		# Swap v1 and v2
 		var v_temp = v1
@@ -1345,37 +1349,39 @@ static func _parallel_yz_plane_rasterization(
 		v2 = v_temp
 		
 		# Recalculate edge equations. Turn v1 into v2 and vice versa.
-		e0xyz = v2xyz - v0xyz
-		e1xyz = v1xyz - v2xyz
-		e2xyz = v0xyz - v1xyz
+		Dvector.sub(e0xyz, v2xyz, v0xyz)
+		Dvector.sub(e1xyz, v1xyz, v2xyz)
+		Dvector.sub(e2xyz, v0xyz, v1xyz)
 	#endregion
 
-	var n: Vector3 = e0xyz.cross(e1xyz)
+	var n: PackedFloat64Array = [0.0, 0.0, 0.0]
+	Dvector.cross(n, e0xyz, e1xyz)
 
 	# Ignore projected triangles that are too thin.
-	if is_zero_approx(n.x):
+	#if is_zero_approx(n[0]):
+	if absf(n[0]) < epsilon:
 		return
 
-	var n_yz_e0: Vector2 = Vector2(-e0xyz.z, e0xyz.y)
-	var n_yz_e1: Vector2 = Vector2(-e1xyz.z, e1xyz.y)
-	var n_yz_e2: Vector2 = Vector2(-e2xyz.z, e2xyz.y)
+	var n_yz_e0: PackedFloat64Array = [-e0xyz[2], e0xyz[1]]
+	var n_yz_e1: PackedFloat64Array = [-e1xyz[2], e1xyz[1]]
+	var n_yz_e2: PackedFloat64Array = [-e2xyz[2], e2xyz[1]]
 
 	if n[0] < 0:
-		n_yz_e0 = Vector2(e0xyz.z, -e0xyz.y)
-		n_yz_e1 = Vector2(e1xyz.z, -e1xyz.y)
-		n_yz_e2 = Vector2(e2xyz.z, -e2xyz.y)
+		n_yz_e0 = [e0xyz[2], -e0xyz[1]]
+		n_yz_e1 = [e1xyz[2], -e1xyz[1]]
+		n_yz_e2 = [e2xyz[2], -e2xyz[1]]
 		
-	var d_yz_e0: float = -n_yz_e0.dot(v0)
-	var d_yz_e1: float = -n_yz_e1.dot(v1)
-	var d_yz_e2: float = -n_yz_e2.dot(v2)
+	var d_yz_e0: float = -Dvector.dot(n_yz_e0, v0)
+	var d_yz_e1: float = -Dvector.dot(n_yz_e1, v1)
+	var d_yz_e2: float = -Dvector.dot(n_yz_e2, v2)
 
 	var is_left_edge_e0: bool = n_yz_e0[0] > 0
 	var is_left_edge_e1: bool = n_yz_e1[0] > 0
 	var is_left_edge_e2: bool = n_yz_e2[0] > 0
 
-	var is_top_edge_e0: bool = n_yz_e0[0] == 0 and n_yz_e0[1] < 0
-	var is_top_edge_e1: bool = n_yz_e1[0] == 0 and n_yz_e1[1] < 0
-	var is_top_edge_e2: bool = n_yz_e2[0] == 0 and n_yz_e2[1] < 0
+	var is_top_edge_e0: bool = absf(n_yz_e0[0]) < epsilon and n_yz_e0[1] < 0
+	var is_top_edge_e1: bool = absf(n_yz_e1[0]) < epsilon and n_yz_e1[1] < 0
+	var is_top_edge_e2: bool = absf(n_yz_e2[0]) < epsilon and n_yz_e2[1] < 0
 
 	var f_yz_e0: float = 0
 	var f_yz_e1: float = 0
@@ -1397,25 +1403,26 @@ static func _parallel_yz_plane_rasterization(
 	# because we are considering voxel centers
 	var rect2i: Rect2i = Rect2i()
 	rect2i.position = Vector2i(
-		floori(min(v0[0], v1[0], v2[0]) * inverted_voxel_size.y + 0.5), 
-		floori(min(v0[1], v1[1], v2[1]) * inverted_voxel_size.z + 0.5)
+		ceili(min(v0[0], v1[0], v2[0]) / voxel_size[1] - 0.5), 
+		ceili(min(v0[1], v1[1], v2[1]) / voxel_size[2] - 0.5)
 		)
 	rect2i.end = Vector2i(
-		ceili(max(v0[0], v1[0], v2[0]) * inverted_voxel_size.y - 0.5), 
-		ceili(max(v0[1], v1[1], v2[1]) * inverted_voxel_size.z - 0.5))
+		floori(max(v0[0], v1[0], v2[0]) / voxel_size[1] + 0.5), 
+		floori(max(v0[1], v1[1], v2[1]) / voxel_size[2] + 0.5))
 
 	if not rect2i.has_area():
 		return
 
-	var voxel_size_yz = Vector2(voxel_size.y, voxel_size.z)
+	var p_yz: PackedFloat64Array = [0.0, 0.0]
 	for voxel_y in range(rect2i.position[0], rect2i.end[0]):
 		for voxel_z in range(rect2i.position[1], rect2i.end[1]):
-			var p_yz: Vector2 = Vector2(voxel_y+0.5, voxel_z+0.5) * voxel_size_yz
+			p_yz[0] = (voxel_y+0.5) * voxel_size[1]
+			p_yz[1] = (voxel_z+0.5) * voxel_size[2]
 			
 			var triangle_overlap_voxel_center =\
-				(n_yz_e0.dot(p_yz) + d_yz_e0 + f_yz_e0 > 0)\
-				and (n_yz_e1.dot(p_yz) + d_yz_e1 + f_yz_e1 > 0)\
-				and (n_yz_e2.dot(p_yz) + d_yz_e2 + f_yz_e2 > 0)
+				(Dvector.dot(n_yz_e0, p_yz) + d_yz_e0 + f_yz_e0 > 0)\
+				and (Dvector.dot(n_yz_e1, p_yz) + d_yz_e1 + f_yz_e1 > 0)\
+				and (Dvector.dot(n_yz_e2, p_yz) + d_yz_e2 + f_yz_e2 > 0)
 			
 			if not triangle_overlap_voxel_center:
 				continue
@@ -1423,17 +1430,18 @@ static func _parallel_yz_plane_rasterization(
 			# n = (a, b, c)
 			# Plane equation: ax + by + cz + d = 0
 			# x = -(by + cz + d)/a
-			# Also, shift the voxel position by size.x/2 (half the navigation cube),
+			# Also, shift the voxel position by size[0]/2 (half the navigation cube),
 			# because the navigation cube originates from the center, 
 			# not from the corner of the cube (as we expect it to be)
-			var plane_equation_d = - n.dot(v0xyz)
-			var projected_x = -(n.y * p_yz[0] + n.z * p_yz[1] + plane_equation_d)/n.x
+			var plane_equation_d = - Dvector.dot(n, v0xyz)
+			#var projected_x = -(n[1] * p_yz[0] + n[2] * p_yz[1] + plane_equation_d)/n[0]
 			
-			var voxel_x: int = floori(projected_x * inverted_voxel_size.x + 0.5)
-			
+			var voxel_x: int = floori(0.5 - 
+				(n[1] * p_yz[0] + n[2] * p_yz[1] + plane_equation_d)/
+				(n[0] * voxel_size[0]))
 
 			# clamp to valid x range
-			var grid_x: int = int(flight_navigation_size.x / voxel_size.x)
+			var grid_x: int = int(flight_navigation_size[0] / voxel_size[0])
 			voxel_x = clamp(voxel_x, 0, grid_x - 1)
 			
 			var voxel_morton: int = Morton3.encode64(voxel_x, voxel_y, voxel_z)

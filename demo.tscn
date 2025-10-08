@@ -87,6 +87,7 @@ size = Vector3(4, 4, 4)
 sparse_voxel_octree = ExtResource("4_6bw2v")
 pathfinder = SubResource("Resource_kem5a")
 remove_thin_triangles = false
+perform_surface_voxelization = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false
