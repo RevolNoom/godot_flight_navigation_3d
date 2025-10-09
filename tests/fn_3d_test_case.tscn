@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3 uid="uid://im43e5dxwne2"]
+
+[ext_resource type="Script" uid="uid://ddec7kgabubfl" path="res://tests/fn_3d_test_case.gd" id="1_ldkda"]
+[ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_fk2f2"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m0rpm"]
+sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+ground_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+
+[sub_resource type="Sky" id="Sky_c6xj6"]
+sky_material = SubResource("ProceduralSkyMaterial_m0rpm")
+
+[sub_resource type="Environment" id="Environment_6bw2v"]
+background_mode = 2
+sky = SubResource("Sky_c6xj6")
+tonemap_mode = 2
+glow_enabled = true
+
+[node name="Fn3dTestCase" type="Node3D"]
+script = ExtResource("1_ldkda")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_6bw2v")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
+
+[node name="FlightNavigation3D" parent="." instance=ExtResource("2_fk2f2")]
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 1, 1, 1)
+size = Vector3(4, 4, 4)
+
+[node name="VoxelizationTargets" type="Node3D" parent="."]
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 1, 1, 1)

@@ -3,6 +3,12 @@ extends Control
 
 @onready var progress_dialog = $ProgressDialog/ScrollContainer/Log
 
+func _ready() -> void:
+	# Avoid exclusive window conflicts with Editor's own dialogs
+	if $ProgressDialog is Window:
+		$ProgressDialog.exclusive = false
+		
+
 var flight_navigation_3d_scene: FlightNavigation3D = null:
 	set(value):
 		if flight_navigation_3d_scene != null:
@@ -70,15 +76,27 @@ func _on_pressed() -> void:
 	var svo = await flight_navigation_3d_scene.build_navigation()
 	var existing_svo = flight_navigation_3d_scene.sparse_voxel_octree
 	var resource_path = ""
+	# Determine active scene folder to save the SVO next to the scene file
+	var edited_scene_root = get_tree().edited_scene_root
+	var edited_scene_path = ""
+	if edited_scene_root != null:
+		edited_scene_path = edited_scene_root.get_scene_file_path()
+	var edited_scene_dir = edited_scene_path.get_base_dir() if edited_scene_path != "" else "res://"
+	var scene_file = edited_scene_path.get_file()
+	var scene_name = scene_file.get_basename() if scene_file != "" else flight_navigation_3d_scene.get_tree().current_scene.name
+	
+	# Handle directory path when it is not "res://"
+	if not edited_scene_dir.ends_with("/"):
+		edited_scene_dir += "/"
+	# Use format: <scene_name>_<flight_navigation_node_name>.res
+	resource_path = "%s%s_%s.res" % [edited_scene_dir, scene_name, flight_navigation_3d_scene.name]
 	if existing_svo == null:
-		resource_path = "%s%s" % [flight_navigation_3d_scene.name, flight_navigation_3d_scene.resource_format]
 		svo.resource_path = resource_path
 		ResourceSaver.save(svo, resource_path,
 			ResourceSaver.FLAG_RELATIVE_PATHS
 			#ResourceSaver.FLAG_COMPRESS |
 			)
 	else:
-		resource_path = existing_svo.resource_path
 		svo.take_over_path(resource_path)
 		ResourceSaver.save(svo, resource_path, ResourceSaver.FLAG_NONE)
 		

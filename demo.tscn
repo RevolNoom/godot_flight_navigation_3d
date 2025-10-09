@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_0bhed"]
 [ext_resource type="Script" uid="uid://bb6ejyrqomja3" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="2_c6xj6"]
 [ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="3_m0rpm"]
-[ext_resource type="Resource" uid="uid://03uoqpnlgv4w" path="res://FlightNavigation3D.res" id="4_6bw2v"]
+[ext_resource type="Resource" uid="uid://bqcl2vvhriucb" path="res://demo_FlightNavigation3D.res" id="4_kem5a"]
 [ext_resource type="Script" uid="uid://w5m2mbfn0dai" path="res://src/greedy_a_star.gd" id="5_kem5a"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_m0rpm"]
@@ -84,11 +84,12 @@ mesh = SubResource("SphereMesh_pw7g6")
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
 transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(4, 4, 4)
-sparse_voxel_octree = ExtResource("4_6bw2v")
+sparse_voxel_octree = ExtResource("4_kem5a")
 pathfinder = SubResource("Resource_kem5a")
+depth = 5
+resolution = "64 x 64 x 64"
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
-visible = false
 
 [node name="SingleTriangle" type="StaticBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5454793, 0.815619)

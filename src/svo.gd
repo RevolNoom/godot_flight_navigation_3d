@@ -108,6 +108,61 @@ func _init():
 	pass
 
 
+## Return true iff all exported variables have identical content to [param other].
+## This performs a deep structural comparison of all arrays.
+func deep_compare(other: SVO) -> bool:
+	if other == null:
+		return false
+	# depth is derived from morton.size(), but check anyway for clarity
+	if depth != other.depth:
+		return false
+	if not _equal_array_of_arrays(morton, other.morton):
+		return false
+	if not _equal_array_of_arrays(parent, other.parent):
+		return false
+	if not _equal_array_of_arrays(first_child, other.first_child):
+		return false
+	if not _equal_array(subgrid, other.subgrid):
+		return false
+	if not _equal_array_of_arrays(xp, other.xp):
+		return false
+	if not _equal_array_of_arrays(yp, other.yp):
+		return false
+	if not _equal_array_of_arrays(zp, other.zp):
+		return false
+	if not _equal_array_of_arrays(xn, other.xn):
+		return false
+	if not _equal_array_of_arrays(yn, other.yn):
+		return false
+	if not _equal_array_of_arrays(zn, other.zn):
+		return false
+	if not _equal_array_of_arrays(inside, other.inside):
+		return false
+	if not _equal_array_of_arrays(flip, other.flip):
+		return false
+	if not _equal_array_of_arrays(coverage, other.coverage):
+		return false
+	return true
+
+
+static func _equal_array(a, b) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in range(a.size()):
+		if a[i] != b[i]:
+			return false
+	return true
+
+
+static func _equal_array_of_arrays(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in range(a.size()):
+		if not _equal_array(a[i], b[i]):
+			return false
+	return true
+
+
 ## Return the SVONode with [param target_morton] in SVO's [param layer].
 ## [br]
 ## If no node with such [param target_morton] exists, return [SVOLink.NULL].

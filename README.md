@@ -3,9 +3,13 @@
 Godot Flight Navigation 3D provides flying and swimming navigation in free 3D space for Godot Engine. 
 It builds a Sparse Voxel Octree (SVO) representing solid and empty space, and applies a Greedy A* algorithm for pathfinding.
 
-## General Information
+## Supported Godot builds:
 
-- Tested on Godot versions: v4.5.beta2.official.e1b4101e3
+- Godot_v4.4.1-stable_linux.x86_64
+
+- Godot_v4.5-stable_linux.x86_64
+
+There might actually be more supported builds than listed here. I don't have time to test them out, yet.
 
 ## Features
 
@@ -37,7 +41,7 @@ It builds a Sparse Voxel Octree (SVO) representing solid and empty space, and ap
    ![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
 
 
-- Configure parameters for the navigation space. Some important parameters are:
+3. Configure parameters for the navigation space. Some important parameters are:
 
 + `Depth`: controls how detailed the navigation space will be. 
 	Memory and computational power consumption rises exponentially per depth level.
@@ -64,14 +68,14 @@ It builds a Sparse Voxel Octree (SVO) representing solid and empty space, and ap
 	var svo = await $FlightNavigation3D.build_navigation()
 	$FlightNavigation3D.sparse_voxel_octree = svo
 
-    # Optional: Visualize the navigation space
+	# Optional: Visualize the navigation space
 	$FlightNavigation3D.draw()
 ```
 
 ### Find path between two positions in space
 
 ```gdscript
-    # find_path works with global positions
+	# find_path works with global positions
 	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
 
 	# Visualize the path

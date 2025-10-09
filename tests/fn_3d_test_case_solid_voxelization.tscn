@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://6c2cfb88t3sy"]
+
+[ext_resource type="PackedScene" uid="uid://im43e5dxwne2" path="res://tests/fn_3d_test_case.tscn" id="1_mdyuo"]
+[ext_resource type="Resource" uid="uid://bal2m43pl0rpd" path="res://tests/fn_3d_test_case_solid_voxelization_FlightNavigation3D.res" id="2_nuy35"]
+[ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="2_rtv18"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_rtv18"]
+size = Vector3(39.8, 39.8, 39.8)
+
+[node name="Fn3dTestCaseSolidVoxelization" instance=ExtResource("1_mdyuo")]
+
+[node name="FlightNavigation3D" parent="." index="2"]
+transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 32, 32, 32)
+size = Vector3(64, 64, 64)
+sparse_voxel_octree = ExtResource("2_nuy35")
+depth = 5
+resolution = "64 x 64 x 64"
+
+[node name="Box" type="StaticBody3D" parent="VoxelizationTargets" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 20, 20)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/Box" index="0"]
+shape = SubResource("BoxShape3D_rtv18")
+
+[node name="VoxelizationTarget" parent="VoxelizationTargets/Box" index="1" instance=ExtResource("2_rtv18")]
