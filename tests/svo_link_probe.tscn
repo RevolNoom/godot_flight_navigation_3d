@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://bgnvh1h5oadvq"]
+
+[ext_resource type="Script" uid="uid://cxvjs2ne0gsoq" path="res://tests/svo_link_probe.gd" id="1_0i4iw"]
+
+[node name="SvoLinkProbe" type="Node3D"]
+script = ExtResource("1_0i4iw")
+sphere_radius = 0.01
+label_font_size = 16

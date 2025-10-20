@@ -1,8 +1,9 @@
-[gd_scene load_steps=26 format=3 uid="uid://dgo7fj4tmihlq"]
+[gd_scene load_steps=27 format=3 uid="uid://dgo7fj4tmihlq"]
 
 [ext_resource type="Script" uid="uid://d11cyhx2in52c" path="res://demo.gd" id="1_j05pj"]
 [ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="2_0bhed"]
 [ext_resource type="Script" uid="uid://bb6ejyrqomja3" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="2_c6xj6"]
+[ext_resource type="PackedScene" uid="uid://bgnvh1h5oadvq" path="res://tests/svo_link_probe.tscn" id="3_gxmxl"]
 [ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="3_m0rpm"]
 [ext_resource type="Resource" uid="uid://bqcl2vvhriucb" path="res://demo_FlightNavigation3D.res" id="4_kem5a"]
 [ext_resource type="Script" uid="uid://w5m2mbfn0dai" path="res://src/greedy_a_star.gd" id="5_kem5a"]
@@ -70,6 +71,11 @@ environment = SubResource("Environment_6bw2v")
 transform = Transform3D(-0.738699, -0.322985, 0.591612, 0.00995162, 0.872394, 0.488702, -0.673962, 0.366891, -0.641222, 4.39076, 2.49727, -3.36855)
 script = ExtResource("2_c6xj6")
 
+[node name="SvoLinkProbe" parent="Camera3D" node_paths=PackedStringArray("flight_navigation") instance=ExtResource("3_gxmxl")]
+probe_distance = 0.1
+flight_navigation = NodePath("../../FlightNavigation3D")
+sphere_radius = 0.005
+
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.41663, 0.909076, 0, -0.909076, 0.41663, 0, 3.65901, 2.20166)
 
@@ -86,13 +92,13 @@ transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(4, 4, 4)
 sparse_voxel_octree = ExtResource("4_kem5a")
 pathfinder = SubResource("Resource_kem5a")
-depth = 5
-resolution = "64 x 64 x 64"
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
+visible = false
 
 [node name="SingleTriangle" type="StaticBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5454793, 0.815619)
+visible = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="VoxelizationTargets/SingleTriangle"]
 shape = SubResource("ConvexPolygonShape3D_c6xj6")
@@ -100,12 +106,14 @@ shape = SubResource("ConvexPolygonShape3D_c6xj6")
 [node name="VoxelizationTarget" parent="VoxelizationTargets/SingleTriangle" instance=ExtResource("3_m0rpm")]
 
 [node name="ArrayMesh" type="MeshInstance3D" parent="VoxelizationTargets"]
+visible = false
 mesh = SubResource("ArrayMesh_c6xj6")
 
 [node name="VoxelizationTarget" parent="VoxelizationTargets/ArrayMesh" instance=ExtResource("3_m0rpm")]
 
 [node name="Sphere" type="RigidBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, 1.5)
+visible = false
 gravity_scale = 0.0
 freeze = true
 
@@ -160,6 +168,7 @@ shape = SubResource("CylinderShape3D_y24ew")
 mesh = SubResource("CylinderMesh_w63pk")
 
 [node name="VoxelizationTarget" parent="VoxelizationTargets/Cylinder" instance=ExtResource("3_m0rpm")]
+voxelization_mask = 3
 
 [node name="ConvexBoxShape" type="CharacterBody3D" parent="VoxelizationTargets"]
 transform = Transform3D(0.966859, -0.249058, 0.0561595, 0.255311, 0.943178, -0.212676, 0, 0.219965, 0.975508, 0.9165685, 0, 0.0596905)

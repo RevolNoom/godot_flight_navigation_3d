@@ -1,13 +1,22 @@
 ## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel.
-## Used for surface voxelization.
-extends RefCounted
-class_name TriangleBoxTest
+##
+## Godot Vector uses float32. At 
+extends TriangleBoxTest
+class_name TriangleBoxTestF64
 
-## Triangle bounding box
-var aabb: AABB
+var epsilon: float
+
+var v0: PackedFloat64Array = [0, 0, 0]
+var v1: PackedFloat64Array = [0, 0, 0]
+var v2: PackedFloat64Array = [0, 0, 0]
 
 ## Triangle normal
 var n: PackedFloat64Array = [0, 0, 0]
+
+## If the plane equation is ax + by + cz = d
+## then n.dot(v0) = d.
+## Useful for calculation of projection of one Vector3 on the plane.
+var n_dot_v0: float = 0
 
 ## Edges normal projections on xy.
 var n_xy_e0: PackedFloat64Array = [0, 0]
@@ -47,23 +56,9 @@ var d1: float = 0
 ## Determine whether triangle plane separates two critical points.
 var d2: float = 0
 
-## Determines how "thick" the surface voxelization is.
-enum Separability {
-	## Thin voxelization.[br]
-	## [b]WARNING: [/b]Due to floating-point inaccuracy, 
-	## a water-tight object might have a non-water-tight voxel representation.[br]
-	## Thus, it is recommended to also perform a solid voxelization.
-	SEPARATING_6,
-	
-	## Conservative voxelization.[br]
-	## The surface contains all voxels it cuts through, even merely touched.
-	SEPARATING_26,
-}
-
 ## Vector to store temporary result
 var temp_v2_0: PackedFloat64Array = [0, 0]
 var temp_v2_1: PackedFloat64Array = [0, 0]
-var temp_v2_2: PackedFloat64Array = [0, 0]
 var temp_v3_0: PackedFloat64Array = [0, 0, 0]
 var temp_v3_1: PackedFloat64Array = [0, 0, 0]
 
@@ -77,14 +72,13 @@ func _init(
 	v1_f32: Vector3, 
 	v2_f32: Vector3, 
 	dp_f32: Vector3, 
-	separability: Separability):
+	separability: Separability,
+	epsilon_value: float):
+	epsilon = epsilon_value
 		
-	# Bounding box
-	aabb = AABB(v0_f32, Vector3()).expand(v1_f32).expand(v2_f32).abs()
-	
-	var v0 = Dvector._new_v3(v0_f32)
-	var v1 = Dvector._new_v3(v1_f32)
-	var v2 = Dvector._new_v3(v2_f32)
+	v0 = Dvector._new_v3(v0_f32)
+	v1 = Dvector._new_v3(v1_f32)
+	v2 = Dvector._new_v3(v2_f32)
 	
 	var dp: PackedFloat64Array = Dvector._new_v3(dp_f32)
 	
@@ -100,6 +94,8 @@ func _init(
 	# Triangle normal
 	# NOTE: This order of vector is important. Copied from cuda_voxelizer
 	Dvector.cross(n, e0, e1)
+
+	n_dot_v0 = Dvector.dot(n, v0)
 	
 	# Normalization creates too much inaccuracy, and thus omitted
 	#Dvector.normalize(n, n)
@@ -447,174 +443,64 @@ func _init(
 	
 	pass # Debug breakpoint
 
-## Return true if triangle overlaps voxel at [param minimum_corner] position.[br]
-## [br]
-## [b]Note:[/b] This test doesn't check whether triangle's bounding box overlaps voxel, 
-## which is a prerequisite. Do that test first to get potential overlapping voxels
-## and then feed them here.
-func overlap_voxel(minimum_corner: Vector3) -> bool:
-	#var po = _plane_overlaps(p)
-	#var p2o = _projection_2d_overlaps(p)
-	#return po and p2o
-	# Use this version for faster performance (short-circuit).
-	return _plane_overlaps(minimum_corner) and _projection_2d_overlaps(minimum_corner)
-
 
 ## Return true if triangle's plane
 ## overlaps voxel at [param minimum_corner] position.[br]
-func _plane_overlaps(minimum_corner: Vector3) -> bool:
+func plane_overlaps(minimum_corner: Vector3) -> bool:
 	Dvector.assign_v3(temp_v3_0, minimum_corner)
 	var np: float = Dvector.dot(n, temp_v3_0)
 	var np_d1: float = np + d1
 	var np_d2: float = np + d2
-	return np_d1 * np_d2 <= 0
+	return np_d1 * np_d2 <= epsilon
 	
 
-## Return true if triangle's projections on x, y, z 
-## overlaps voxel at [param minimum_corner] position.[br]
-func _projection_2d_overlaps(minimum_corner: Vector3) -> bool:
+## Return true if projections on xy of triangle
+## overlaps projections on xy of voxel at [param minimum_corner] position.[br]
+func projection_xy_overlaps(minimum_corner: Vector3) -> bool:
 	temp_v2_0[0] = minimum_corner[0]
 	temp_v2_0[1] = minimum_corner[1]
 	
-	temp_v2_1[0] = minimum_corner[1]
-	temp_v2_1[1] = minimum_corner[2]
+	return Dvector.dot(n_xy_e0, temp_v2_0) + d_xy_e0 + epsilon >= 0\
+	and Dvector.dot(n_xy_e1, temp_v2_0) + d_xy_e1 + epsilon >= 0\
+	and Dvector.dot(n_xy_e2, temp_v2_0) + d_xy_e2 + epsilon >= 0
 	
-	temp_v2_2[0] = minimum_corner[2]
-	temp_v2_2[1] = minimum_corner[0]
+
+## Return true if projections on yz of triangle
+## overlaps projections on yz of voxel at [param minimum_corner] position.[br]
+func projection_yz_overlaps(minimum_corner: Vector3) -> bool:
+	temp_v2_0[0] = minimum_corner[1]
+	temp_v2_0[1] = minimum_corner[2]
 	
-	#var bxy0 = Dvector.dot(n_xy_e0, temp_v2_0) + d_xy_e0
-	#var bxy1 = Dvector.dot(n_xy_e1, temp_v2_0) + d_xy_e1
-	#var bxy2 = Dvector.dot(n_xy_e2, temp_v2_0) + d_xy_e2
-	#
-	#var byz0 = Dvector.dot(n_yz_e0, temp_v2_1) + d_yz_e0
-	#var byz1 = Dvector.dot(n_yz_e1, temp_v2_1) + d_yz_e1
-	#var byz2 = Dvector.dot(n_yz_e2, temp_v2_1) + d_yz_e2
-	#
-	#var bzx0 = Dvector.dot(n_zx_e0, temp_v2_2) + d_zx_e0
-	#var bzx1 = Dvector.dot(n_zx_e1, temp_v2_2) + d_zx_e1
-	#var bzx2 = Dvector.dot(n_zx_e2, temp_v2_2) + d_zx_e2
-	#var b = bxy0 >= 0 and bxy1 >= 0 and bxy2 >= 0 and\
-	#byz0 >= 0 and byz1 >= 0 and byz2 >= 0 and \
-	#bzx0 >= 0 and bzx1 >= 0 and bzx2 >= 0 
-	
-	return Dvector.dot(n_xy_e0, temp_v2_0) + d_xy_e0 >= 0\
-	and Dvector.dot(n_xy_e1, temp_v2_0) + d_xy_e1 >= 0\
-	and Dvector.dot(n_xy_e2, temp_v2_0) + d_xy_e2 >= 0\
-	
-	and Dvector.dot(n_yz_e0, temp_v2_1) + d_yz_e0 >= 0\
-	and Dvector.dot(n_yz_e1, temp_v2_1) + d_yz_e1 >= 0\
-	and Dvector.dot(n_yz_e2, temp_v2_1) + d_yz_e2 >= 0\
-	
-	and Dvector.dot(n_zx_e0, temp_v2_2) + d_zx_e0 >= 0\
-	and Dvector.dot(n_zx_e1, temp_v2_2) + d_zx_e1 >= 0\
-	and Dvector.dot(n_zx_e2, temp_v2_2) + d_zx_e2 >= 0
+	#var prot0 = Dvector.dot(n_yz_e0, temp_v2_0) + d_yz_e0 + epsilon
+	#var prot1 = Dvector.dot(n_yz_e1, temp_v2_0) + d_yz_e1 + epsilon
+	#var prot2 = Dvector.dot(n_yz_e2, temp_v2_0) + d_yz_e2 + epsilon
+	return Dvector.dot(n_yz_e0, temp_v2_0) + d_yz_e0 + epsilon >= 0\
+	and Dvector.dot(n_yz_e1, temp_v2_0) + d_yz_e1 + epsilon >= 0\
+	and Dvector.dot(n_yz_e2, temp_v2_0) + d_yz_e2 + epsilon >= 0
 
 
-#static func _automated_test():
-	#print("Test triangle on YZ")
-	#_auto_test_triangle_extended(
-		#[Vector3(1,0,0), Vector3(1,2,1), Vector3(1,0,2)], 
-		#range(0, 2), 
-		#[Vector3(0,0,0), Vector3(0,0,1), Vector3(0,1,0), Vector3(0,1,1),
-		#Vector3(1,0,0), Vector3(1,0,1), Vector3(1,1,0), Vector3(1,1,1)]
-		#)
-	#print()
-	#print("Test triangle on XZ")
-	#_auto_test_triangle_extended(
-		#[Vector3(0,1,0), Vector3(1,1,2), Vector3(2,1,0)], 
-		#range(0, 2), 
-		#[Vector3(0,0,0), Vector3(0,0,1), Vector3(0,1,0), Vector3(0,1,1),
-		#Vector3(1,0,0), Vector3(1,0,1), Vector3(1,1,0), Vector3(1,1,1)]
-		#)
-	#print()
-	#print("Test triangle on XY")
-	#_auto_test_triangle_extended(
-		#[Vector3(0,0,1), Vector3(1,2,1), Vector3(2,0,1)], 
-		#range(0, 2), 
-		#[Vector3(0,0,0), Vector3(0,0,1), Vector3(0,1,0), Vector3(0,1,1),
-		#Vector3(1,0,0), Vector3(1,0,1), Vector3(1,1,0), Vector3(1,1,1)]
-		#)
-	#print()
-	#
-	#var solid_voxels = []
-	#for y in range(0, 2):
-		#solid_voxels.append_array([
-			#Vector3(-1,y,-1),
-			#Vector3(-1,y,0),
-			#Vector3(-1,y,0),
-			#Vector3(-1,y,0),
-			#Vector3(0,y,-1),
-			#Vector3(0,y,0),
-			#Vector3(0,y,1),
-			#Vector3(0,y,2),
-			#Vector3(1,y,-1),
-			#Vector3(1,y,0),
-			#Vector3(1,y,1),
-			#Vector3(1,y,2),
-			#Vector3(2,y,-1),
-			#Vector3(2,y,0),
-		#])
-	#print()
-	#print("Test triangle in XZ with bigger bound")
-	#_auto_test_triangle_extended(
-		#[Vector3(0,1,0), Vector3(1,1,2), Vector3(2,1,0)], 
-		#range(-1, 3),
-		#solid_voxels
-		#)
-	#
-	#solid_voxels = []
-	#
-	#for z_idx in range(0, 2):
-		#var z = z_idx*0.5
-		#solid_voxels.append_array([
-			#Vector3(0, -1, z),
-			#Vector3(0, -0.5, z),
-			#Vector3(0, 0, z),
-			#Vector3(0, 0.5, z),
-			#
-			#Vector3(0.5, -1, z),
-			#Vector3(0.5, -0.5, z),
-			#Vector3(0.5, 0, z),
-			#Vector3(0.5, 0.5, z),
-			#
-			#Vector3(1, -0.5, z),
-			#Vector3(1, 0, z),
-			#Vector3(1, 0.5, z),
-			#
-			#Vector3(1.5, 0, z),
-			#Vector3(1.5, 0.5, z),
-		#])
-	#print()
-	#print("Isolated test from tree voxelization")
-	#_auto_test_triangle_extended(
-		#[Vector3(0.5, 0.5, 0.5), Vector3(1.5, 0.5, 0.5), Vector3(0.5, -0.5, 0.5)],
-		#range(-2,4),
-		#solid_voxels,
-		#Vector3(0.5, 0.5, 0.5))
+## Return true if projections on zx of triangle
+## overlaps projections on zx of voxel at [param minimum_corner] position.[br]
+func projection_zx_overlaps(minimum_corner: Vector3) -> bool:
+	temp_v2_0[0] = minimum_corner[2]
+	temp_v2_0[1] = minimum_corner[0]
 	
-	
-#static func _auto_test_triangle_extended(v: PackedVector3Array, box_range: PackedInt64Array, solid_voxels: PackedVector3Array, box_size:= Vector3(1,1,1)):
-	#var test = TriangleBoxTest.new(v, box_size, Separability.SEPARATING_26)
-	#var test_result = {}
-	#
-	#for x in box_range:
-		#for y in box_range:
-			#for z in box_range:
-				#test_result[Vector3(x, y, z) * box_size] = test.overlap_voxel(Vector3(x, y, z) * box_size)
-				#
-	#var expected_result = {}
-	#for key in test_result.keys():
-		#expected_result[key] = false
-	#
-	#for sol_vox in solid_voxels:
-		#expected_result[sol_vox] = true
-#
-	#print("Triangle-Box Overlapping automated test")
-	#var errors = 0
-	#for key in test_result.keys():
-		#if test_result[key] != expected_result[key]:
-			#test.overlap_voxel(key)
-			#errors += 1
-			#printerr("Got %s, expected %s for %s" % [test_result[key], expected_result[key], key])
-	#print("Completed with %d error%s" % [errors, "" if errors < 2 else "s"])
-	#
+	return Dvector.dot(n_zx_e0, temp_v2_0) + d_zx_e0 + epsilon >= 0\
+	and Dvector.dot(n_zx_e1, temp_v2_0) + d_zx_e1 + epsilon >= 0\
+	and Dvector.dot(n_zx_e2, temp_v2_0) + d_zx_e2 + epsilon >= 0
+
+
+func x_projection_on_plane(y: float, z: float) -> float:
+	if is_zero_approx(n[0]):
+		return v0[0]
+	return (n_dot_v0 - n[1]*y - n[2]*z) / n[0]
+
+func y_projection_on_plane(x: float, z: float) -> float:
+	if is_zero_approx(n[1]):
+		return v0[1]
+	return (n_dot_v0 - n[0]*x - n[2]*z) / n[1]
+
+func z_projection_on_plane(x: float, y: float) -> float:
+	if is_zero_approx(n[2]):
+		return v0[2]
+	return (n_dot_v0 - n[0]*x - n[1]*y) / n[2]

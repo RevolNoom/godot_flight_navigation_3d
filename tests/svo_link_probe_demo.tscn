@@ -1,0 +1,30 @@
+[gd_scene load_steps=7 format=3 uid="uid://qs2w080gm38v"]
+
+[ext_resource type="Script" uid="uid://drbp873ghm0lt" path="res://tests/svo_link_probe_demo.gd" id="1"]
+[ext_resource type="Script" uid="uid://bb6ejyrqomja3" path="res://godot-free-look-camera-132062011edfce9399a489756064cfea880dad4c/free_look_camera.gd" id="2_cuy2d"]
+[ext_resource type="PackedScene" uid="uid://c1axq013ak0v1" path="res://src/flight_navigation_3d.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://bgnvh1h5oadvq" path="res://tests/svo_link_probe.tscn" id="3_cuy2d"]
+[ext_resource type="PackedScene" uid="uid://b0fdgf5nd6csp" path="res://src/voxelization_target.tscn" id="4_vh72a"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+size = Vector3(2, 2, 2)
+
+[node name="SVOLinkProbeDemo" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 5, 10)
+script = ExtResource("2_cuy2d")
+
+[node name="SvoLinkProbe" parent="Camera3D" instance=ExtResource("3_cuy2d")]
+
+[node name="FlightNavigation3D" parent="." instance=ExtResource("3")]
+size = Vector3(10, 10, 10)
+
+[node name="TestCube" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_1")
+
+[node name="VoxelizationTarget" parent="TestCube" instance=ExtResource("4_vh72a")]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 10, 0)

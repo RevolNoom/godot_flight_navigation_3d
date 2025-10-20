@@ -68,3 +68,14 @@ static func count_element_appearance_per_unique_element(sorted_array: Variant) -
 		list_element_appearance_per_unique_element[write_ptr] += 1
 
 	return list_element_appearance_per_unique_element
+
+
+## [param predicate](element_type, index: int) -> bool
+static func filter_in_place(array_type: Variant, predicate: Callable) -> void:
+	var write_index: int = 0
+	for read_index in range(array_type.size()):
+		if predicate.call(array_type[read_index], read_index):
+			array_type[write_index] = array_type[read_index]
+			write_index += 1
+		read_index += 1
+	array_type.resize(write_index)
