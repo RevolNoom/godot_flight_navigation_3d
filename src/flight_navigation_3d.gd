@@ -218,6 +218,7 @@ func build_navigation() -> SVO:
 	var flight_navigation_size: Vector3 = size
 	
 	var voxel_size: Vector3 = _node_size(flight_navigation_size, -2, depth)
+	var node_1_size: Vector3 = voxel_size * 8
 	var offset_by_half_voxel_size_x = Vector3(voxel_size.x/2, 0, 0)
 	var origin_offset = -flight_navigation_size / 2
 	#endregion
@@ -347,23 +348,8 @@ func build_navigation() -> SVO:
 			)
 	progress.emit(ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE, null, triangles.size(), triangles.size())
 	
-	## Clamp vertices to be within navigation bounds (with small epsilon for boundary triangles)
-	#var nav_max = flight_navigation_size - Vector3(epsilon, epsilon, epsilon)
-	#for i in range(triangles.size()):
-		#triangles[i] = triangles[i].clamp(Vector3.ZERO, nav_max)
 	#endregion
 	
-	#var max_z = 0
-	#for i in range(0, triangles.size(), 3):
-		#if triangles[i].z > max_z:
-			#max_z = triangles[i].z
-	#var max_z_triangles = []
-	#for i in range(0, triangles.size(), 3):
-		#var v0 = triangles[i]
-		#var v1 = triangles[i+1]
-		#var v2 = triangles[i+2]
-		#if v0.z == max_z and v1.z == max_z and v2.z == max_z:
-			#max_z_triangles.append([v0, v1, v2])
 	#region Determine active layer 1 nodes
 	# Return dictionary of key - value: Active node morton code - Overlapping triangles.[br]
 	# Overlapping triangles are serialized. Every 3 elements make up a triangle.[br]
@@ -373,8 +359,6 @@ func build_navigation() -> SVO:
 	# TODO: Count node 1 and then pre-allocate data.
 	
 	progress.emit(ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES, null, 0, triangles.size()/3)
-	# Mapping between active layer 1 node, and the triangles overlap it
-	var act1node_triangles: Dictionary[int, PackedVector3Array] = {}
 	
 	# Modifications (as described by Schwarz) to ensure that 
 	# the final voxelization boundary consists solely of level-0 nodes.
@@ -407,59 +391,128 @@ func build_navigation() -> SVO:
 			triangles_shifted[i] += offset_by_half_voxel_size_x
 	#endregion
 	
-	# TODO: Make this PackedInt64Array
-	var list_active_layer_1_morton: Array = []
 	
+	var list_triangle_overlap_node1_count: PackedInt64Array = []
+	list_triangle_overlap_node1_count.resize(triangles_shifted.size()/3)
+	list_triangle_overlap_node1_count.fill(0)
 	if multi_threading_enabled:
-		var threads: Array[Thread] = []
-		threads.resize(triangles_shifted.size() / 3)
-		threads.resize(0)
-		for i in range(0, triangles_shifted.size(), 3):
-			threads.push_back(Thread.new())
-			# TODO: Change slice() into indexing into triangle array
-			var err = threads.back().start(
-				_voxelize_layer_1.bind(
-					voxel_size, 
-					triangles_shifted.slice(i, i+3),
-					flight_navigation_size,
-					factory_triangle_box_test), 
-					multi_threading_priority)
-			if err != OK:
-				pass
-		
-		for i in range(threads.size()):
-			var t = threads[i]
-			progress.emit(ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES, null, i, triangles_shifted.size()/3)
-			while true:
-				if not t.is_alive():
-					var triangles_overlap_node_dictionary = t.wait_to_finish()
-					_merge_triangle_overlap_node_dicts(act1node_triangles, triangles_overlap_node_dictionary)
-					break
-				else:
-					await async_context
+		await Parallel.execute(
+			async_context, 
+			triangles_shifted.size()/3,
+			multi_threading_priority,
+			_parallel_get_triangle_overlap_node1_count.bind(
+				triangles_shifted,
+				list_triangle_overlap_node1_count,
+				factory_triangle_box_test,
+				node_1_size,
+				surface_voxelization_epsilon,
+				flight_navigation_size
+			))
 	else:
-		for i in range(0, triangles_shifted.size(), 3):
-			# TODO: Change slice() into indexing into triangle array
-			var triangle_overlap_node_dictionary = _voxelize_layer_1(
-				voxel_size, 
-				triangles_shifted.slice(i, i+3), 
-				flight_navigation_size, 
-				factory_triangle_box_test)
-			_merge_triangle_overlap_node_dicts(act1node_triangles, triangle_overlap_node_dictionary)
+		for i in range(triangles_shifted.size()/3):
+			_parallel_get_triangle_overlap_node1_count(
+				i, 
+				triangles_shifted,
+				list_triangle_overlap_node1_count,
+				factory_triangle_box_test,
+				node_1_size,
+				surface_voxelization_epsilon,
+				flight_navigation_size
+			)
+
+	var list_triangle_overlap_node1_write_index: PackedInt64Array = Parallel.make_start_write_index_array_from_count_array(
+		list_triangle_overlap_node1_count)
+
+	# Each element is a pair of int64 triangle index and int64 node 1 index.
+	# Because each x, y, z, w component is int32, this is utilized to be a pair of int64
+	# [0], [1] make up triangle_index
+	# [2], [3] make up node_1_index
+	# The reasons for using Vector4i are:
+	# 1. Array supports sorting Vector4i with operator<
+	# 2. Avoid creating a custom type that extends RefCounted.
+	var list_pair_triangle_index_overlap_node1: Array[Vector4i] = []
+	list_pair_triangle_index_overlap_node1.resize(Fn3dUtility.sum_array_number(list_triangle_overlap_node1_count))
+	
+	if list_pair_triangle_index_overlap_node1.size() == 0:
+		printerr("Nothing to voxelize")
+		return null
+
+	if multi_threading_enabled:
+		await Parallel.execute(
+			async_context, 
+			triangles_shifted.size()/3,
+			multi_threading_priority,
+			_parallel_get_triangle_overlap_list_node1.bind(
+				triangles_shifted,
+				factory_triangle_box_test,
+				node_1_size,
+				surface_voxelization_epsilon,
+				flight_navigation_size,
+				list_triangle_overlap_node1_write_index,
+				list_pair_triangle_index_overlap_node1
+			))
+	else:
+		for i in range(triangles_shifted.size()/3):
+			_parallel_get_triangle_overlap_list_node1(
+				i, 
+				triangles_shifted,
+				factory_triangle_box_test,
+				node_1_size,
+				surface_voxelization_epsilon,
+				flight_navigation_size,
+				list_triangle_overlap_node1_write_index,
+				list_pair_triangle_index_overlap_node1
+			)
+
+	# Swap the pair position: triangle-node1 to node1-triangle
+	var list_pair_node1_overlap_triangle_index: Array[Vector4i] = \
+		list_pair_triangle_index_overlap_node1.duplicate()
+	for i in range(list_pair_node1_overlap_triangle_index.size()):
+		var pair = list_pair_node1_overlap_triangle_index[i]
+		var temp_high = pair[0]
+		var temp_low = pair[1]
+		pair[0] = pair[2]
+		pair[1] = pair[3]
+		pair[2] = temp_high
+		pair[3] = temp_low
+		list_pair_node1_overlap_triangle_index[i] = pair
+
+	# Group pairs by node_1 morton ascending, triangle index ascending
+	# Note: This is a Group Operation, and is NOT a sort operation.
+	# Because when breaking int64 into 2 int32, 
+	# low bits int32 sortings will be jumbled up based on sign bit
+	list_pair_node1_overlap_triangle_index.sort()
+
+	var unique_morton_count: int = _count_unique_morton_codes(list_pair_node1_overlap_triangle_index)
+	var list_node_1_morton_grouped: PackedInt64Array = _filter_unique_morton_codes(list_pair_node1_overlap_triangle_index, unique_morton_count)
+	var list_node_1_overlap_triangle_count: PackedInt64Array = _get_node_1_overlap_triangle_count_array(
+		list_pair_node1_overlap_triangle_index, unique_morton_count)
+	var list_node_1_overlap_triangle_write_index: PackedInt64Array = \
+		Parallel.make_start_write_index_array_from_count_array(list_node_1_overlap_triangle_count)
+
+	var list_node_1_overlap_triangle_index: PackedInt64Array = []
+	list_node_1_overlap_triangle_index.resize(list_pair_node1_overlap_triangle_index.size())
+	for i in range(list_pair_node1_overlap_triangle_index.size()):
+		var current_pair = list_pair_node1_overlap_triangle_index[i]
+		var triangle_index = current_pair[2] << 32 | current_pair[3]
+		list_node_1_overlap_triangle_index[i] = triangle_index
+
+	
 	progress.emit(ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES, null, triangles.size()/3, triangles.size()/3)
 	#endregion
-	
-	list_active_layer_1_morton = act1node_triangles.keys()
 	
 	#region Construct SVO
 	var svo = SVO.new()
 	
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 0, 2)
 	
-	if list_active_layer_1_morton.size() == 0:
+	if list_node_1_morton_grouped.size() == 0:
 		printerr("No layer 1 node found")
 		return null
 		
+	var list_node_1_morton_sorted = list_node_1_morton_grouped.duplicate()
+	list_node_1_morton_sorted.sort()
+	
 	svo.morton.resize(depth)
 	svo.parent.resize(depth)
 	svo.first_child.resize(depth)
@@ -472,10 +525,10 @@ func build_navigation() -> SVO:
 	svo.zn.resize(depth)
 	
 	#region Construct from bottom up
-	list_active_layer_1_morton.sort()
+	list_node_1_morton_sorted.sort()
 	
 	#region Initialize layer 0
-	var layer_0_size = list_active_layer_1_morton.size() * 8
+	var layer_0_size = list_node_1_morton_sorted.size() * 8
 	
 	svo.morton[0].resize(layer_0_size)
 	svo.parent[0].resize(layer_0_size)
@@ -500,7 +553,7 @@ func build_navigation() -> SVO:
 	svo.zn[0].fill(SVOLink.NULL)
 	#endregion
 	
-	var current_active_layer_nodes = list_active_layer_1_morton
+	var current_active_layer_nodes = list_node_1_morton_sorted
 	
 	# An array to hold the parent index on above layer of the current layer in building.
 	# It is kept outside the for-loop to reduce memory re-allocation.
@@ -949,46 +1002,43 @@ func build_navigation() -> SVO:
 	#region Surface voxelization
 	if surface_voxelization_enabled:
 		progress.emit(ProgressStep.SURFACE_VOXELIZATION, svo, 
-			0, act1node_triangles.keys().size())
+			0, list_node_1_morton_grouped.size())
 		# Allocate each layer-1 node with 1 thread.[br]
 		# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
 		# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
-		if not act1node_triangles.is_empty():
-			var act1node_triangles_keys: Array[int] = act1node_triangles.keys()
-			# Reshift triangles back to their place.
-			# TODO: Flatten dictionary into array
-			for key in act1node_triangles_keys:
-				for i in range(act1node_triangles[key].size()):
-					act1node_triangles[key][i] -= offset_by_half_voxel_size_x
-			if multi_threading_enabled:
-				await Parallel.execute(
-					async_context, 
-					act1node_triangles_keys.size(),
-					multi_threading_priority,
-					_parallel_voxelize_subgrid.bind(
-						act1node_triangles_keys,
-						act1node_triangles,
-						svo,
-						voxel_size,
-						surface_voxelization_separability,
-						flight_navigation_size,
-						surface_voxelization_epsilon,
-						factory_triangle_box_test))
-			else:
-				for i in range(act1node_triangles_keys.size()):
-					_parallel_voxelize_subgrid(
-						i,
-						act1node_triangles_keys,
-						act1node_triangles,
-						svo,
-						voxel_size,
-						surface_voxelization_separability,
-						flight_navigation_size,
-						surface_voxelization_epsilon,
-						factory_triangle_box_test)
+		if multi_threading_enabled:
+			await Parallel.execute(
+				async_context, 
+				list_node_1_morton_grouped.size(),
+				multi_threading_priority,
+				_parallel_voxelize_subgrid.bind(
+					list_node_1_morton_grouped,
+					list_node_1_overlap_triangle_index,
+					list_node_1_overlap_triangle_write_index,
+					triangles,
+					svo,
+					voxel_size,
+					surface_voxelization_separability,
+					flight_navigation_size,
+					surface_voxelization_epsilon,
+					factory_triangle_box_test))
+		else:
+			for i in range(list_node_1_morton_grouped.size()):
+				_parallel_voxelize_subgrid(
+					i,
+					list_node_1_morton_grouped,
+					list_node_1_overlap_triangle_index,
+					list_node_1_overlap_triangle_write_index,
+					triangles,
+					svo,
+					voxel_size,
+					surface_voxelization_separability,
+					flight_navigation_size,
+					surface_voxelization_epsilon,
+					factory_triangle_box_test)
 					
 		progress.emit(ProgressStep.SURFACE_VOXELIZATION, svo, 
-			 act1node_triangles.keys().size(), act1node_triangles.keys().size())
+			list_node_1_morton_grouped.size(), list_node_1_morton_grouped.size())
 	#endregion
 	
 	if solid_voxelization_calculate_coverage_factor:
@@ -1041,7 +1091,137 @@ static func _mortons_different_parent(
 	# Thus, m1 ^ m2 should have them == 0
 	return (m1^m2) & 0x7FFF_FFFF_FFFF_FFF8
 
+
+static func _filter_unique_morton_codes(
+	list_pair_node1_overlap_triangle_index: Array[Vector4i], 
+	unique_morton_count: int) -> PackedInt64Array:
+	var first_element: Vector4i = list_pair_node1_overlap_triangle_index[0]
+	var first_element_morton: int = first_element[0] << 32 | first_element[1]
+	var list_node_1_morton_grouped: PackedInt64Array = [first_element_morton]
+	list_node_1_morton_grouped.resize(unique_morton_count)
+	list_node_1_morton_grouped.resize(1)
+	for i in range(list_pair_node1_overlap_triangle_index.size()):
+		var current_morton: int = list_pair_node1_overlap_triangle_index[i][0] << 32 | list_pair_node1_overlap_triangle_index[i][1]
+		if current_morton != list_node_1_morton_grouped[list_node_1_morton_grouped.size()-1]:
+			list_node_1_morton_grouped.push_back(current_morton)
+	return list_node_1_morton_grouped
+
+
+static func _count_unique_morton_codes(list_pair_node1_overlap_triangle_index: Array[Vector4i]) -> int:
+	var unique_morton_count: int = 1
+	for i in range(1, list_pair_node1_overlap_triangle_index.size()):
+		var current_morton: int = list_pair_node1_overlap_triangle_index[i][0] << 32 | list_pair_node1_overlap_triangle_index[i][1]
+		var last_morton: int = list_pair_node1_overlap_triangle_index[i-1][0] << 32 | list_pair_node1_overlap_triangle_index[i-1][1]
+		if current_morton != last_morton:
+			unique_morton_count += 1
+	return unique_morton_count
+
+
+static func _get_node_1_overlap_triangle_count_array(
+	list_pair_node1_overlap_triangle_index: Array[Vector4i],
+	unique_morton_count: int) -> PackedInt64Array:
+	var list_node_1_overlap_triangle_count: PackedInt64Array = []
+	list_node_1_overlap_triangle_count.resize(unique_morton_count)
+	list_node_1_overlap_triangle_count.fill(0)
+	list_node_1_overlap_triangle_count[0] = 1
+	var current_morton_index: int = 0
+	for i in range(1, list_pair_node1_overlap_triangle_index.size()):
+		var current_pair = list_pair_node1_overlap_triangle_index[i]
+		var last_pair = list_pair_node1_overlap_triangle_index[i-1]
+		var current_morton: int = current_pair[0] << 32 | current_pair[1]
+		var last_morton: int = last_pair[0] << 32 | last_pair[1]
+		if current_morton != last_morton:
+			current_morton_index += 1
+		list_node_1_overlap_triangle_count[current_morton_index] += 1
+	return list_node_1_overlap_triangle_count
+
+
+
 #region Multithreading functions
+
+static func _parallel_get_triangle_overlap_list_node1(
+	triangle_idx: int,
+	list_triangle: PackedVector3Array,
+	factory_triangle_box_test: FactoryTriangleBoxTest,
+	node_1_size: Vector3,
+	epsilon: float,
+	flight_navigation_size: Vector3,
+	list_triangle_overlap_node1_write_index: PackedInt64Array,
+	list_pair_triangle_index_overlap_node1: Array[Vector4i],
+	) -> void:
+	var start_idx = triangle_idx*3
+	var v0 = list_triangle[start_idx]
+	var v1 = list_triangle[start_idx + 1]
+	var v2 = list_triangle[start_idx + 2]
+
+	var triangle_node1_test = factory_triangle_box_test.create(
+		v0, 
+		v1, 
+		v2, 
+		node_1_size, 
+		TriangleBoxTest.Separability.SEPARATING_26,
+		epsilon)
+	var aabb: AABB = _calculate_triangle_aabb(v0, v1, v2);
+	var voxel_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, aabb, flight_navigation_size)
+
+	var write_index = list_triangle_overlap_node1_write_index[triangle_idx]
+	var node_1_position: Vector3 = Vector3()
+	for x in range(voxel_range[0].x, voxel_range[1].x):
+		node_1_position.x = x * node_1_size.x
+		for y in range(voxel_range[0].y, voxel_range[1].y):
+			node_1_position.y = y * node_1_size.y
+			for z in range(voxel_range[0].z, voxel_range[1].z):
+				node_1_position.z = z * node_1_size.z
+				if triangle_node1_test.overlap_voxel(node_1_position):
+					var triangle_index_high: int = (triangle_idx >> 32) & 0xFFFF_FFFF
+					var triangle_index_low: int = triangle_idx & 0xFFFF_FFFF
+
+					var node_1_morton = Morton3.encode64(x, y, z)
+					var node_1_morton_high: int = (node_1_morton >> 32) & 0xFFFF_FFFF
+					var node_1_morton_low: int = node_1_morton & 0xFFFF_FFFF
+					
+					var pair_triangle_index_overlap_node1: Vector4i = Vector4i()
+					pair_triangle_index_overlap_node1[0] = triangle_index_high
+					pair_triangle_index_overlap_node1[1] = triangle_index_low
+					pair_triangle_index_overlap_node1[2] = node_1_morton_high
+					pair_triangle_index_overlap_node1[3] = node_1_morton_low
+					list_pair_triangle_index_overlap_node1[write_index] = pair_triangle_index_overlap_node1
+					write_index += 1
+
+
+
+static func _parallel_get_triangle_overlap_node1_count(
+	triangle_idx: int,
+	list_triangle: PackedVector3Array,
+	list_triangle_overlap_node1_count: PackedInt64Array,
+	factory_triangle_box_test: FactoryTriangleBoxTest,
+	node_1_size: Vector3,
+	epsilon: float,
+	flight_navigation_size: Vector3) -> void:
+	var start_idx = triangle_idx*3
+	var v0 = list_triangle[start_idx]
+	var v1 = list_triangle[start_idx + 1]
+	var v2 = list_triangle[start_idx + 2]
+
+	var triangle_node1_test = factory_triangle_box_test.create(
+		v0, 
+		v1, 
+		v2, 
+		node_1_size, 
+		TriangleBoxTest.Separability.SEPARATING_26,
+		epsilon)
+	var aabb: AABB = _calculate_triangle_aabb(v0, v1, v2);
+	var voxel_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, aabb, flight_navigation_size)
+	var node_1_position: Vector3 = Vector3()
+	for x in range(voxel_range[0].x, voxel_range[1].x):
+		node_1_position.x = x * node_1_size.x
+		for y in range(voxel_range[0].y, voxel_range[1].y):
+			node_1_position.y = y * node_1_size.y
+			for z in range(voxel_range[0].z, voxel_range[1].z):
+				node_1_position.z = z * node_1_size.z
+				if triangle_node1_test.overlap_voxel(node_1_position):
+					list_triangle_overlap_node1_count[triangle_idx] += 1
+
 
 static func _parallel_is_non_zero_area_triangle(
 	triangle_idx: int,
@@ -1275,106 +1455,13 @@ func _voxelize_triangle_x_dominant(
 
 
 
-static func _calculate_triangle_aabb(triangle: PackedVector3Array, offset: int) -> AABB:
-	var v0: Vector3 = triangle[offset]
-	var v1: Vector3 = triangle[offset+1]
-	var v2: Vector3 = triangle[offset+2]
-	# Bounding box
+static func _calculate_triangle_aabb(v0: Vector3, v1: Vector3, v2: Vector3) -> AABB:
 	var aabb: AABB = AABB(v0, Vector3())
 	aabb = aabb.expand(v1)
 	aabb = aabb.expand(v2)
 	aabb = aabb.abs()
 	return aabb
 
-
-## Return dictionary of key - value: Active node morton code - Array of 3 Vector3 (vertices of [param triangle])[br]
-func _voxelize_layer_1(
-	voxel_size: Vector3,
-	triangle: PackedVector3Array,
-	flight_navigation_size: Vector3,
-	factory_triangle_box_test: FactoryTriangleBoxTest
-	) -> Dictionary[int, PackedVector3Array]:
-	var node_1_size: Vector3 = voxel_size * 8
-	var result: Dictionary[int, PackedVector3Array] = {}
-	
-	var aabb = _calculate_triangle_aabb(triangle, 0)
-	
-	# Schwarz's modification: 
-	# Enlarge the triangle’s bounding box in −x direction by one SG voxel
-	aabb.position.x -= voxel_size.x
-	aabb.size.x += voxel_size.x
-	
-	# Schwarz's specialization: Optimize based on dominant axis
-	var vox_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, aabb, flight_navigation_size)
-	
-	# Calculate bounding box thickness in each dimension
-	var bbox_thickness_x = vox_range[1].x - vox_range[0].x
-	var bbox_thickness_y = vox_range[1].y - vox_range[0].y
-	var bbox_thickness_z = vox_range[1].z - vox_range[0].z
-	
-	# Early exit: If bbox covers only 1 voxel in at least 2 directions, 
-	# directly set all voxels without further tests
-	var thin_directions = int(bbox_thickness_x == 1) + int(bbox_thickness_y == 1) + int(bbox_thickness_z == 1)
-	if thin_directions >= 2:
-		for x in range(vox_range[0].x, vox_range[1].x):
-			for y in range(vox_range[0].y, vox_range[1].y):
-				for z in range(vox_range[0].z, vox_range[1].z):
-					var vox_morton: int = Morton3.encode64(x, y, z)
-					if result.has(vox_morton):
-						result[vox_morton].append_array(triangle)
-					else:
-						result[vox_morton] = triangle.duplicate()
-		return result
-	
-	var triangle_box_test = factory_triangle_box_test.create(
-		triangle[0], 
-		triangle[1], 
-		triangle[2], 
-		node_1_size, 
-		TriangleBoxTest.Separability.SEPARATING_26,
-		surface_voxelization_epsilon
-	)
-	
-	# Optimization: If bbox is thin in exactly 1 direction, use 2D projection test
-	if thin_directions == 1:
-		var projection_test: Callable
-		if bbox_thickness_x == 1:
-			projection_test = triangle_box_test.projection_yz_overlaps
-		elif bbox_thickness_y == 1:
-			projection_test = triangle_box_test.projection_zx_overlaps
-		else:
-			projection_test = triangle_box_test.projection_xy_overlaps
-		
-		for x in range(vox_range[0].x, vox_range[1].x):
-			for y in range(vox_range[0].y, vox_range[1].y):
-				for z in range(vox_range[0].z, vox_range[1].z):
-					var voxel_pos = Vector3(x, y, z) * node_1_size
-					if projection_test.call(voxel_pos):
-						var vox_morton: int = Morton3.encode64(x, y, z)
-						if result.has(vox_morton):
-							result[vox_morton].append_array(triangle)
-						else:
-							result[vox_morton] = triangle.duplicate()
-		return result
-	
-	# General case: Determine dominant axis of triangle normal
-	var abs_nx = absf(triangle_box_test.n[0])
-	var abs_ny = absf(triangle_box_test.n[1])
-	var abs_nz = absf(triangle_box_test.n[2])
-	
-	# Specialize based on dominant axis
-	if abs_nz >= abs_nx and abs_nz >= abs_ny:
-		# Z is dominant - loop over XY plane
-		_voxelize_triangle_z_dominant(triangle_box_test, vox_range, node_1_size, result, triangle)
-	elif abs_ny >= abs_nx and abs_ny >= abs_nz:
-		# Y is dominant - loop over XZ plane
-		_voxelize_triangle_y_dominant(triangle_box_test, vox_range, node_1_size, result, triangle)
-	else:
-		# X is dominant - loop over YZ plane
-		_voxelize_triangle_x_dominant(triangle_box_test, vox_range, node_1_size, result, triangle)
-	
-	return result
-	
 
 ## Helper: Voxelize subgrid when Z is dominant axis
 static func _voxelize_subgrid_z_dominant(
@@ -1534,9 +1621,11 @@ static func _voxelize_subgrid_x_dominant(
 
 @warning_ignore("shadowed_variable")
 static func _parallel_voxelize_subgrid(
-	index: int,
-	act1node_triangles_keys: Array,
-	act1node_triangles: Dictionary[int, PackedVector3Array],
+	list_node_1_morton_index: int,
+	list_node_1_morton_grouped: PackedInt64Array,
+	list_node_1_overlap_triangle_index: PackedInt64Array,
+	list_node_1_overlap_triangle_write_index: PackedInt64Array,
+	triangles: PackedVector3Array,
 	svo: SVO,
 	voxel_size: Vector3,
 	surface_voxelization_separability: TriangleBoxTest.Separability,
@@ -1546,16 +1635,27 @@ static func _parallel_voxelize_subgrid(
 	):
 	var node_0_size: Vector3 = voxel_size * 4
 	var node_1_size: Vector3 = voxel_size * 8
-	var node1_morton = act1node_triangles_keys[index]
-	var triangles = act1node_triangles[node1_morton]
+	var node1_morton: int = list_node_1_morton_grouped[list_node_1_morton_index]
 	var node1_position = Morton3.decode_vec3(node1_morton) * node_1_size
-	
-	for i in range(0, triangles.size(), 3):
-		var triangle = triangles.slice(i, i+3)
-		
-		var triangle_aabb = _calculate_triangle_aabb(triangle, 0);
+
+	var start_write_index: int = list_node_1_overlap_triangle_write_index[list_node_1_morton_index]
+	var end_write_index: int = -1
+	if list_node_1_morton_index + 1 < list_node_1_overlap_triangle_write_index.size():
+		end_write_index = list_node_1_overlap_triangle_write_index[list_node_1_morton_index + 1]
+	else:
+		end_write_index = list_node_1_overlap_triangle_index.size()
+
+	for i in range(start_write_index, end_write_index):
+		var triangle_index = list_node_1_overlap_triangle_index[i]
+
+		var v0 = triangles[triangle_index*3]
+		var v1 = triangles[triangle_index*3+1]
+		var v2 = triangles[triangle_index*3+2]
+
+		var triangle_aabb = _calculate_triangle_aabb(v0, v1, v2);
 
 		var triangle_voxel_range = _voxels_overlapped_by_aabb(voxel_size, triangle_aabb, flight_navigation_size)
+
 		# Calculate bounding box thickness in each dimension
 		var triangle_voxel_range_thickness_x: int = triangle_voxel_range[1].x - triangle_voxel_range[0].x
 		var triangle_voxel_range_thickness_y: int = triangle_voxel_range[1].y - triangle_voxel_range[0].y
@@ -1565,9 +1665,9 @@ static func _parallel_voxelize_subgrid(
 			+ int(triangle_voxel_range_thickness_z == 1))
 
 		var triangle_node0_test = factory_triangle_box_test.create(
-			triangle[0], 
-			triangle[1], 
-			triangle[2], 
+			v0, 
+			v1, 
+			v2, 
 			node_0_size, 
 			TriangleBoxTest.Separability.SEPARATING_26,
 			epsilon)
@@ -1600,10 +1700,10 @@ static func _parallel_voxelize_subgrid(
 				continue
 
 			var triangle_voxel_test = factory_triangle_box_test.create(
-				triangle[0], 
-				triangle[1], 
-				triangle[2], 
-				voxel_size, 
+				v0,
+				v1,
+				v2,
+				voxel_size,
 				surface_voxelization_separability,
 				epsilon)
 			
