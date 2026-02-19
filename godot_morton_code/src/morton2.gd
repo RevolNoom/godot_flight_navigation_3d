@@ -1,0 +1,133 @@
+extends Morton
+class_name Morton2
+
+## Return a 64 bits Morton code, with x, y, z bits interleaved:[br]
+## y31 x31 _ y30 x30 _ ... _ y0 x0[br]
+## [b]WARNING:[/b] Can't encode value > 0xFFFF_FFFF, 32 bits).[br]
+static func encode64(x: int, y: int) -> int:
+	return _encodeMB64(x) | (_encodeMB64(y)<<1)
+
+## Like [method encode64]. Encode [param v]'s x, y components.[br]
+static func encode64v(v: Vector2i) -> int:
+	return Morton2.encode64(v.x, v.y)
+
+
+## Decode [param code] into x, y components of a Vector2.[br]
+static func decode_vec2(code: int) -> Vector2:
+	return Vector2(_decodeMB64(code & MASK_X),
+					_decodeMB64((code >> 1) & MASK_X))
+					
+## Decode [param code] into x, y components of a Vector2i.[br]
+static func decode_vec2i(code: int) -> Vector2i:
+	return Vector2i(_decodeMB64(code & MASK_X),
+					_decodeMB64((code >> 1) & MASK_X))
+
+
+## Return undecoded x-component of [param morton].[br]
+static func raw_x(morton: int) -> int:
+	return morton & MASK_X
+	
+## Return undecoded y-component of [param morton].[br]
+## (morton & MASK_Y) >> 1 will fail in case [param morton] is negative
+static func raw_y(morton: int) -> int:
+	return (morton >> 1) & MASK_X
+
+
+## Return a copy of [param morton] with x-component set to [param new_value].[br]
+static func set_x(morton: int, new_value: int) -> int:
+	return (morton & MASK_Y) | Morton2._encodeMB64(new_value)
+
+## Return a copy of [param morton] with y-component set to [param new_value].[br]
+static func set_y(morton: int, new_value: int) -> int:
+	return (morton & MASK_X) | (Morton2._encodeMB64(new_value) << 1)
+
+
+## Return a Morton2 code with each x, y component 
+## is sum of [param lhs] and [param rhs]' counterparts.[br]
+static func add(lhs: int, rhs: int):
+	var x_sum = (lhs | MASK_Y) + (rhs & MASK_X)
+	var y_sum = (lhs | MASK_X) + (rhs & MASK_Y)
+	return (x_sum & MASK_X) | (y_sum & MASK_Y)
+
+## Return a Morton2 code with each x, y component 
+## is remainder of [param lhs] subtracted by [param rhs]' counterparts.[br] 
+static func sub(lhs: int, rhs: int):
+	var x_diff = (lhs & MASK_X) - (rhs & MASK_X)
+	var y_diff = (lhs & MASK_Y) - (rhs & MASK_Y)
+	return ((x_diff & MASK_X) | (y_diff & MASK_Y))
+
+
+
+## Return a copy of [param code] with x-component added by 1.[br]
+static func inc_x(code: int) -> int:
+	var x_sum = ((code | MASK_Y) + 1)
+	return ((x_sum & MASK_X) | (code & MASK_Y))
+	
+## Return a copy of [param code] with y-component added by 1.[br]
+static func inc_y(code: int) -> int:
+	var y_sum = ((code | MASK_X) + 2)
+	return ((y_sum & MASK_Y) | (code & MASK_X))
+
+
+## Return a copy of [param code] with x-component subtracted by 1.[br]
+static func dec_x(code: int) -> int:
+	var x_diff = (code & MASK_X) - 1
+	return (x_diff & MASK_X) | (code & MASK_Y)
+	
+## Return a copy of [param code] with y-component subtracted by 1.[br]
+static func dec_y(code: int) -> int:
+	var y_diff = (code & MASK_Y) - 2
+	return (y_diff & MASK_Y) | (code & MASK_X)
+
+
+## Return true if all components of [param lhs] 
+## is greater than [param rhs] counterparts.[br]
+static func gt(lhs: int, rhs: int) -> bool:
+	return (lhs & MASK_X) > (rhs & MASK_X)\
+		and (lhs & MASK_Y) > (rhs & MASK_Y)
+		
+## Return true if all components of [param lhs] 
+## is greater or equal to [param rhs] counterparts.[br]
+static func ge(lhs: int, rhs: int) -> bool:
+	return (lhs & MASK_X) >= (rhs & MASK_X)\
+		and (lhs & MASK_Y) >= (rhs & MASK_Y)
+
+## Return true if all components of [param lhs] 
+## is less than [param rhs] counterparts.[br]
+static func lt(lhs: int, rhs: int) -> bool:
+	return (lhs & MASK_X) < (rhs & MASK_X)\
+		and (lhs & MASK_Y) < (rhs & MASK_Y)
+
+## Return true if all components of [param lhs] 
+## is less or equal to [param rhs] counterparts.[br]
+static func le(lhs: int, rhs: int) -> bool:
+	return (lhs & MASK_X) <= (rhs & MASK_X)\
+		and (lhs & MASK_Y) <= (rhs & MASK_Y)
+
+
+# Encode a value using Magic Bits algorithm.[br]
+# [b]NOTE:[/b] Godot v4.2.dev6.official.57a6813bb has problem parsing
+# hex number, so I'm resorting to bits instead.[br]
+static func _encodeMB64(x: int) -> int:
+	x &= 0b00000000_00000000_00000000_00000000_11111111_11111111_11111111_11111111
+	x = (x ^ (x<<16)) & 0b00000000_00000000_11111111_11111111_00000000_00000000_11111111_11111111
+	x = (x ^ (x<< 8)) & 0b00000000_11111111_00000000_11111111_00000000_11111111_00000000_11111111
+	x = (x ^ (x<< 4)) & 0b00001111_00001111_00001111_00001111_00001111_00001111_00001111_00001111
+	x = (x ^ (x<< 2)) & 0b00110011_00110011_00110011_00110011_00110011_00110011_00110011_00110011
+	x = (x ^ (x<< 1)) & MASK_X
+	return x
+
+
+# Decode a value using Magic Bits algorithm
+static func _decodeMB64(x: int) -> int:
+	x &= MASK_X
+	x = (x ^ (x>> 1)) & 0b00110011_00110011_00110011_00110011_00110011_00110011_00110011_00110011
+	x = (x ^ (x>> 2)) & 0b00001111_00001111_00001111_00001111_00001111_00001111_00001111_00001111
+	x = (x ^ (x>> 4)) & 0b00000000_11111111_00000000_11111111_00000000_11111111_00000000_11111111
+	x = (x ^ (x>> 8)) & 0b00000000_00000000_11111111_11111111_00000000_00000000_11111111_11111111
+	x = (x ^ (x>>16)) & 0b00000000_00000000_00000000_00000000_11111111_11111111_11111111_11111111
+	return x
+
+
+const MASK_X = 0b01010101_01010101_01010101_01010101_01010101_01010101_01010101_01010101
+const MASK_Y = MASK_X << 1

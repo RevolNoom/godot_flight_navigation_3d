@@ -37,17 +37,13 @@ class_name SVOLinkProbe
 # Internal nodes
 var _camera: Camera3D
 var _sphere_mesh: MeshInstance3D
+var _box_mesh: MeshInstance3D
 var _label_3d: Label3D
 var _current_svolink: int = SVOLink.NULL
 var _mouse_position: Vector2 = Vector2.ZERO
 var _is_mouse_pressed: bool = false
 
 func _ready():
-	# Get parent camera
-	_camera = get_parent() as Camera3D
-	if not _camera:
-		push_error("SVOLinkProbe must be a child of Camera3D")
-		return
 	
 	# Create sphere mesh for probe visualization
 	_sphere_mesh = MeshInstance3D.new()
@@ -64,6 +60,20 @@ func _ready():
 	_sphere_mesh.visible = show_probe
 	add_child(_sphere_mesh)
 	
+	# Create box mesh for voxel visualization
+	_box_mesh = MeshInstance3D.new()
+	var box = BoxMesh.new()
+	box.size = Vector3.ONE
+	_box_mesh.mesh = box
+	
+	var box_material = StandardMaterial3D.new()
+	box_material.albedo_color = Color(0.0, 1.0, 1.0, 0.3)  # Cyan with transparency
+	box_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	box_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_box_mesh.material_override = box_material
+	_box_mesh.visible = false
+	add_child(_box_mesh)
+	
 	# Create 3D label for displaying SVOLink
 	_label_3d = Label3D.new()
 	_label_3d.text = ""
@@ -75,6 +85,12 @@ func _ready():
 	_label_3d.visible = false
 	_label_3d.pixel_size = 0.001
 	add_child(_label_3d)
+
+	# Get parent camera
+	_camera = get_parent() as Camera3D
+	if not _camera:
+		push_error("SVOLinkProbe must be a child of Camera3D")
+		return
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -110,12 +126,21 @@ func _input(event):
 
 
 func _process(_delta):
+	# Update current SVOLink at probe position
+	if flight_navigation and flight_navigation.sparse_voxel_octree:
+		_current_svolink = flight_navigation.get_svolink_of(_sphere_mesh.global_position)
+	else:
+		_current_svolink = SVOLink.NULL
+	
+	# Update box visualization continuously (handles camera movement)
+	_update_box_visualization()
+	
 	# Update label visibility and position based on mouse press state
 	if _is_mouse_pressed and _current_svolink != SVOLink.NULL:
 		_label_3d.visible = true
 		_label_3d.global_position = _sphere_mesh.global_position + Vector3(0, sphere_radius * 3, 0)
-	elif not _is_mouse_pressed:
-		_label_3d.visible = false
+	#else:
+		#_label_3d.visible = false
 
 
 func _update_probe_position():
@@ -128,12 +153,6 @@ func _update_probe_position():
 	var probe_position = from + direction * probe_distance
 	
 	_sphere_mesh.global_position = probe_position
-	
-	# Update current SVOLink at probe position
-	if flight_navigation and flight_navigation.sparse_voxel_octree:
-		_current_svolink = flight_navigation.get_svolink_of(probe_position)
-	else:
-		_current_svolink = SVOLink.NULL
 
 
 func _on_mouse_click():
@@ -186,3 +205,32 @@ func _update_label_text():
 		text += "\nSolid: %s" % ("Yes" if is_solid else "No")
 	
 	_label_3d.text = text
+
+
+func _update_box_visualization():
+	if not _box_mesh:
+		return
+	
+	if _current_svolink == SVOLink.NULL or not flight_navigation or not flight_navigation.sparse_voxel_octree:
+		_box_mesh.visible = false
+		return
+	
+	# Get the layer and calculate the voxel/node size
+	var layer = SVOLink.layer(_current_svolink)
+	var svo = flight_navigation.sparse_voxel_octree
+	var box_size: Vector3
+	_label_3d.visible = true
+	if layer == 0:
+		box_size = FlightNavigation3D._node_size(flight_navigation.size, -2, svo.depth)
+	else:
+		box_size = FlightNavigation3D._node_size(flight_navigation.size, layer, svo.depth)
+	_label_3d.text = str(box_size)
+	
+	# Get the center position of the voxel/node
+	var center_position = flight_navigation.get_global_position_of(_current_svolink)
+	
+	# Update box mesh position and rotation to match flight_navigation
+	_box_mesh.global_rotation = flight_navigation.global_rotation
+	_box_mesh.global_position = center_position
+	_box_mesh.mesh.size = box_size
+	_box_mesh.visible = true

@@ -31,10 +31,12 @@ material = SubResource("StandardMaterial3D_u4dg3")
 script = ExtResource("1_28b6r")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-visible = false
 material_override = SubResource("StandardMaterial3D_e3o65")
 
 [node name="SVOLinkCubes" type="Node3D" parent="."]
+
+[node name="VoxelizationTargetShapes" type="CSGCombiner3D" parent="."]
+operation = 1
 
 [node name="DebugDraw" type="Node3D" parent="."]
 

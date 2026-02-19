@@ -11,12 +11,12 @@ func create(
 	v2_f32: Vector3, 
 	dp_f32: Vector3, 
 	separability: TriangleBoxTest.Separability,
-	epsilon_value: float) -> TriangleBoxTest:
+	float_error_margin: float) -> TriangleBoxTest:
 		return TriangleBoxTestF64.new(
 			v0_f32,
 			v1_f32,
 			v2_f32,
 			dp_f32,
 			separability,
-			epsilon_value
+			float_error_margin
 		)

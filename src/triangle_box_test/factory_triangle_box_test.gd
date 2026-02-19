@@ -11,5 +11,5 @@ func create(
 	_v2_f32: Vector3, 
 	_dp_f32: Vector3, 
 	_separability: TriangleBoxTest.Separability,
-	_epsilon_value: float) -> TriangleBoxTest:
+	_float_error_margin: float) -> TriangleBoxTest:
 		return null

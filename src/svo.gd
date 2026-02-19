@@ -369,7 +369,7 @@ func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> Packed
 	return list_head_node_offset
 	
 
-func get_list_solid_bit_count_by_subgrid(
+func parallel_get_list_solid_bit_count_by_subgrid(
 	async_context: Signal, 
 	thread_priority: Thread.Priority) -> PackedInt64Array:
 	var list_solid_bit_count_by_subgrid: PackedInt64Array = \
@@ -380,14 +380,28 @@ func get_list_solid_bit_count_by_subgrid(
 		list_solid_bit_count_by_subgrid.size(),
 		thread_priority,
 		100000,
-		_parallel_count_solid_bit_by_subgrid.bind(
+		_parallel_batched_count_solid_bit_by_subgrid.bind(
 			subgrid,
 			list_solid_bit_count_by_subgrid
 			))
 	return list_solid_bit_count_by_subgrid
 
 
-func _parallel_count_solid_bit_by_subgrid(
+func get_list_solid_bit_count_by_subgrid() -> PackedInt64Array:
+	var list_solid_bit_count_by_subgrid: PackedInt64Array = \
+		subgrid.duplicate()
+	list_solid_bit_count_by_subgrid.fill(0)
+	_parallel_batched_count_solid_bit_by_subgrid(
+		0,
+		0,
+		list_solid_bit_count_by_subgrid.size(),
+		subgrid,
+		list_solid_bit_count_by_subgrid
+	)
+	return list_solid_bit_count_by_subgrid
+
+
+static func _parallel_batched_count_solid_bit_by_subgrid(
 	_batch_index: int,
 	batch_start: int,
 	batch_end: int,
@@ -401,7 +415,7 @@ func _parallel_count_solid_bit_by_subgrid(
 #TODO: Speed up by breaking int64 into 8 int8,
 # and create a look up table 
 # of solid bits for integers from 0 to 255
-func _count_bit_1(number: int) -> int:
+static func _count_bit_1(number: int) -> int:
 	var bit_1_count: int = 0
 	while number != 0:
 		if number & 1:

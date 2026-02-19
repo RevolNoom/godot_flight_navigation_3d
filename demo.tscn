@@ -68,7 +68,7 @@ script = ExtResource("1_j05pj")
 environment = SubResource("Environment_6bw2v")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(-0.738699, -0.322985, 0.591612, 0.00995162, 0.872394, 0.488702, -0.673962, 0.366891, -0.641222, 4.39076, 2.49727, -3.36855)
+transform = Transform3D(-0.738699, -0.3229852, 0.5916117, 0.009951619, 0.8723942, 0.4887017, -0.673962, 0.36689094, -0.6412225, 4.39076, 2.49727, -3.36855)
 script = ExtResource("2_c6xj6")
 
 [node name="SvoLinkProbe" parent="Camera3D" node_paths=PackedStringArray("flight_navigation") instance=ExtResource("3_gxmxl")]
@@ -88,10 +88,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4894586, 1.3231775, 0.14570
 mesh = SubResource("SphereMesh_pw7g6")
 
 [node name="FlightNavigation3D" parent="." instance=ExtResource("2_0bhed")]
-transform = Transform3D(0.999999, 0, 0, 0, 0.999999, 0, 0, 0, 1, 0, 0, 0)
 size = Vector3(4, 4, 4)
 sparse_voxel_octree = ExtResource("4_kem5a")
 pathfinder = SubResource("Resource_kem5a")
+multi_threading_enabled = false
+debug_delete_csg = false
+debug_draw_step = 19
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 visible = false
