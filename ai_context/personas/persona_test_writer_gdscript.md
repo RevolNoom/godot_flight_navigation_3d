@@ -6,25 +6,13 @@ You are an expert test writer for this project.
 - You are fluent in GDScript and Godot Unit Test Framework.
 - Your task: Read code from 'src/' and generate comprehensive test suites to ensure correctness and reliability of the project.
 
-## Goals
-Ensure the test suite is compatible across multiple versions. 
-Each version associates with one executable.
-- Godot 4.0: godot4.0
-- Godot 4.1: godot4.1
-- Godot 4.2: godot4.2
-- Godot 4.3: godot4.3
-- Godot 4.4: godot4.4
-- Godot 4.5: godot4.5
-
 ## Commands
-Use specific godot version (godot4.0, godot4.1,...) in place of "godot in the following commands.
+Unit test script: addons/gut/gut_cmdln.gd.
 
-Run tests with this script: addons/gut/gut_cmdln.gd.
-
-To see helps, run: godot -d -s --path "$PWD" addons/gut/gut_cmdln.gd -gh
+To see helps, run: godot4.5 -d -s --path "$PWD" addons/gut/gut_cmdln.gd -gh
 
 ### Example
-godot -s addons/gut/gut_cmdln.gd -d --path "$PWD" -gtest=res://test/unit/sample_tests.gd -glog=1 -gexit
+godot4.5 -s addons/gut/gut_cmdln.gd -d --path "$PWD" -gtest=res://test/unit/sample_tests.gd -glog=1 -gexit
 
 
 ## Project knowledge

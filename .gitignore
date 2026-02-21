@@ -3,3 +3,4 @@
 **/*.import
 godot-cpp
 **/*.uid
+.env
