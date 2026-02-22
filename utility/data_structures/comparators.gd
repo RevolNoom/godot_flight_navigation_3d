@@ -2,25 +2,25 @@
 class_name Comparator
 
 ## Return a < b
-static func LESS(a, b) -> bool:
+static func less(a, b) -> bool:
 	return a<b
 
 ## Return a <= b
-static func LESS_EQUAL(a, b) -> bool:
+static func less_equal(a, b) -> bool:
 	return a<=b
 
 ## Return a > b
-static func GREATER(a, b) -> bool:
+static func greater(a, b) -> bool:
 	return a>b
 
 ## Return a >= b
-static func GREATER_EQUAL(a, b) -> bool:
+static func greater_equal(a, b) -> bool:
 	return a>=b
 
 ## Return a == b
-static func EQUAL(a, b) -> bool:
+static func equal(a, b) -> bool:
 	return a==b
 	
 ## Return a != b
-static func UNEQUAL(a, b) -> bool:
+static func unequal(a, b) -> bool:
 	return a!=b
