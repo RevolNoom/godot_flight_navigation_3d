@@ -76,11 +76,11 @@ func _init(
 	epsilon_value: float):
 	epsilon = epsilon_value
 		
-	v0 = Dvector._new_v3(v0_f32)
-	v1 = Dvector._new_v3(v1_f32)
-	v2 = Dvector._new_v3(v2_f32)
+	v0 = Dvector.create_v3(v0_f32)
+	v1 = Dvector.create_v3(v1_f32)
+	v2 = Dvector.create_v3(v2_f32)
 	
-	var dp: PackedFloat64Array = Dvector._new_v3(dp_f32)
+	var dp: PackedFloat64Array = Dvector.create_v3(dp_f32)
 	
 	# Edge equations
 	var e0: PackedFloat64Array = [0, 0, 0]

@@ -1810,9 +1810,9 @@ static func _parallel_yz_plane_rasterization_f64(
 	
 	var voxel_size_yz: PackedFloat64Array = [voxel_size[1], voxel_size[2]]
 	
-	var v0: PackedFloat64Array = Dvector._new_v3(triangles[triangle_start_idx+0])
-	var v1: PackedFloat64Array = Dvector._new_v3(triangles[triangle_start_idx+1])
-	var v2: PackedFloat64Array = Dvector._new_v3(triangles[triangle_start_idx+2])
+	var v0: PackedFloat64Array = Dvector.create_v3(triangles[triangle_start_idx+0])
+	var v1: PackedFloat64Array = Dvector.create_v3(triangles[triangle_start_idx+1])
+	var v2: PackedFloat64Array = Dvector.create_v3(triangles[triangle_start_idx+2])
 
 	var e0xyz: PackedFloat64Array = [0.0, 0.0, 0.0]
 	var e1xyz: PackedFloat64Array = [0.0, 0.0, 0.0]

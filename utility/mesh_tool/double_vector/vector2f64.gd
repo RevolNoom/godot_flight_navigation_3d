@@ -5,24 +5,24 @@
 ## as if they are Vector.
 class_name Vector2F64
 
-static func _new(a: Vector2) -> PackedFloat64Array:
+static func create(a: Vector2) -> PackedFloat64Array:
 	return [a[0], a[1]]
 	
-static func _new_array(a: Array[Vector2]) -> PackedFloat64Array:
+static func create_array(a: Array[Vector2]) -> PackedFloat64Array:
 	var result: PackedFloat64Array = []
 	result.resize(a.size()<<1)
 	var i2 = 0
-	for i in range(a.size()<<1):
+	for i in range(a.size()):
 		i2 = i*2
 		result[i2] = a[i][0]
 		result[i2+1] = a[i][1]
 	return result
 	
-static func _new_tarray(a: PackedVector3Array) -> PackedFloat64Array:
+static func create_tarray(a: PackedVector3Array) -> PackedFloat64Array:
 	var result: PackedFloat64Array = []
 	result.resize(a.size()<<1)
 	var i2 = 0
-	for i in range(a.size()<<1):
+	for i in range(a.size()):
 		i2 = i*2
 		result[i2] = a[i][0]
 		result[i2+1] = a[i][1]
@@ -81,6 +81,11 @@ static func normalize(
 		var a0_squared: float = a[a_idx + 0] * a[a_idx + 0]
 		var a1_squared: float = a[a_idx + 1] * a[a_idx + 1]
 		var sum_squared: float = a0_squared + a1_squared
-		
-		b[b_idx + 0] = sqrt(a0_squared / sum_squared)
-		b[b_idx + 1] = sqrt(a1_squared / sum_squared)
+		if is_zero_approx(sum_squared):
+			b[b_idx + 0] = 0.0
+			b[b_idx + 1] = 0.0
+			return
+
+		var length = sqrt(sum_squared)
+		b[b_idx + 0] = a[a_idx + 0] / length
+		b[b_idx + 1] = a[a_idx + 1] / length
