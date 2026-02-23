@@ -240,35 +240,125 @@ func build_navigation() -> SVO:
 		factory_triangle_box_test = FactoryTriangleBoxTestF64.new()
 	else:
 		factory_triangle_box_test = FactoryTriangleBoxTestF32.new()
-	
+
+	var triangles = await _prepare_triangles(
+		async_context,
+		list_voxelization_target,
+		voxelization_mask,
+		debug_delete_csg,
+		remove_thin_triangles,
+		multi_threading_enabled,
+		multi_threading_priority,
+		origin_offset)
+
+	var active_layer_1_result = await _determine_active_layer_1_nodes(
+		async_context,
+		triangles,
+		factory_triangle_box_test,
+		voxel_size,
+		surface_voxelization_float_error_margin,
+		flight_navigation_size,
+		multi_threading_enabled,
+		multi_threading_priority)
+	if active_layer_1_result.is_empty():
+		printerr("Nothing to voxelize")
+		return null
+
+	var list_pair_node1_overlap_triangle_index: Array[Vector4i] = \
+		active_layer_1_result["list_pair_node1_overlap_triangle_index"]
+	var unique_morton_count: int = \
+		active_layer_1_result["unique_morton_count"]
+	var list_node_1_morton_grouped: PackedInt64Array = \
+		active_layer_1_result["list_node_1_morton_grouped"]
+
+	var svo = await _construct_svo(
+		async_context,
+		list_node_1_morton_grouped,
+		depth,
+		multi_threading_enabled,
+		multi_threading_priority)
+	if svo == null:
+		printerr("No layer 1 node found")
+		return null
+
+	if solid_voxelization_enabled:
+		await _run_solid_voxelization(
+			async_context,
+			svo,
+			triangles,
+			voxel_size,
+			flight_navigation_size,
+			support_float64,
+			solid_voxelization_top_left_edge_epsilon,
+			solid_voxelization_float_error_margin,
+			debug_delete_flip_flag,
+			multi_threading_enabled,
+			multi_threading_priority,
+			depth)
+
+	if surface_voxelization_enabled:
+		await _run_surface_voxelization(
+			async_context,
+			svo,
+			triangles,
+			list_pair_node1_overlap_triangle_index,
+			unique_morton_count,
+			list_node_1_morton_grouped,
+			voxel_size,
+			surface_voxelization_separability,
+			surface_voxelization_float_error_margin,
+			flight_navigation_size,
+			factory_triangle_box_test,
+			multi_threading_enabled,
+			multi_threading_priority)
+
+	if solid_voxelization_calculate_coverage_factor:
+		await _calculate_coverage_factor(
+			async_context,
+			svo,
+			multi_threading_enabled,
+			multi_threading_priority)
+
+	return svo
+
+
+func _prepare_triangles(
+	async_context: Signal,
+	list_voxelization_target: Array[Node],
+	voxelization_mask: int,
+	debug_delete_csg: bool,
+	remove_thin_triangles: bool,
+	multi_threading_enabled: bool,
+	multi_threading_priority: Thread.Priority,
+	origin_offset: Vector3) -> PackedVector3Array:
 	#region Prepare triangles
-	
+
 	#region Get all voxelization_target
 	progress.emit(ProgressStep.GET_ALL_VOXELIZATION_TARGET, null, 0, 1)
-	Fn3dUtility.filter_in_place(list_voxelization_target, 
+	Fn3dUtility.filter_in_place(list_voxelization_target,
 	func (target, _index: int) -> bool:
 		return target.voxelization_mask & voxelization_mask != 0
 	)
-	
+
 	progress.emit(ProgressStep.GET_ALL_VOXELIZATION_TARGET, null, 1, 1)
 	#endregion
-	
+
 	#region Build mesh
 	progress.emit(ProgressStep.BUILD_MESH, null, 0, 1)
 	var voxelization_target_shapes = $VoxelizationTargetShapes
-	
+
 	for child_shapes in voxelization_target_shapes.get_children():
 		voxelization_target_shapes.remove_child(child_shapes)
 		child_shapes.free()
-		
+
 	for target in list_voxelization_target:
 		var csg_shapes = target.get_csg()
 		for shape in csg_shapes:
 			voxelization_target_shapes.add_child(shape)
 			shape.global_transform = target.global_transform
 			shape.operation = CSGShape3D.OPERATION_UNION
-			
-	# Since CSG nodes do not update immediately, calling bake_static_mesh() 
+
+	# Since CSG nodes do not update immediately, calling bake_static_mesh()
 	# right away does not return the actual result.
 	# So we must wait until next frame.
 	await async_context
@@ -277,39 +367,41 @@ func build_navigation() -> SVO:
 		for child_shapes in voxelization_target_shapes.get_children():
 			voxelization_target_shapes.remove_child(child_shapes)
 			child_shapes.free()
-	
+
 	var triangles: PackedVector3Array = mesh.get_faces()
 	progress.emit(ProgressStep.BUILD_MESH, null, 1, 1)
 	#endregion
-	
+
 	# Clean up generated faces from CSG shapes by doing these things:[br]
 	# - Remove all faces with 2 or more vertices identical to each other [br]
 	# - Remove all faces with 3 vertices lie on the same line[br]
 	# - [NOT YET SUPPORTED] Remove identical faces (same set of 3 points)[br]
 	if remove_thin_triangles:
 		progress.emit(ProgressStep.REMOVE_THIN_TRIANGLES, null, 0, 1)
-		
+
 		var fat_triangle_count: int = 0
 		var cleaned_triangles: PackedVector3Array
 		if multi_threading_enabled:
 			var count_result = await Parallel.count_if_by_batch(
-				async_context, 
-				triangles.size()/3, 
+				async_context,
+				triangles.size()/3,
 				multi_threading_priority,
 				10000,
 				_parallel_is_non_zero_area_triangle.bind(triangles)
 			)
 			var batch_size = count_result.batch_size
-			var list_count_if_by_batch = count_result.list_count_if_by_batch
-			fat_triangle_count = Fn3dUtility.sum_array_number(list_count_if_by_batch)
+			var list_count_if_by_batch = \
+				count_result.list_count_if_by_batch
+			fat_triangle_count = \
+				Fn3dUtility.sum_array_number(list_count_if_by_batch)
 			cleaned_triangles.resize(fat_triangle_count*3)
-			
+
 			var list_start_write_index: PackedInt64Array = \
 				Parallel.make_start_write_index_array_from_count_array(
 					list_count_if_by_batch)
-			
+
 			await Parallel.execute_batched(
-				async_context, 
+				async_context,
 				triangles.size()/3,
 				multi_threading_priority,
 				batch_size,
@@ -330,18 +422,21 @@ func build_navigation() -> SVO:
 					cleaned_triangles.push_back(triangles[start_index])
 					cleaned_triangles.push_back(triangles[start_index+1])
 					cleaned_triangles.push_back(triangles[start_index+2])
-		
+
 		triangles = cleaned_triangles
 		progress.emit(ProgressStep.REMOVE_THIN_TRIANGLES, null, 1, 1)
 	#$MeshInstance3D.mesh = MeshTool.create_array_mesh_from_faces(triangles)
-	
-			
-	# Add half a cube offset to each vertex, 
+
+	# Add half a cube offset to each vertex,
 	# because morton code index starts from the corner of the cube
-	progress.emit(ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE, null, 0, triangles.size())
+	progress.emit(
+		ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE,
+		null,
+		0,
+		triangles.size())
 	if multi_threading_enabled:
 		await Parallel.execute_batched(
-			async_context, 
+			async_context,
 			triangles.size(),
 			multi_threading_priority,
 			1000000,
@@ -356,19 +451,37 @@ func build_navigation() -> SVO:
 				triangles,
 				-origin_offset
 			)
-	progress.emit(ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE, null, triangles.size(), triangles.size())
-	
+	progress.emit(
+		ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE,
+		null,
+		triangles.size(),
+		triangles.size())
+
 	#endregion
-	
-	#region Determine active layer 1 nodes
-	progress.emit(ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES, null, 0, triangles.size()/3)
-	
+	return triangles
+
+
+func _determine_active_layer_1_nodes(
+	async_context: Signal,
+	triangles: PackedVector3Array,
+	factory_triangle_box_test: FactoryTriangleBoxTest,
+	voxel_size: Vector3,
+	surface_voxelization_float_error_margin: float,
+	flight_navigation_size: Vector3,
+	multi_threading_enabled: bool,
+	multi_threading_priority: Thread.Priority) -> Dictionary:
+	progress.emit(
+		ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES,
+		null,
+		0,
+		triangles.size()/3)
+
 	var list_triangle_overlap_node1_count: PackedInt64Array = []
 	list_triangle_overlap_node1_count.resize(triangles.size()/3)
 	list_triangle_overlap_node1_count.fill(0)
 	if multi_threading_enabled:
 		await Parallel.execute(
-			async_context, 
+			async_context,
 			triangles.size()/3,
 			multi_threading_priority,
 			_parallel_get_triangle_overlap_node1_count.bind(
@@ -382,7 +495,7 @@ func build_navigation() -> SVO:
 	else:
 		for i in range(triangles.size()/3):
 			_parallel_get_triangle_overlap_node1_count(
-				i, 
+				i,
 				triangles,
 				list_triangle_overlap_node1_count,
 				factory_triangle_box_test,
@@ -391,8 +504,9 @@ func build_navigation() -> SVO:
 				flight_navigation_size
 			)
 
-	var list_triangle_overlap_node1_write_index: PackedInt64Array = Parallel.make_start_write_index_array_from_count_array(
-		list_triangle_overlap_node1_count)
+	var list_triangle_overlap_node1_write_index: PackedInt64Array = \
+		Parallel.make_start_write_index_array_from_count_array(
+			list_triangle_overlap_node1_count)
 
 	# Each element is a pair of int64 triangle index and int64 node 1 index.
 	# Because each x, y, z, w component is int32, this is utilized to be a pair of int64
@@ -402,15 +516,15 @@ func build_navigation() -> SVO:
 	# 1. Array supports sorting Vector4i with operator<
 	# 2. Avoid creating a custom type that extends RefCounted.
 	var list_pair_triangle_index_overlap_node1: Array[Vector4i] = []
-	list_pair_triangle_index_overlap_node1.resize(Fn3dUtility.sum_array_number(list_triangle_overlap_node1_count))
-	
+	list_pair_triangle_index_overlap_node1.resize(
+		Fn3dUtility.sum_array_number(list_triangle_overlap_node1_count))
+
 	if list_pair_triangle_index_overlap_node1.size() == 0:
-		printerr("Nothing to voxelize")
-		return null
+		return {}
 
 	if multi_threading_enabled:
 		await Parallel.execute(
-			async_context, 
+			async_context,
 			triangles.size()/3,
 			multi_threading_priority,
 			_parallel_get_triangle_overlap_list_node1.bind(
@@ -425,7 +539,7 @@ func build_navigation() -> SVO:
 	else:
 		for i in range(triangles.size()/3):
 			_parallel_get_triangle_overlap_list_node1(
-				i, 
+				i,
 				triangles,
 				factory_triangle_box_test,
 				voxel_size,
@@ -450,28 +564,45 @@ func build_navigation() -> SVO:
 
 	# Group pairs by node_1 morton ascending, triangle index ascending
 	# Note: This is a Group Operation, and is NOT a sort operation.
-	# Because when breaking int64 into 2 int32, 
+	# Because when breaking int64 into 2 int32,
 	# low bits int32 sortings will be jumbled up based on sign bit
 	list_pair_node1_overlap_triangle_index.sort()
 
-	var unique_morton_count: int = _count_unique_morton_codes(list_pair_node1_overlap_triangle_index)
-	var list_node_1_morton_grouped: PackedInt64Array = _filter_unique_morton_codes(list_pair_node1_overlap_triangle_index, unique_morton_count)
+	var unique_morton_count: int = _count_unique_morton_codes(
+		list_pair_node1_overlap_triangle_index)
+	var list_node_1_morton_grouped: PackedInt64Array = \
+		_filter_unique_morton_codes(
+			list_pair_node1_overlap_triangle_index,
+			unique_morton_count)
 
-	progress.emit(ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES, null, triangles.size()/3, triangles.size()/3)
-	#endregion
-	
-	#region Construct SVO
+	progress.emit(
+		ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES,
+		null,
+		triangles.size()/3,
+		triangles.size()/3)
+	return {
+		"list_pair_node1_overlap_triangle_index":
+			list_pair_node1_overlap_triangle_index,
+		"unique_morton_count": unique_morton_count,
+		"list_node_1_morton_grouped": list_node_1_morton_grouped,
+	}
+
+
+func _construct_svo(
+	async_context: Signal,
+	list_node_1_morton_grouped: PackedInt64Array,
+	depth: int,
+	multi_threading_enabled: bool,
+	multi_threading_priority: Thread.Priority) -> SVO:
 	var svo = SVO.new()
-	
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 0, 2)
-	
+
 	if list_node_1_morton_grouped.size() == 0:
-		printerr("No layer 1 node found")
 		return null
-		
+
 	var list_node_1_morton_sorted = list_node_1_morton_grouped.duplicate()
 	list_node_1_morton_sorted.sort()
-	
+
 	svo.morton.resize(depth)
 	svo.parent.resize(depth)
 	svo.first_child.resize(depth)
@@ -482,13 +613,13 @@ func build_navigation() -> SVO:
 	svo.xn.resize(depth)
 	svo.yn.resize(depth)
 	svo.zn.resize(depth)
-	
+
 	#region Construct from bottom up
 	list_node_1_morton_sorted.sort()
-	
+
 	#region Initialize layer 0
 	var layer_0_size = list_node_1_morton_sorted.size() * 8
-	
+
 	svo.morton[0].resize(layer_0_size)
 	svo.parent[0].resize(layer_0_size)
 	svo.first_child[0].resize(0) # The leaf layer has no children, only voxels
@@ -499,7 +630,7 @@ func build_navigation() -> SVO:
 	svo.xn[0].resize(layer_0_size)
 	svo.yn[0].resize(layer_0_size)
 	svo.zn[0].resize(layer_0_size)
-	
+
 	svo.morton[0].fill(SVOLink.NULL)
 	svo.parent[0].fill(SVOLink.NULL)
 	#svo.first_child[0]
@@ -511,22 +642,23 @@ func build_navigation() -> SVO:
 	svo.yn[0].fill(SVOLink.NULL)
 	svo.zn[0].fill(SVOLink.NULL)
 	#endregion
-	
+
 	var current_active_layer_nodes = list_node_1_morton_sorted
-	
+
 	# An array to hold the parent index on above layer of the current layer in building.
 	# It is kept outside the for-loop to reduce memory re-allocation.
 	var parent_idx = current_active_layer_nodes.duplicate()
-	
+
 	# Init layer 1 upward
 	for layer in range(1, depth):
-		# Fill children's morton code 
+		# Fill children's morton code
 		for i in range(current_active_layer_nodes.size()):
 			for child in range(8):
-				svo.morton[layer-1][i*8+child] = (current_active_layer_nodes[i] << 3) | child
-				
+				svo.morton[layer-1][i*8+child] = \
+					(current_active_layer_nodes[i] << 3) | child
+
 		parent_idx[0] = 0
-		
+
 		# ROOT NODE CASE
 		if layer == depth-1:
 			#region Initialize root layer
@@ -540,7 +672,7 @@ func build_navigation() -> SVO:
 			svo.xn[layer].resize(1)
 			svo.yn[layer].resize(1)
 			svo.zn[layer].resize(1)
-			
+
 			svo.morton[layer][0] = 0
 			svo.parent[layer][0] = SVOLink.NULL
 			svo.first_child[layer][0] = SVOLink.from(layer-1, 0)
@@ -551,19 +683,19 @@ func build_navigation() -> SVO:
 			svo.xn[layer][0] = SVOLink.NULL
 			svo.yn[layer][0] = SVOLink.NULL
 			svo.zn[layer][0] = SVOLink.NULL
-			
 			#endregion
 		else:
 			for i in range(1, current_active_layer_nodes.size()):
 				parent_idx[i] = parent_idx[i-1]
 				if _mortons_different_parent(
-						current_active_layer_nodes[i-1], 
+						current_active_layer_nodes[i-1],
 						current_active_layer_nodes[i]):
 					parent_idx[i] += 1
-		
+
 			## Allocate memory for current layer
-			var current_layer_size = (parent_idx[parent_idx.size()-1] + 1) * 8
-			
+			var current_layer_size = \
+				(parent_idx[parent_idx.size()-1] + 1) * 8
+
 			svo.morton[layer].resize(current_layer_size)
 			svo.parent[layer].resize(current_layer_size)
 			svo.first_child[layer].resize(current_layer_size)
@@ -575,7 +707,8 @@ func build_navigation() -> SVO:
 			svo.yn[layer].resize(current_layer_size)
 			svo.zn[layer].resize(current_layer_size)
 
-			svo.morton[layer].fill(~0) # ~0 is 111111111...1111. An invalid initial value.
+			# ~0 is 111111111...1111. An invalid initial value.
+			svo.morton[layer].fill(~0)
 			svo.parent[layer].fill(SVOLink.NULL)
 			svo.first_child[layer].fill(SVOLink.NULL)
 			#svo.subgrid
@@ -585,36 +718,43 @@ func build_navigation() -> SVO:
 			svo.xn[layer].fill(SVOLink.NULL)
 			svo.yn[layer].fill(SVOLink.NULL)
 			svo.zn[layer].fill(SVOLink.NULL)
-			
+
 		#region Fill parent/children index
 		for active_node_idx in range(current_active_layer_nodes.size()):
 			# In between active nodes are inactive nodes.
 			# Inactive nodes are the ones without any triangle overlapped.
 			# So, active_node_offset is the actual offset of the current active node
 			# inside the SVO.
-			var active_node_offset = 8*parent_idx[active_node_idx] + (current_active_layer_nodes[active_node_idx] & 0b111)
-			svo.first_child[layer][active_node_offset] = SVOLink.from(layer-1, 8*active_node_idx)
+			var active_node_offset = \
+				8*parent_idx[active_node_idx] + \
+				(current_active_layer_nodes[active_node_idx] & 0b111)
+			svo.first_child[layer][active_node_offset] = \
+				SVOLink.from(layer-1, 8*active_node_idx)
 			var link_to_parent = SVOLink.from(layer, active_node_offset)
 			for child in range(8):
-				svo.parent[layer-1][8*active_node_idx + child] = link_to_parent
+				svo.parent[layer-1][8*active_node_idx + child] = \
+					link_to_parent
 		#endregion
-		
+
 		#region Get parent morton codes to prepare for the next layer construction
 		var new_active_layer_nodes: PackedInt64Array = []
 		if current_active_layer_nodes.size() > 0:
-			new_active_layer_nodes.resize(current_active_layer_nodes.size()) # Pre-allocate memory
+			# Pre-allocate memory.
+			new_active_layer_nodes.resize(current_active_layer_nodes.size())
 			new_active_layer_nodes.resize(0)
-			new_active_layer_nodes.push_back(current_active_layer_nodes[0] >> 3)
-			
+			new_active_layer_nodes.push_back(
+				current_active_layer_nodes[0] >> 3)
+
 			for morton in current_active_layer_nodes:
 				var parent_code = morton>>3
-				if new_active_layer_nodes[new_active_layer_nodes.size()-1] != parent_code:
+				if new_active_layer_nodes[
+					new_active_layer_nodes.size()-1] != parent_code:
 					new_active_layer_nodes.push_back(parent_code)
 		#endregion
 
 		current_active_layer_nodes = new_active_layer_nodes
 	#endregion
-	
+
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 1, 2)
 	#region Fill neighbor links from top down
 	# Array[Array[PackedInt64Array]]
@@ -622,471 +762,600 @@ func build_navigation() -> SVO:
 		svo.xn , svo.yn , svo.zn ,
 		svo.xp , svo.yp , svo.zp]
 	var list_next_neighbor_calculator: Array[Callable] = [
-		Morton3.dec_x, Morton3.dec_y, Morton3.dec_z, 
+		Morton3.dec_x, Morton3.dec_y, Morton3.dec_z,
 		Morton3.inc_x, Morton3.inc_y, Morton3.inc_z]
 	if multi_threading_enabled:
 		await Parallel.execute(
-			async_context, 
+			async_context,
 			list_neighbor_direction.size(),
 			multi_threading_priority,
 			_parallel_fill_neighbor_in_direction.bind(
-				svo, 
-				list_neighbor_direction, 
+				svo,
+				list_neighbor_direction,
 				list_next_neighbor_calculator))
 	else:
 		for i in range(list_neighbor_direction.size()):
 			_parallel_fill_neighbor_in_direction(
 				i,
-				svo, 
-				list_neighbor_direction, 
+				svo,
+				list_neighbor_direction,
 				list_next_neighbor_calculator)
 	#endregion
-	
+
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 2, 2)
-	#endregion
-	
-	#region Solid voxelization
-	if solid_voxelization_enabled:
-		progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 0, 2)
-		
-		#region YZ plane rasterization, and projection on x column
-		progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
-		
-		var parallel_yz_plane_rasterization: Callable
-		if support_float64:
-			parallel_yz_plane_rasterization = _parallel_yz_plane_rasterization_f64
-		else:
-			parallel_yz_plane_rasterization = _parallel_yz_plane_rasterization_f32
-			
-		if multi_threading_enabled:
-			await Parallel.execute(
-				async_context, 
-				triangles.size()/3,
-				multi_threading_priority,
-				parallel_yz_plane_rasterization.bind(
-					svo, 
-					triangles, 
-					voxel_size,
-					_x_column_flip_bitmask_by_subgrid_index,
-					flight_navigation_size,
-					solid_voxelization_top_left_edge_epsilon,
-					solid_voxelization_float_error_margin
-					))
-		else:
-			for i in range(triangles.size()/3):
-				parallel_yz_plane_rasterization.call(i, 
-				svo, 
-				triangles, 
+	return svo
+
+
+func _run_solid_voxelization(
+	async_context: Signal,
+	svo: SVO,
+	triangles: PackedVector3Array,
+	voxel_size: Vector3,
+	flight_navigation_size: Vector3,
+	support_float64: bool,
+	solid_voxelization_top_left_edge_epsilon: float,
+	solid_voxelization_float_error_margin: float,
+	debug_delete_flip_flag: bool,
+	multi_threading_enabled: bool,
+	multi_threading_priority: Thread.Priority,
+	depth: int) -> void:
+	progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 0, 2)
+
+	#region YZ plane rasterization, and projection on x column
+	progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
+
+	var parallel_yz_plane_rasterization: Callable
+	if support_float64:
+		parallel_yz_plane_rasterization = _parallel_yz_plane_rasterization_f64
+	else:
+		parallel_yz_plane_rasterization = _parallel_yz_plane_rasterization_f32
+
+	if multi_threading_enabled:
+		await Parallel.execute(
+			async_context,
+			triangles.size()/3,
+			multi_threading_priority,
+			parallel_yz_plane_rasterization.bind(
+				svo,
+				triangles,
+				voxel_size,
+				_x_column_flip_bitmask_by_subgrid_index,
+				flight_navigation_size,
+				solid_voxelization_top_left_edge_epsilon,
+				solid_voxelization_float_error_margin
+				))
+	else:
+		for i in range(triangles.size()/3):
+			parallel_yz_plane_rasterization.call(
+				i,
+				svo,
+				triangles,
 				voxel_size,
 				_x_column_flip_bitmask_by_subgrid_index,
 				flight_navigation_size,
 				solid_voxelization_top_left_edge_epsilon,
 				solid_voxelization_float_error_margin
 				)
-		
-		progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, triangles.size()/3, triangles.size()/3)
-		#endregion
-		
-		progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 1, 2)
-		#region Hierarchical inside/outside propagation
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 0, 6)
-		
-		#region Prepare flip flags, inside flags, list head nodes
-		progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 0, 3)
-		# Flip flags of layer 0 are not used, so they are not initialized. 
-		# Only inside flags are initialized.
-		var flip_flag: Array[PackedByteArray] = []
-		flip_flag.resize(svo.morton.size())
-		for i in range(1, svo.morton.size()):
-			flip_flag[i].resize(svo.morton[i].size())
-			flip_flag[i].fill(0)
-		svo.flip = flip_flag
-		
-		progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 1, 3)
-			
-		svo.inside.resize(svo.morton.size())
-		for i in range(0, svo.morton.size()):
-			svo.inside[i].resize(svo.morton[i].size())
-			svo.inside[i].fill(0)
-		
-		progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 2, 3)
-			
-		var list_head_node_offset_of_layer: Array[PackedInt64Array] = []
-		list_head_node_offset_of_layer.resize(svo.morton.size())
-		for layer in range(0, svo.morton.size()):
-			list_head_node_offset_of_layer[layer] = svo._get_list_offset_of_head_node_in_x_direction_of_layer(layer)
-		
-		progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 3, 3)
-			
-		#endregion
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 1, 6)
-		#region Propagate bit flips in x+ direction
-		
-		var list_head_node_offset_of_layer_0: PackedInt64Array = list_head_node_offset_of_layer[0]
-		var subgrid_voxel_indexes_on_face_xp: PackedInt32Array = subgrid_voxel_indexes_on_face["xp"]
-		var svo_subgrid = svo.subgrid
-		var svo_xp = svo.xp
-		
-		progress.emit(ProgressStep.XP_BIT_FLIP_PROPAGATION, 
-			svo, 0, list_head_node_offset_of_layer_0.size())
-		
-		if multi_threading_enabled:
-			await Parallel.execute(
-				async_context, 
-				list_head_node_offset_of_layer_0.size(),
-				multi_threading_priority,
-				_parallel_propagate_bit_flip.bind(
-						list_head_node_offset_of_layer_0,
-						subgrid_voxel_indexes_on_face_xp,
-						svo_xp,
-						svo_subgrid,
-						neighbor_node_x_column_bits_by_subgrid_index))
-		else:
-			for i in range(list_head_node_offset_of_layer_0.size()):
-				_parallel_propagate_bit_flip(
-					i,
+
+	progress.emit(
+		ProgressStep.YZ_PLANE_RASTERIZATION,
+		svo,
+		triangles.size()/3,
+		triangles.size()/3)
+	#endregion
+
+	progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 1, 2)
+	#region Hierarchical inside/outside propagation
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		0,
+		6)
+
+	#region Prepare flip flags, inside flags, list head nodes
+	progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 0, 3)
+	# Flip flags of layer 0 are not used, so they are not initialized.
+	# Only inside flags are initialized.
+	var flip_flag: Array[PackedByteArray] = []
+	flip_flag.resize(svo.morton.size())
+	for i in range(1, svo.morton.size()):
+		flip_flag[i].resize(svo.morton[i].size())
+		flip_flag[i].fill(0)
+	svo.flip = flip_flag
+
+	progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 1, 3)
+	svo.inside.resize(svo.morton.size())
+	for i in range(0, svo.morton.size()):
+		svo.inside[i].resize(svo.morton[i].size())
+		svo.inside[i].fill(0)
+
+	progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 2, 3)
+	var list_head_node_offset_of_layer: Array[PackedInt64Array] = []
+	list_head_node_offset_of_layer.resize(svo.morton.size())
+	for layer in range(0, svo.morton.size()):
+		list_head_node_offset_of_layer[layer] = \
+			svo._get_list_offset_of_head_node_in_x_direction_of_layer(layer)
+
+	progress.emit(ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES, svo, 3, 3)
+	#endregion
+
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		1,
+		6)
+	#region Propagate bit flips in x+ direction
+	var list_head_node_offset_of_layer_0: PackedInt64Array = \
+		list_head_node_offset_of_layer[0]
+	var subgrid_voxel_indexes_on_face_xp: PackedInt32Array = \
+		subgrid_voxel_indexes_on_face["xp"]
+	var svo_subgrid = svo.subgrid
+	var svo_xp = svo.xp
+
+	progress.emit(
+		ProgressStep.XP_BIT_FLIP_PROPAGATION,
+		svo,
+		0,
+		list_head_node_offset_of_layer_0.size())
+
+	if multi_threading_enabled:
+		await Parallel.execute(
+			async_context,
+			list_head_node_offset_of_layer_0.size(),
+			multi_threading_priority,
+			_parallel_propagate_bit_flip.bind(
 					list_head_node_offset_of_layer_0,
 					subgrid_voxel_indexes_on_face_xp,
 					svo_xp,
 					svo_subgrid,
-					neighbor_node_x_column_bits_by_subgrid_index)
-						
-		progress.emit(ProgressStep.XP_BIT_FLIP_PROPAGATION, svo, 
-			list_head_node_offset_of_layer_0.size(), list_head_node_offset_of_layer_0.size())
-				
-		#endregion
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 2, 6)
-		#region Flip bottom up layer 1
-		progress.emit(ProgressStep.FLIP_BOTTOM_UP_LAYER_1, svo, 0, 2)
-		#region Prepare layer 1 flip flag
-		progress.emit(ProgressStep.PREPARE_FLIP_FLAG_LAYER_1, svo, 0, flip_flag[1].size())
-		# Set flip flag for layer-1 nodes with children 
-		# at the end of a x-linked node string
-		var svo_first_child = svo.first_child
-		var svo_inside = svo.inside
-		for i in range(0, flip_flag[1].size()):
-			var first_child_svolink = svo_first_child[1][i]
+					neighbor_node_x_column_bits_by_subgrid_index))
+	else:
+		for i in range(list_head_node_offset_of_layer_0.size()):
+			_parallel_propagate_bit_flip(
+				i,
+				list_head_node_offset_of_layer_0,
+				subgrid_voxel_indexes_on_face_xp,
+				svo_xp,
+				svo_subgrid,
+				neighbor_node_x_column_bits_by_subgrid_index)
+
+	progress.emit(
+		ProgressStep.XP_BIT_FLIP_PROPAGATION,
+		svo,
+		list_head_node_offset_of_layer_0.size(),
+		list_head_node_offset_of_layer_0.size())
+	#endregion
+
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		2,
+		6)
+	#region Flip bottom up layer 1
+	progress.emit(ProgressStep.FLIP_BOTTOM_UP_LAYER_1, svo, 0, 2)
+	#region Prepare layer 1 flip flag
+	progress.emit(
+		ProgressStep.PREPARE_FLIP_FLAG_LAYER_1,
+		svo,
+		0,
+		flip_flag[1].size())
+	# Set flip flag for layer-1 nodes with children
+	# at the end of a x-linked node string
+	var svo_first_child = svo.first_child
+	var svo_inside = svo.inside
+	for i in range(0, flip_flag[1].size()):
+		var first_child_svolink = svo_first_child[1][i]
+		if first_child_svolink == SVOLink.NULL:
+			continue
+
+		if not _is_end_of_x_linked_node_string(1, i, svo_first_child, svo_xp):
+			continue
+
+		var first_child_offset = SVOLink.offset(first_child_svolink)
+		# Schwarz:
+		# "Note that after that, at the end of such node strings, where no
+		# more level-0 nodes abut, all four level-0 nodes with the same level-1
+		# parent have all their SG voxels with local x index 3 in agreement."
+		#
+		# Explanation:
+		# All four level-0 nodes (at the end of x-linked string)
+		# with the same level-1 parent have all their SG voxels
+		# with local x index 3 either all free or all solid.
+		#
+		# To prove this by contrast, let's assume that they are not in agreement.
+		# It means that the surface of the object are snuggly bounded in
+		# those 4 level-0 nodes.
+		# And since we have modified the surface voxelization
+		# to ensure that the final voxelization boundary consists solely
+		# of level-0 nodes, the level-0 nodes will have level-0 x+ neighbors.
+		# Because they have level-0 neighbors, they are not at the end of x-linked string.
+		#
+		# This argument proves that it is correct to only set flip flag based on 1 child.
+		# It also applies to upper layers.
+
+		#var child_on_xp_offset = first_child_offset + 1
+		#var child_subgrid = svo_subgrid[child_on_xp_offset]
+		#flip_flag[1][i] = int(bitmask_of_subgrid_voxels_on_face_xp ==
+				#(child_subgrid & bitmask_of_subgrid_voxels_on_face_xp))
+
+		# 23/10/2025: Floating point errors cause some voxels to not be rasterized
+		# As such, some nodes are incorrectly flipped.
+		# So I have to go back to checking every nodes
+		flip_flag[1][i] = _has_full_xp_face_in_all_children(
+			first_child_offset,
+			svo_subgrid,
+			bitmask_of_subgrid_voxels_on_face_xp)
+
+	progress.emit(
+		ProgressStep.PREPARE_FLIP_FLAG_LAYER_1,
+		svo,
+		flip_flag[1].size(),
+		flip_flag[1].size())
+	#endregion
+
+	progress.emit(ProgressStep.FLIP_BOTTOM_UP_LAYER_1, svo, 1, 2)
+	#region Propagate layer 1 flip information
+	progress.emit(
+		ProgressStep.PROPAGATE_FLIP_INFORMATION_LAYER_1,
+		svo,
+		0,
+		list_head_node_offset_of_layer[1].size())
+
+	if multi_threading_enabled:
+		await Parallel.execute(
+			async_context,
+			list_head_node_offset_of_layer[1].size(),
+			multi_threading_priority,
+			_parallel_propagate_flip_and_inside.bind(
+				1,
+				list_head_node_offset_of_layer,
+				svo_xp,
+				flip_flag,
+				svo_inside))
+	else:
+		for head_node_index in range(list_head_node_offset_of_layer[1].size()):
+			_parallel_propagate_flip_and_inside(
+				head_node_index,
+				1,
+				list_head_node_offset_of_layer,
+				svo_xp,
+				flip_flag,
+				svo_inside)
+
+	progress.emit(
+		ProgressStep.PROPAGATE_FLIP_INFORMATION_LAYER_1,
+		svo,
+		list_head_node_offset_of_layer[1].size(),
+		list_head_node_offset_of_layer[1].size())
+	#endregion
+
+	progress.emit(ProgressStep.FLIP_BOTTOM_UP_LAYER_1, svo, 2, 2)
+	#endregion
+
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		3,
+		6)
+	#region Flip bottom up from layer 2
+	progress.emit(
+		ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2,
+		svo,
+		0,
+		flip_flag.size())
+
+	# Set flip flag for layer-1 nodes with children
+	# at the end of a z-linked node string
+	# TODO: Parallelize operation in each layer, in all layers
+	for layer in range(2, flip_flag.size()):
+		#region Prepare flip flag
+		var flip_flag_layer = flip_flag[layer]
+		var flip_flag_child_layer = flip_flag[layer-1]
+		progress.emit(
+			ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2,
+			svo,
+			0,
+			flip_flag_layer.size())
+		for i in range(0, flip_flag_layer.size()):
+			var first_child_svolink = svo_first_child[layer][i]
 			if first_child_svolink == SVOLink.NULL:
 				continue
-				
-			var not_is_end_of_x_linked_node_string = true
-			
-			var xp_svolink = svo_xp[1][i]
-			if xp_svolink == SVOLink.NULL:
-				not_is_end_of_x_linked_node_string = false
-			else:
-				var xp_layer = SVOLink.layer(xp_svolink)
-				var xp_offset = SVOLink.offset(xp_svolink)
-				var xp_first_child = svo_first_child[1][xp_offset]
-				not_is_end_of_x_linked_node_string = \
-					xp_layer == 1 and xp_first_child != SVOLink.NULL
-				
-			if not_is_end_of_x_linked_node_string:
+
+			if not _is_end_of_x_linked_node_string(
+					layer, i, svo_first_child, svo_xp):
 				continue
-			
+
 			var first_child_offset = SVOLink.offset(first_child_svolink)
-			# Schwarz:
-			# "Note that after that, at the end of such node strings, where no
-			# more level-0 nodes abut, all four level-0 nodes with the same level-1
-			# parent have all their SG voxels with local x index 3 in agreement."
-			#
-			# Explanation: 
-			# All four level-0 nodes (at the end of x-linked string)
-			# with the same level-1 parent have all their SG voxels 
-			# with local x index 3 either all free or all solid.
-			#
-			# To prove this by contrast, let's assume that they are not in agreement.
-			# It means that the surface of the object are snuggly bounded in 
-			# those 4 level-0 nodes. 
-			# And since we have modified the surface voxelization
-			# to ensure that the final voxelization boundary consists solely
-			# of level-0 nodes, the level-0 nodes will have level-0 x+ neighbors.
-			# Because they have level-0 neighbors, they are not at the end of x-linked string.
-			#
-			# This argument proves that it is correct to only set flip flag based on 1 child.
-			# It also applies to upper layers.
-			
 			#var child_on_xp_offset = first_child_offset + 1
-			#var child_subgrid = svo_subgrid[child_on_xp_offset]
-			#flip_flag[1][i] = int(bitmask_of_subgrid_voxels_on_face_xp == 
-					#(child_subgrid & bitmask_of_subgrid_voxels_on_face_xp))
-					
-			# 23/10/2025: Floating point errors cause some voxels to not be rasterized
-			# As such, some nodes are incorrectly flipped. 
-			# So I have to go back to checking every nodes
-			var flip: int = 1
-			for xp_offset in [1, 3, 5, 7]:
-				var child_on_xp_offset = first_child_offset + xp_offset
-				var child_subgrid = svo_subgrid[child_on_xp_offset]
-				flip = flip & int(bitmask_of_subgrid_voxels_on_face_xp == 
-					(child_subgrid & bitmask_of_subgrid_voxels_on_face_xp))
-			flip_flag[1][i] = flip
-			
-		progress.emit(ProgressStep.PREPARE_FLIP_FLAG_LAYER_1, svo, flip_flag[1].size(), flip_flag[1].size())
+			#flip_flag_layer[i] = flip_flag_child_layer[child_on_xp_offset]
+
+			flip_flag_layer[i] = _all_xp_children_are_flipped(
+				first_child_offset,
+				flip_flag_child_layer)
+
+		progress.emit(
+			ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2,
+			svo,
+			flip_flag_layer.size(),
+			flip_flag_layer.size())
 		#endregion
-		
-		progress.emit(ProgressStep.FLIP_BOTTOM_UP_LAYER_1, svo, 1, 2)
-		#region Propagate layer 1 flip information
-		
-		progress.emit(ProgressStep.PROPAGATE_FLIP_INFORMATION_LAYER_1, svo, 0, 
-			list_head_node_offset_of_layer[1].size())
-			
+
+		#region Propagate flip information
+		progress.emit(
+			ProgressStep.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2,
+			svo,
+			0,
+			list_head_node_offset_of_layer[layer].size())
 		if multi_threading_enabled:
 			await Parallel.execute(
-				async_context, 
-				list_head_node_offset_of_layer[1].size(),
+				async_context,
+				list_head_node_offset_of_layer[layer].size(),
 				multi_threading_priority,
 				_parallel_propagate_flip_and_inside.bind(
-					1, 
+					layer,
 					list_head_node_offset_of_layer,
-					svo_xp, 
-					flip_flag, 
+					svo_xp,
+					flip_flag,
 					svo_inside))
 		else:
-			for head_node_index in range(list_head_node_offset_of_layer[1].size()):
+			for head_node_index in range(
+					list_head_node_offset_of_layer[layer].size()):
 				_parallel_propagate_flip_and_inside(
-					head_node_index, 
-					1, 
+					head_node_index,
+					layer,
 					list_head_node_offset_of_layer,
-					svo_xp, 
-					flip_flag, 
+					svo_xp,
+					flip_flag,
 					svo_inside)
-		
-		progress.emit(ProgressStep.PROPAGATE_FLIP_INFORMATION_LAYER_1, svo, 
-			list_head_node_offset_of_layer[1].size(), 
-			list_head_node_offset_of_layer[1].size())
+
+		progress.emit(
+			ProgressStep.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2,
+			svo,
+			list_head_node_offset_of_layer[layer].size(),
+			list_head_node_offset_of_layer[layer].size())
 		#endregion
-		
-		progress.emit(ProgressStep.FLIP_BOTTOM_UP_LAYER_1, svo, 2, 2)
-		#endregion
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 3, 6)
-		#region Flip bottom up from layer 2
-		progress.emit(ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2, svo, 0, flip_flag.size())
-		
-		# Set flip flag for layer-1 nodes with children 
-		# at the end of a z-linked node string
-		# TODO: Parallelize operation in each layer, in all layers
-		for layer in range(2, flip_flag.size()):
-			#region Prepare flip flag
-			var flip_flag_layer = flip_flag[layer]
-			var flip_flag_child_layer = flip_flag[layer-1]
-			progress.emit(ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2, svo, 0, flip_flag_layer.size())
-			for i in range(0, flip_flag_layer.size()):
-				var first_child_svolink = svo_first_child[layer][i]
+
+		progress.emit(
+			ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2,
+			svo,
+			layer,
+			flip_flag.size())
+
+	progress.emit(
+		ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2,
+		svo,
+		flip_flag.size(),
+		flip_flag.size())
+	#endregion
+
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		4,
+		6)
+	#region Propagate inside flags topdown for tree nodes
+	progress.emit(
+		ProgressStep.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES,
+		svo,
+		0,
+		depth-1)
+	for layer in range(depth-1, 0, -1):
+		var svo_inside_layer = svo_inside[layer]
+		var svo_inside_layer_child = svo_inside[layer-1]
+		var svo_first_child_layer = svo.first_child[layer]
+		for offset in range(svo_inside_layer.size()):
+			if svo_inside_layer[offset]:
+				var first_child_svolink = svo_first_child_layer[offset]
 				if first_child_svolink == SVOLink.NULL:
 					continue
-				var not_is_end_of_x_linked_node_string = true
-				
-				var xp_svolink = svo_xp[layer][i]
-				if xp_svolink == SVOLink.NULL:
-					not_is_end_of_x_linked_node_string = false
-				else:
-					var xp_layer = SVOLink.layer(xp_svolink)
-					var xp_offset = SVOLink.offset(xp_svolink)
-					var xp_first_child = svo_first_child[layer][xp_offset]
-					not_is_end_of_x_linked_node_string = \
-						xp_layer == layer and xp_first_child != SVOLink.NULL
-					
-				if not_is_end_of_x_linked_node_string:
-					continue
-				
 				var first_child_offset = SVOLink.offset(first_child_svolink)
-				#var child_on_xp_offset = first_child_offset + 1
-				#flip_flag_layer[i] = flip_flag_child_layer[child_on_xp_offset]
-				
-				var flip: int = 1
-				for xp_offset in [1, 3, 5, 7]:
-					var child_on_xp_offset = first_child_offset + xp_offset
-					flip = flip & flip_flag_child_layer[child_on_xp_offset]
-				flip_flag_layer[i] = flip
-				
-				
-			progress.emit(ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2, 
-				svo, flip_flag_layer.size(), flip_flag_layer.size())
-			#endregion
-		
-			#region Propagate flip information
-			progress.emit(ProgressStep.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2, 
-				svo, 0, list_head_node_offset_of_layer[layer].size())
-			if multi_threading_enabled:
-				await Parallel.execute(
-					async_context, 
-					list_head_node_offset_of_layer[layer].size(),
-					multi_threading_priority,
-					_parallel_propagate_flip_and_inside.bind(
-						layer, 
-						list_head_node_offset_of_layer,
-						svo_xp, 
-						flip_flag, 
-						svo_inside))
-			else:
-				for head_node_index in range(list_head_node_offset_of_layer[layer].size()):
-					_parallel_propagate_flip_and_inside(
-						head_node_index,
-						layer, 
-						list_head_node_offset_of_layer,
-						svo_xp, 
-						flip_flag, 
-						svo_inside)
-				
-			progress.emit(ProgressStep.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2, 
-				svo, list_head_node_offset_of_layer[layer].size(), 
-				list_head_node_offset_of_layer[layer].size())
-			#endregion
-		
-			progress.emit(ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2,
-				svo, layer, flip_flag.size())
-			
-		progress.emit(ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2, svo, 
-			flip_flag.size(), flip_flag.size())
-		#endregion
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 4, 6)
-		#region Propagate inside flags topdown for tree nodes
-		
-		progress.emit(ProgressStep.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES, svo, 
-			0, depth-1)
-		for layer in range(depth-1, 0, -1):
-			var svo_inside_layer = svo_inside[layer]
-			var svo_inside_layer_child = svo_inside[layer-1]
-			var svo_first_child_layer = svo.first_child[layer]
-			for offset in range(svo_inside_layer.size()):
-				if svo_inside_layer[offset]:
-					var first_child_svolink = svo_first_child_layer[offset]
-					if first_child_svolink == SVOLink.NULL:
-						continue
-					var first_child_offset = SVOLink.offset(first_child_svolink)
-					for child in range(first_child_offset, first_child_offset + 8):
-						svo_inside_layer_child[child] = svo_inside_layer_child[child] ^ 1
-							
-		progress.emit(ProgressStep.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES, svo, 
-			depth-1, depth-1)
-		#endregion
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 5, 6)
-		#region Propagate inside flag to subgrid voxels
-		var svo_inside_layer_0 = svo_inside[0]
-		progress.emit(ProgressStep.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS, svo, 
-			0, svo_inside_layer_0.size())
-		for offset in range(svo_inside_layer_0.size()):
-			if svo_inside_layer_0[offset]:
-				svo_subgrid[offset] = ~svo_subgrid[offset]
-		progress.emit(ProgressStep.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS, svo, 
-			svo_inside_layer_0.size(), svo_inside_layer_0.size())
-		#endregion
-		
-		progress.emit(ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 6, 6)
-		#endregion
-		
-		progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 2, 2)
-		
-		if debug_delete_flip_flag:
-			svo.flip.clear()
-		
-	#endregion
-	#region Surface voxelization
-	if surface_voxelization_enabled:
-		progress.emit(ProgressStep.SURFACE_VOXELIZATION, svo, 
-			0, list_node_1_morton_grouped.size())
-			
-		var list_node_1_overlap_triangle_count: PackedInt64Array = _get_node_1_overlap_triangle_count_array(
-			list_pair_node1_overlap_triangle_index, unique_morton_count)
-		var list_node_1_overlap_triangle_write_index: PackedInt64Array = \
-			Parallel.make_start_write_index_array_from_count_array(list_node_1_overlap_triangle_count)
+				for child in range(first_child_offset, first_child_offset + 8):
+					svo_inside_layer_child[child] = \
+						svo_inside_layer_child[child] ^ 1
 
-		var list_node_1_overlap_triangle_index: PackedInt64Array = []
-		list_node_1_overlap_triangle_index.resize(list_pair_node1_overlap_triangle_index.size())
-		for i in range(list_pair_node1_overlap_triangle_index.size()):
-			var current_pair = list_pair_node1_overlap_triangle_index[i]
-			var triangle_index = current_pair[2] << 32 | current_pair[3]
-			list_node_1_overlap_triangle_index[i] = triangle_index
-			
-		# Allocate each layer-1 node with 1 thread.[br]
-		# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
-		# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
-		if multi_threading_enabled:
-			await Parallel.execute(
-				async_context, 
-				list_node_1_morton_grouped.size(),
-				multi_threading_priority,
-				_parallel_voxelize_subgrid.bind(
-					list_node_1_morton_grouped,
-					list_node_1_overlap_triangle_index,
-					list_node_1_overlap_triangle_write_index,
-					triangles,
-					svo,
-					voxel_size,
-					surface_voxelization_separability,
-					flight_navigation_size,
-					surface_voxelization_float_error_margin,
-					factory_triangle_box_test))
-		else:
-			for i in range(list_node_1_morton_grouped.size()):
-				_parallel_voxelize_subgrid(
-					i,
-					list_node_1_morton_grouped,
-					list_node_1_overlap_triangle_index,
-					list_node_1_overlap_triangle_write_index,
-					triangles,
-					svo,
-					voxel_size,
-					surface_voxelization_separability,
-					flight_navigation_size,
-					surface_voxelization_float_error_margin,
-					factory_triangle_box_test)
-					
-		progress.emit(ProgressStep.SURFACE_VOXELIZATION, svo, 
-			list_node_1_morton_grouped.size(), list_node_1_morton_grouped.size())
+	progress.emit(
+		ProgressStep.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES,
+		svo,
+		depth-1,
+		depth-1)
 	#endregion
-	
-	if solid_voxelization_calculate_coverage_factor:
-		progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 0, 2)
-		var new_svo_coverage: Array[PackedFloat64Array] = []
-		new_svo_coverage.resize(svo.morton.size())
-		for layer in range(svo.morton.size()):
-			new_svo_coverage[layer].resize(svo.morton[layer].size())
-			new_svo_coverage[layer].fill(0.0)
-		#region Calculate layer 0 coverage
-		var list_solid_bit_count_by_subgrid: PackedInt64Array = []
-		if multi_threading_enabled:
-			list_solid_bit_count_by_subgrid = \
-			await svo.parallel_get_list_solid_bit_count_by_subgrid(
-				async_context, 
-				multi_threading_priority)
-		else:
-			list_solid_bit_count_by_subgrid = svo.get_list_solid_bit_count_by_subgrid()
-		
-		for i in range(list_solid_bit_count_by_subgrid.size()):
-			new_svo_coverage[0][i] = list_solid_bit_count_by_subgrid[i] / 64.0
-			
-		progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 1, 2)
-		#endregion
-		#region Calculate coverage for layer 1 and up
-		for layer in range(1, new_svo_coverage.size()):
-			for i in range(new_svo_coverage[layer].size()):
-				var first_child_svolink = svo.first_child[layer][i]
-				if first_child_svolink == SVOLink.NULL and svo.support_inside:
-					if svo.inside[layer][i]:
-						new_svo_coverage[layer][i] = 1.0
-					else:
-						new_svo_coverage[layer][i] = 0.0
-					continue
-				var total_coverage: float = 0
-				var first_child_offset = SVOLink.offset(first_child_svolink)
-				var child_layer = layer-1
-				for child_offset in range(first_child_offset, first_child_offset+8):
-					total_coverage += new_svo_coverage[child_layer][child_offset]
-				new_svo_coverage[layer][i] = total_coverage / 8
-		svo.coverage = new_svo_coverage
-		#endregion 
-		
-		progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 2, 2)
-		
-	return svo
+
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		5,
+		6)
+	#region Propagate inside flag to subgrid voxels
+	var svo_inside_layer_0 = svo_inside[0]
+	progress.emit(
+		ProgressStep.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS,
+		svo,
+		0,
+		svo_inside_layer_0.size())
+	for offset in range(svo_inside_layer_0.size()):
+		if svo_inside_layer_0[offset]:
+			svo_subgrid[offset] = ~svo_subgrid[offset]
+	progress.emit(
+		ProgressStep.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS,
+		svo,
+		svo_inside_layer_0.size(),
+		svo_inside_layer_0.size())
+	#endregion
+
+	progress.emit(
+		ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+		svo,
+		6,
+		6)
+	#endregion
+
+	progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 2, 2)
+	if debug_delete_flip_flag:
+		svo.flip.clear()
+
+
+func _run_surface_voxelization(
+	async_context: Signal,
+	svo: SVO,
+	triangles: PackedVector3Array,
+	list_pair_node1_overlap_triangle_index: Array[Vector4i],
+	unique_morton_count: int,
+	list_node_1_morton_grouped: PackedInt64Array,
+	voxel_size: Vector3,
+	surface_voxelization_separability: TriangleBoxTest.Separability,
+	surface_voxelization_float_error_margin: float,
+	flight_navigation_size: Vector3,
+	factory_triangle_box_test: FactoryTriangleBoxTest,
+	multi_threading_enabled: bool,
+	multi_threading_priority: Thread.Priority) -> void:
+	progress.emit(
+		ProgressStep.SURFACE_VOXELIZATION,
+		svo,
+		0,
+		list_node_1_morton_grouped.size())
+
+	var list_node_1_overlap_triangle_count: PackedInt64Array = \
+		_get_node_1_overlap_triangle_count_array(
+			list_pair_node1_overlap_triangle_index,
+			unique_morton_count)
+	var list_node_1_overlap_triangle_write_index: PackedInt64Array = \
+		Parallel.make_start_write_index_array_from_count_array(
+			list_node_1_overlap_triangle_count)
+
+	var list_node_1_overlap_triangle_index: PackedInt64Array = []
+	list_node_1_overlap_triangle_index.resize(
+		list_pair_node1_overlap_triangle_index.size())
+	for i in range(list_pair_node1_overlap_triangle_index.size()):
+		var current_pair = list_pair_node1_overlap_triangle_index[i]
+		var triangle_index = current_pair[2] << 32 | current_pair[3]
+		list_node_1_overlap_triangle_index[i] = triangle_index
+
+	# Allocate each layer-1 node with 1 thread.[br]
+	# For each thread, sequentially test triangle overlapping with each of 8 layer-0 child node.[br]
+	# For each layer-0 child node overlapped by triangle, launch a thread to voxelize subgrid.[br]
+	if multi_threading_enabled:
+		await Parallel.execute(
+			async_context,
+			list_node_1_morton_grouped.size(),
+			multi_threading_priority,
+			_parallel_voxelize_subgrid.bind(
+				list_node_1_morton_grouped,
+				list_node_1_overlap_triangle_index,
+				list_node_1_overlap_triangle_write_index,
+				triangles,
+				svo,
+				voxel_size,
+				surface_voxelization_separability,
+				flight_navigation_size,
+				surface_voxelization_float_error_margin,
+				factory_triangle_box_test))
+	else:
+		for i in range(list_node_1_morton_grouped.size()):
+			_parallel_voxelize_subgrid(
+				i,
+				list_node_1_morton_grouped,
+				list_node_1_overlap_triangle_index,
+				list_node_1_overlap_triangle_write_index,
+				triangles,
+				svo,
+				voxel_size,
+				surface_voxelization_separability,
+				flight_navigation_size,
+				surface_voxelization_float_error_margin,
+				factory_triangle_box_test)
+
+	progress.emit(
+		ProgressStep.SURFACE_VOXELIZATION,
+		svo,
+		list_node_1_morton_grouped.size(),
+		list_node_1_morton_grouped.size())
+
+
+func _calculate_coverage_factor(
+	async_context: Signal,
+	svo: SVO,
+	multi_threading_enabled: bool,
+	multi_threading_priority: Thread.Priority) -> void:
+	progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 0, 2)
+	var new_svo_coverage: Array[PackedFloat64Array] = []
+	new_svo_coverage.resize(svo.morton.size())
+	for layer in range(svo.morton.size()):
+		new_svo_coverage[layer].resize(svo.morton[layer].size())
+		new_svo_coverage[layer].fill(0.0)
+
+	#region Calculate layer 0 coverage
+	var list_solid_bit_count_by_subgrid: PackedInt64Array = []
+	if multi_threading_enabled:
+		list_solid_bit_count_by_subgrid = \
+		await svo.parallel_get_list_solid_bit_count_by_subgrid(
+			async_context,
+			multi_threading_priority)
+	else:
+		list_solid_bit_count_by_subgrid = \
+			svo.get_list_solid_bit_count_by_subgrid()
+
+	for i in range(list_solid_bit_count_by_subgrid.size()):
+		new_svo_coverage[0][i] = list_solid_bit_count_by_subgrid[i] / 64.0
+	progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 1, 2)
+	#endregion
+
+	#region Calculate coverage for layer 1 and up
+	for layer in range(1, new_svo_coverage.size()):
+		for i in range(new_svo_coverage[layer].size()):
+			var first_child_svolink = svo.first_child[layer][i]
+			if first_child_svolink == SVOLink.NULL and svo.support_inside:
+				if svo.inside[layer][i]:
+					new_svo_coverage[layer][i] = 1.0
+				else:
+					new_svo_coverage[layer][i] = 0.0
+				continue
+			var total_coverage: float = 0
+			var first_child_offset = SVOLink.offset(first_child_svolink)
+			var child_layer = layer-1
+			for child_offset in range(
+					first_child_offset,
+					first_child_offset + 8):
+				total_coverage += new_svo_coverage[child_layer][child_offset]
+			new_svo_coverage[layer][i] = total_coverage / 8
+	svo.coverage = new_svo_coverage
+	#endregion
+
+	progress.emit(ProgressStep.CALCULATE_COVERAGE_FACTOR, svo, 2, 2)
+
+
+static func _is_end_of_x_linked_node_string(
+	layer: int,
+	node_offset: int,
+	svo_first_child: Array[PackedInt64Array],
+	svo_xp: Array[PackedInt64Array]) -> bool:
+	var xp_svolink = svo_xp[layer][node_offset]
+	if xp_svolink == SVOLink.NULL:
+		return true
+
+	var xp_layer = SVOLink.layer(xp_svolink)
+	var xp_offset = SVOLink.offset(xp_svolink)
+	var xp_first_child = svo_first_child[layer][xp_offset]
+	return not (xp_layer == layer and xp_first_child != SVOLink.NULL)
+
+
+static func _has_full_xp_face_in_all_children(
+	first_child_offset: int,
+	svo_subgrid: PackedInt64Array,
+	xp_face_bitmask: int) -> int:
+	var flip: int = 1
+	for xp_offset in [1, 3, 5, 7]:
+		var child_subgrid = svo_subgrid[first_child_offset + xp_offset]
+		flip = flip & int(xp_face_bitmask == (child_subgrid & xp_face_bitmask))
+	return flip
+
+
+static func _all_xp_children_are_flipped(
+	first_child_offset: int,
+	flip_flag_child_layer: PackedByteArray) -> int:
+	var flip: int = 1
+	for xp_offset in [1, 3, 5, 7]:
+		flip = flip & flip_flag_child_layer[first_child_offset + xp_offset]
+	return flip
 
 
 ## Return non-zero if svo nodes with codes m1 and m2 have different parents

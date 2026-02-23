@@ -229,8 +229,10 @@ func _update_box_visualization():
 	# Get the center position of the voxel/node
 	var center_position = flight_navigation.get_global_position_of(_current_svolink)
 	
-	# Update box mesh position and rotation to match flight_navigation
-	_box_mesh.global_rotation = flight_navigation.global_rotation
-	_box_mesh.global_position = center_position
+	# Update box mesh transform to match FlightNavigation transform basis.
+	# Using only global_rotation drops scale and causes incorrect box sizes.
+	_box_mesh.global_transform = Transform3D(
+		flight_navigation.global_basis,
+		center_position)
 	_box_mesh.mesh.size = box_size
 	_box_mesh.visible = true
