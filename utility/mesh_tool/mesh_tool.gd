@@ -19,15 +19,15 @@ static func convert_to_mesh(shape: Shape3D) -> Mesh:
 static func get_faces(shape: Shape3D) -> PackedVector3Array:
 	if shape is BoxShape3D:
 		return MeshTool.get_boxmesh_faces(shape)
-	elif shape is ConvexPolygonShape3D:
+	if shape is ConvexPolygonShape3D:
 		return MeshTool.get_convex_polygon_faces(shape)
-	elif shape is ConcavePolygonShape3D:
+	if shape is ConcavePolygonShape3D:
 		return shape.get_faces()
-	elif shape is SphereShape3D:
+	if shape is SphereShape3D:
 		return MeshTool.get_sphereshape_faces(shape)
-	elif shape is CapsuleShape3D:
+	if shape is CapsuleShape3D:
 		return MeshTool.get_capsuleshape_faces(shape)
-	elif shape is CylinderShape3D:
+	if shape is CylinderShape3D:
 		return MeshTool.get_cylindershape_faces(shape)
 	return []
 
@@ -131,6 +131,8 @@ static func _get_random_tetrahedron(vertices: PackedVector3Array) -> PackedVecto
 			for k in range(j+1, vertices.size() - 1):
 				var v2 = vertices[k]
 				var e1 = v2-v0
+				if e0.cross(e1).length() < 0.0001:
+					continue
 				for l in range(k+1, vertices.size()):
 					var v3 = vertices[l]
 					var e2 = v3-v0

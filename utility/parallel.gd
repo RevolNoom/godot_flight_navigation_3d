@@ -52,7 +52,7 @@ static func count_by_batch(
 	var batch_count: int = _calculate_batch_count(task_size, max_batch_size)
 	if batch_count == 0:
 		return {}
-	var batch_size: int = task_size/batch_count
+	var batch_size: int = ceil(float(task_size) / float(batch_count))
 	var list_count_by_batch: PackedInt64Array = []
 	list_count_by_batch.resize(batch_count)
 	list_count_by_batch.fill(0)

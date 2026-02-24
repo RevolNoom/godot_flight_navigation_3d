@@ -1,5 +1,19 @@
 # Coding Best Practices
 
+## Documentation
+
+### Classes
+Briefly describe what a class does, features it offers
+
+### Functions
+Briefly describe what a function does, describe function inputs,
+and an example function call.
+
+### Enums
+Briefly describe what an enum is used for,
+with additional comments on each enum element if their names are not clear, 
+or not descriptive enough.
+
 ## Readability
 
 ### Limit lines to 65 characters

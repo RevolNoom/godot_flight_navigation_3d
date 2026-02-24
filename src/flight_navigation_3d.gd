@@ -393,7 +393,7 @@ func _prepare_triangles(
 			var list_count_if_by_batch = \
 				count_result.list_count_if_by_batch
 			fat_triangle_count = \
-				Fn3dUtility.sum_array_number(list_count_if_by_batch)
+				Fn3dUtility.sum_number_array(list_count_if_by_batch)
 			cleaned_triangles.resize(fat_triangle_count*3)
 
 			var list_start_write_index: PackedInt64Array = \
@@ -517,7 +517,7 @@ func _determine_active_layer_1_nodes(
 	# 2. Avoid creating a custom type that extends RefCounted.
 	var list_pair_triangle_index_overlap_node1: Array[Vector4i] = []
 	list_pair_triangle_index_overlap_node1.resize(
-		Fn3dUtility.sum_array_number(list_triangle_overlap_node1_count))
+		Fn3dUtility.sum_number_array(list_triangle_overlap_node1_count))
 
 	if list_pair_triangle_index_overlap_node1.size() == 0:
 		return {}
@@ -2696,7 +2696,7 @@ func draw():
 		var list_solid_node_count_by_batch: PackedInt64Array = count_result.list_count_by_batch
 		var batch_size: int = count_result.batch_size
 		
-		var total_instance_count: int = Fn3dUtility.sum_array_number(list_solid_node_count_by_batch)
+		var total_instance_count: int = Fn3dUtility.sum_number_array(list_solid_node_count_by_batch)
 		
 		var list_start_write_index: PackedInt64Array = \
 			Parallel.make_start_write_index_array_from_count_array(
@@ -2754,7 +2754,7 @@ func draw_solid_voxels():
 		list_solid_bit_count_by_subgrid = \
 			sparse_voxel_octree.get_list_solid_bit_count_by_subgrid()
 			
-	var total_solid_bit_count: int = Fn3dUtility.sum_array_number(list_solid_bit_count_by_subgrid)
+	var total_solid_bit_count: int = Fn3dUtility.sum_number_array(list_solid_bit_count_by_subgrid)
 	
 	var list_start_write_index: PackedInt64Array = \
 			Parallel.make_start_write_index_array_from_count_array(

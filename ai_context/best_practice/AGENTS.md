@@ -14,8 +14,8 @@ Use this if you need to generate code.
 
 ## Read and follow the instructions in the per-language best practice files.
 
-## Say: "Specific best_practice: [best_practice_specific]"
+## Say: "Best practice selected: [best_practice_specific]"
 
 ### Examples
 
-#### C#: Specific best_practice: best_practice_csharp
+#### C#: Best practice selected: best_practice_csharp

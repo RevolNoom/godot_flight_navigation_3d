@@ -1,3 +1,7 @@
+# VSCode configurations
+.roo
+.vscode
+
 # Godot 4+ specific ignores
 .godot/
 **/*.import

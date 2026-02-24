@@ -1,15 +1,18 @@
 extends RefCounted
 class_name Fn3dUtility
 
-static func sum_array_number(array_type: Variant) -> Variant:
+static func sum_number_array(array_type: Variant) -> Variant:
 	var result: Variant = 0
 	for element in array_type:
 		result += element
 	return result
 
 
-## Count unique elements in a sorted array.
-## [param sorted_array] must be sorted. If not, the result is undefined.
+## Count unique elements in a sorted array.[br]
+##
+## [param sorted_array] must be sorted. 
+## If not, the result is undefined. [br]
+##
 ## Return the count of unique elements.
 static func count_unique_element_on_sorted_array(sorted_array: Variant) -> int:
 	if sorted_array.size() == 0:
@@ -26,9 +29,11 @@ static func count_unique_element_on_sorted_array(sorted_array: Variant) -> int:
 	return unique_count
 
 
-## [param sorted_array] must be sorted. If not, the result is undefined.
-## Return a new array, with no pair of elements equals to each other (using operator==).
-static func make_sorted_array_become_unique_array(sorted_array: Variant) -> Variant:
+## [param sorted_array] must be sorted. 
+## If not, the result is undefined. [br]
+## 
+## Return a sorted array with only unique elements (using operator==).
+static func make_unique_from_sorted_array(sorted_array: Variant) -> Variant:
 	var unique_array = sorted_array.duplicate()
 	
 	if unique_array.size() <= 1:
@@ -44,8 +49,15 @@ static func make_sorted_array_become_unique_array(sorted_array: Variant) -> Vari
 	return unique_array
 
 
-## 
-static func count_element_appearance_per_unique_element(sorted_array: Variant) -> PackedInt64Array:
+## Count occurrences of each unique value in a sorted array.
+## [param sorted_array] must be sorted in non-decreasing order.
+## If input is unsorted, the result is undefined.
+## Return format:
+## - Result size equals the number of unique values.
+## - Result[i] stores the count of the i-th unique value.
+## Example:
+## [1, 1, 2, 2, 2, 4, 7, 7] -> [2, 3, 1, 2]
+static func count_unique_element_appearance(sorted_array: Variant) -> PackedInt64Array:
 	if sorted_array.size() == 0:
 		return []
 
@@ -60,6 +72,7 @@ static func count_element_appearance_per_unique_element(sorted_array: Variant) -
 	
 	var write_ptr: int = 0
 	var compare_element = sorted_array[0]
+	list_element_appearance_per_unique_element[0] = 1
 	for current_element_ptr in range(1, sorted_array.size()):
 		var current_element = sorted_array[current_element_ptr]
 		if compare_element != current_element:

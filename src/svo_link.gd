@@ -6,7 +6,8 @@
 ## [br]
 ## [method layer] - 4 most significant bits: Which layer this node is in[br]
 ## [method offset] - 54 middle bits: Which index in the layer array this node is [br]
-## [method subgrid] - 6 least significant bits: Morton code of the subgrid voxel of the layer-0 node that this link points to.[br]
+## [method subgrid] - 6 least significant bits: Morton code of the subgrid voxel 
+## of the layer-0 node that this link points to.[br]
 class_name SVOLink
 
 ## Null SVOLink that doesn't point to any node/voxel
@@ -26,9 +27,11 @@ static func from(svo_layer: int, array_offset: int, subgrid_idx: int = 0) -> int
 			| (subgrid_idx & SUBGRID_MASK)
 
 
-## Return the layer this node is in
+## Return the layer this node is in.
 static func layer(link: int) -> int:
-	return link >> 60
+	# Note: In case most significant bit is set, right shifting will fill with 1, 
+	# so we need to mask it with 0b1111 to get the correct value
+	return (link >> 60) & 0b1111
 
 
 ## Return the index in the [SVO]'s layer array this node is

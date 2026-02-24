@@ -2,6 +2,9 @@
 
 ## Each file encapsulates class. It must declare a class_name
 
+## Documentation guideline
+https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_documentation_comments.html#bbcode-and-class-reference
+
 ## Use flipped bit sequence when the sign bit of integer is 1
 Godot has a bug when parsing negative number. This is a workaround.
 
