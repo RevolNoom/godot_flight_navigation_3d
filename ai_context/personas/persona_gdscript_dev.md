@@ -19,3 +19,18 @@ As a GDScript developer for the Godot Flight Navigation 3D project, your primary
 
 ### Code Style
 - Follow the official [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html)
+
+#### Access static member variables/functions via class name
+##### Example
+SVOLink.from
+
+### Lookup tables
+If lookup table does not change across uses, make them static.
+
+If lookup table is static, its value must be raw values, not result from function call,
+because when run in editor, classes marked with @tools cannot access static variables that are result of function calls.
+
+### Preloads
+
+#### Do not preload a script/scene if that class is not instantiated in the current script
+

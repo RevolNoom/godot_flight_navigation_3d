@@ -95,3 +95,18 @@ func test_filter_in_place():
 	)
 	assert_eq(input, expected)
 
+
+func test_count_bit_1():
+	var cases = [
+		{"number": 0b0, "expected": 0},
+		{"number": 0b1, "expected": 1},
+		{"number": 0b101010, "expected": 3},
+		{"number": 0b0000_1111_0000_1111_0000_1111_0000_1111_0000_1111_0000_1111_0000_1111_0000_1111, "expected": 32},
+		{"number": 0b0111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111, "expected": 63},
+		{"number": ~0b0, "expected": 64},
+		{"number": ~0b0111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111, "expected": 1},
+	]
+
+	for c in cases:
+		var result = Fn3dUtility.count_bit_1(c.number)
+		assert_eq(result, c.expected)

@@ -753,6 +753,7 @@ func _construct_svo(
 		#endregion
 
 		current_active_layer_nodes = new_active_layer_nodes
+		parent_idx.resize(current_active_layer_nodes.size())
 	#endregion
 
 	progress.emit(ProgressStep.CONSTRUCT_SVO, svo, 1, 2)
@@ -800,6 +801,12 @@ func _run_solid_voxelization(
 	multi_threading_priority: Thread.Priority,
 	depth: int) -> void:
 	progress.emit(ProgressStep.SOLID_VOXELIZATION, svo, 0, 2)
+	var x_column_flip_bitmask_by_subgrid_index = \
+		Fn3dLookupTable.x_column_flip_bitmask_by_subgrid_index
+	var neighbor_node_x_column_bits_by_subgrid_index = \
+		Fn3dLookupTable.neighbor_node_x_column_bits_by_subgrid_index
+	var bitmask_of_subgrid_voxels_on_face_xp = \
+		Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_xp
 
 	#region YZ plane rasterization, and projection on x column
 	progress.emit(ProgressStep.YZ_PLANE_RASTERIZATION, svo, 0, triangles.size()/3)
@@ -819,7 +826,7 @@ func _run_solid_voxelization(
 				svo,
 				triangles,
 				voxel_size,
-				_x_column_flip_bitmask_by_subgrid_index,
+				x_column_flip_bitmask_by_subgrid_index,
 				flight_navigation_size,
 				solid_voxelization_top_left_edge_epsilon,
 				solid_voxelization_float_error_margin
@@ -831,7 +838,7 @@ func _run_solid_voxelization(
 				svo,
 				triangles,
 				voxel_size,
-				_x_column_flip_bitmask_by_subgrid_index,
+				x_column_flip_bitmask_by_subgrid_index,
 				flight_navigation_size,
 				solid_voxelization_top_left_edge_epsilon,
 				solid_voxelization_float_error_margin
@@ -888,7 +895,7 @@ func _run_solid_voxelization(
 	var list_head_node_offset_of_layer_0: PackedInt64Array = \
 		list_head_node_offset_of_layer[0]
 	var subgrid_voxel_indexes_on_face_xp: PackedInt32Array = \
-		subgrid_voxel_indexes_on_face["xp"]
+		Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"xp"]
 	var svo_subgrid = svo.subgrid
 	var svo_xp = svo.xp
 
@@ -2899,76 +2906,6 @@ static func _parallel_batched_write_multimesh_instance_transforms(
 	for index in range(batch_start, batch_end):
 		multimesh.set_instance_transform(index, list_transform[index])
 	
-#endregion
-#region Lookup Tables
-# Lookup tables are not marked 'static'
-# because static vars don't work when used in editor mode.
-
-## Indexes of subgrid voxel that makes up a face of a layer-0 node
-var subgrid_voxel_indexes_on_face: Dictionary[StringName, PackedInt32Array] =\
-	SVO.generate_lut_subgrid_voxel_indexes_on_face()
-	
-## Used to quickly flip subgrid when rasterize triangles on xy plane.
-var _x_column_flip_bitmask_by_subgrid_index: PackedInt64Array =\
-	generate_x_column_flip_bitmask_by_subgrid_index()
-	
-var bitmask_of_subgrid_voxels_on_face_xp: int =\
-	_compress_subgrid_indexes_into_bitmask(
-		SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(3, -1, -1)))
-
-## Used for hierarchical inside/outside propagation.
-var neighbor_node_x_column_bits_by_subgrid_index: Dictionary[int, int] = \
-	generate_lut_neighbor_node_x_column_bits_by_subgrid_index()
-
-#endregion
-#region Generate Lookup Tables
-
-static func generate_x_column_flip_bitmask_by_subgrid_index() -> PackedInt64Array:
-	var list_bitmask: PackedInt64Array = []
-	for i in range(64):
-		var bitmask = _get_x_column_flip_bitmask_by_subgrid_index(i)
-		list_bitmask.push_back(bitmask)
-	#var list_bitmask_str = Array(list_bitmask).map(
-		#func (bitmask): 
-			#return Morton.int_to_bin(bitmask))
-	return list_bitmask
-	
-static func _get_x_column_flip_bitmask_by_subgrid_index(subgrid_idx: int):
-	var start_x = Morton3.decode_vec3i(subgrid_idx).x
-	var list_flip_index: PackedInt32Array = []
-	for next_x in range(start_x, 4):
-		list_flip_index.push_back(Morton3.set_x(subgrid_idx, next_x))
-	var bitmask = _compress_subgrid_indexes_into_bitmask(list_flip_index)
-	return bitmask
-
-## Used for hierarchical inside/outside propagation.
-static func generate_lut_neighbor_node_x_column_bits_by_subgrid_index() -> Dictionary[int, int]:
-	return {
-		Morton3.encode64(3,0,0): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,0))),
-		Morton3.encode64(3,1,0): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,0))),
-		Morton3.encode64(3,2,0): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,0))),
-		Morton3.encode64(3,3,0): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,0))),
-		Morton3.encode64(3,0,1): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,1))),
-		Morton3.encode64(3,1,1): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,1))),
-		Morton3.encode64(3,2,1): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,1))),
-		Morton3.encode64(3,3,1): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,1))),
-		Morton3.encode64(3,0,2): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,2))),
-		Morton3.encode64(3,1,2): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,2))),
-		Morton3.encode64(3,2,2): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,2))),
-		Morton3.encode64(3,3,2): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,2))),
-		Morton3.encode64(3,0,3): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,0,3))),
-		Morton3.encode64(3,1,3): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,1,3))),
-		Morton3.encode64(3,2,3): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,2,3))),
-		Morton3.encode64(3,3,3): _compress_subgrid_indexes_into_bitmask(SVO._get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1,3,3))),
-	}
-
-
-static func _compress_subgrid_indexes_into_bitmask(list_index: PackedInt32Array) -> int:
-	var bitmask: int = 0
-	for idx in list_index:
-		bitmask = bitmask | (1 << idx)
-	return bitmask
-
 #endregion
 
 func _get_configuration_warnings() -> PackedStringArray:

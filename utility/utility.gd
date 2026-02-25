@@ -92,3 +92,15 @@ static func filter_in_place(array_type: Variant, predicate: Callable) -> void:
 			write_index += 1
 		read_index += 1
 	array_type.resize(write_index)
+
+
+## Return the number of bits set to 1 in the binary representation of [param number].
+static func count_bit_1(number: int) -> int:
+	return Fn3dLookupTable.bit_1_count_by_u8[number & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 8) & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 16) & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 24) & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 32) & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 40) & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 48) & 0xFF] + \
+		Fn3dLookupTable.bit_1_count_by_u8[(number >> 56) & 0xFF]
