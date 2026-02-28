@@ -1,5 +1,5 @@
 extends RefCounted
-class_name FactoryTriangleBoxTest
+class_name FactoryTriangleBoxOverlapCheck
 
 ## Initialize a new triangle-box test.[br]
 ## [br]
@@ -10,6 +10,6 @@ func create(
 	_v1_f32: Vector3, 
 	_v2_f32: Vector3, 
 	_dp_f32: Vector3, 
-	_separability: TriangleBoxTest.Separability,
-	_float_error_margin: float) -> TriangleBoxTest:
+	_separability: TriangleBoxOverlapCheck.Separability,
+	_float_error_margin: float) -> TriangleBoxOverlapCheck:
 		return null

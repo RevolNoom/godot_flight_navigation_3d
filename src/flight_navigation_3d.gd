@@ -145,9 +145,9 @@ enum ProgressStep {
 		update_configuration_warnings()
 
 ## Surface voxelization "thickness". [br]
-## Default to [enum TriangleBoxTest.Separability.SEPARATING_26] (all voxels touched by the surface).
+## Default to [enum TriangleBoxOverlapCheck.Separability.SEPARATING_26] (all voxels touched by the surface).
 @export var surface_voxelization_separability:\
-	TriangleBoxTest.Separability = TriangleBoxTest.Separability.SEPARATING_26
+	TriangleBoxOverlapCheck.Separability = TriangleBoxOverlapCheck.Separability.SEPARATING_26
 
 ## Small floating point number used as margin to fight floating point accuracy loss.
 ## [br]
@@ -235,11 +235,11 @@ func build_navigation() -> SVO:
 	var origin_offset = -flight_navigation_size / 2
 	#endregion
 	
-	var factory_triangle_box_test: FactoryTriangleBoxTest
+	var factory_triangle_box_test: FactoryTriangleBoxOverlapCheck
 	if support_float64:
-		factory_triangle_box_test = FactoryTriangleBoxTestF64.new()
+		factory_triangle_box_test = FactoryTriangleBoxOverlapCheckF64.new()
 	else:
-		factory_triangle_box_test = FactoryTriangleBoxTestF32.new()
+		factory_triangle_box_test = FactoryTriangleBoxOverlapCheckF32.new()
 
 	var triangles = await _prepare_triangles(
 		async_context,
@@ -464,7 +464,7 @@ func _prepare_triangles(
 func _determine_active_layer_1_nodes(
 	async_context: Signal,
 	triangles: PackedVector3Array,
-	factory_triangle_box_test: FactoryTriangleBoxTest,
+	factory_triangle_box_test: FactoryTriangleBoxOverlapCheck,
 	voxel_size: Vector3,
 	surface_voxelization_float_error_margin: float,
 	flight_navigation_size: Vector3,
@@ -1209,10 +1209,10 @@ func _run_surface_voxelization(
 	unique_morton_count: int,
 	list_node_1_morton_grouped: PackedInt64Array,
 	voxel_size: Vector3,
-	surface_voxelization_separability: TriangleBoxTest.Separability,
+	surface_voxelization_separability: TriangleBoxOverlapCheck.Separability,
 	surface_voxelization_float_error_margin: float,
 	flight_navigation_size: Vector3,
-	factory_triangle_box_test: FactoryTriangleBoxTest,
+	factory_triangle_box_test: FactoryTriangleBoxOverlapCheck,
 	multi_threading_enabled: bool,
 	multi_threading_priority: Thread.Priority) -> void:
 	progress.emit(
@@ -1426,7 +1426,7 @@ static func _get_node_1_overlap_triangle_count_array(
 static func _parallel_get_triangle_overlap_list_node1(
 	triangle_idx: int,
 	list_triangle: PackedVector3Array,
-	factory_triangle_box_test: FactoryTriangleBoxTest,
+	factory_triangle_box_test: FactoryTriangleBoxOverlapCheck,
 	voxel_size: Vector3,
 	surface_voxelization_float_error_margin: float,
 	flight_navigation_size: Vector3,
@@ -1463,7 +1463,7 @@ static func _parallel_get_triangle_overlap_list_node1(
 		v1, 
 		v2, 
 		node_1_size, 
-		TriangleBoxTest.Separability.SEPARATING_26,
+		TriangleBoxOverlapCheck.Separability.SEPARATING_26,
 		surface_voxelization_float_error_margin)
 	var aabb: AABB = _calculate_triangle_aabb(v0, v1, v2);
 	var voxel_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, aabb, flight_navigation_size)
@@ -1499,7 +1499,7 @@ static func _parallel_get_triangle_overlap_node1_count(
 	triangle_idx: int,
 	list_triangle: PackedVector3Array,
 	list_triangle_overlap_node1_count: PackedInt64Array,
-	factory_triangle_box_test: FactoryTriangleBoxTest,
+	factory_triangle_box_test: FactoryTriangleBoxOverlapCheck,
 	voxel_size: Vector3,
 	surface_voxelization_float_error_margin: float,
 	flight_navigation_size: Vector3) -> void:
@@ -1532,7 +1532,7 @@ static func _parallel_get_triangle_overlap_node1_count(
 		v1, 
 		v2, 
 		node_1_size, 
-		TriangleBoxTest.Separability.SEPARATING_26,
+		TriangleBoxOverlapCheck.Separability.SEPARATING_26,
 		surface_voxelization_float_error_margin)
 	var aabb: AABB = _calculate_triangle_aabb(v0, v1, v2);
 	var voxel_range: Array[Vector3i] = _voxels_overlapped_by_aabb(node_1_size, aabb, flight_navigation_size)
@@ -1645,7 +1645,7 @@ static func _parallel_fill_neighbor_in_direction(
 	
 ## Helper: Voxelize triangle when Z is dominant axis
 func _voxelize_triangle_z_dominant(
-	triangle_box_test: TriangleBoxTest,
+	triangle_box_test: TriangleBoxOverlapCheck,
 	vox_range: Array[Vector3i],
 	node_1_size: Vector3,
 	result: Dictionary[int, PackedVector3Array],
@@ -1690,7 +1690,7 @@ func _voxelize_triangle_z_dominant(
 
 ## Helper: Voxelize triangle when Y is dominant axis
 func _voxelize_triangle_y_dominant(
-	triangle_box_test: TriangleBoxTest,
+	triangle_box_test: TriangleBoxOverlapCheck,
 	vox_range: Array[Vector3i],
 	node_1_size: Vector3,
 	result: Dictionary[int, PackedVector3Array],
@@ -1735,7 +1735,7 @@ func _voxelize_triangle_y_dominant(
 
 ## Helper: Voxelize triangle when X is dominant axis
 func _voxelize_triangle_x_dominant(
-	triangle_box_test: TriangleBoxTest,
+	triangle_box_test: TriangleBoxOverlapCheck,
 	vox_range: Array[Vector3i],
 	node_1_size: Vector3,
 	result: Dictionary[int, PackedVector3Array],
@@ -1789,7 +1789,7 @@ static func _calculate_triangle_aabb(v0: Vector3, v1: Vector3, v2: Vector3) -> A
 
 ## Helper: Voxelize subgrid when Z is dominant axis
 static func _voxelize_subgrid_z_dominant(
-	triangle_voxel_test: TriangleBoxTest,
+	triangle_voxel_test: TriangleBoxOverlapCheck,
 	vox_range: Array[Vector3i],
 	voxel_size: Vector3,
 	node0_position: Vector3,
@@ -1842,7 +1842,7 @@ static func _voxelize_subgrid_z_dominant(
 
 ## Helper: Voxelize subgrid when Y is dominant axis
 static func _voxelize_subgrid_y_dominant(
-	triangle_voxel_test: TriangleBoxTest,
+	triangle_voxel_test: TriangleBoxOverlapCheck,
 	vox_range: Array[Vector3i],
 	voxel_size: Vector3,
 	node0_position: Vector3,
@@ -1894,7 +1894,7 @@ static func _voxelize_subgrid_y_dominant(
 
 ## Helper: Voxelize subgrid when X is dominant axis
 static func _voxelize_subgrid_x_dominant(
-	triangle_voxel_test: TriangleBoxTest,
+	triangle_voxel_test: TriangleBoxOverlapCheck,
 	vox_range: Array[Vector3i],
 	voxel_size: Vector3,
 	node0_position: Vector3,
@@ -1952,10 +1952,10 @@ static func _parallel_voxelize_subgrid(
 	triangles: PackedVector3Array,
 	svo: SVO,
 	voxel_size: Vector3,
-	surface_voxelization_separability: TriangleBoxTest.Separability,
+	surface_voxelization_separability: TriangleBoxOverlapCheck.Separability,
 	flight_navigation_size: Vector3,
 	surface_voxelization_float_error_margin: float,
-	factory_triangle_box_test: FactoryTriangleBoxTest
+	factory_triangle_box_test: FactoryTriangleBoxOverlapCheck
 	):
 	var node_0_size: Vector3 = voxel_size * 4
 	var node_1_size: Vector3 = voxel_size * 8
@@ -1993,7 +1993,7 @@ static func _parallel_voxelize_subgrid(
 			v1, 
 			v2, 
 			node_0_size, 
-			TriangleBoxTest.Separability.SEPARATING_26,
+			TriangleBoxOverlapCheck.Separability.SEPARATING_26,
 			surface_voxelization_float_error_margin)
 		
 		for child_index in range(8):

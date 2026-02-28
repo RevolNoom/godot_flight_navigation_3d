@@ -3,8 +3,8 @@ extends Node3D
 @onready var flight_nav = $FlightNavigation3D
 
 func _ready() -> void:
-	#TriangleBoxTest_ReferenceCode._automated_test()
-	#TriangleBoxTest._automated_test()
+	#TriangleBoxOverlapCheck_ReferenceCode._automated_test()
+	#TriangleBoxOverlapCheck._automated_test()
 	var svo = await flight_nav.build_navigation()
 	flight_nav.sparse_voxel_octree = svo
 	#flight_nav.draw()

@@ -321,7 +321,7 @@ or subgrid voxel state</panel_attributes>
       <w>136</w>
       <h>128</h>
     </coordinates>
-    <panel_attributes>TriangleBoxTest</panel_attributes>
+    <panel_attributes>TriangleBoxOverlapCheck</panel_attributes>
     <additional_attributes/>
   </element>
 </diagram>

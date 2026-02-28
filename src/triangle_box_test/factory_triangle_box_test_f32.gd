@@ -1,5 +1,5 @@
-extends FactoryTriangleBoxTest
-class_name FactoryTriangleBoxTestF32
+extends FactoryTriangleBoxOverlapCheck
+class_name FactoryTriangleBoxOverlapCheckF32
 
 ## Initialize a new triangle-box test.[br]
 ## [br]
@@ -10,9 +10,9 @@ func create(
 	v1_f32: Vector3, 
 	v2_f32: Vector3, 
 	dp_f32: Vector3, 
-	separability: TriangleBoxTest.Separability,
-	float_error_margin: float) -> TriangleBoxTest:
-		return TriangleBoxTestF32.new(
+	separability: TriangleBoxOverlapCheck.Separability,
+	float_error_margin: float) -> TriangleBoxOverlapCheck:
+		return TriangleBoxOverlapCheckF32.new(
 			v0_f32,
 			v1_f32,
 			v2_f32,
