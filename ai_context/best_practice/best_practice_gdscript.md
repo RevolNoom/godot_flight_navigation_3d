@@ -5,6 +5,13 @@
 ## Documentation guideline
 https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_documentation_comments.html#bbcode-and-class-reference
 
+## Extends class_name instead of class path
+### Example 1
+#### Bad
+extends "res://src/i_svo_link.gd"
+#### Good
+extends ISvoLink
+
 ## Use flipped bit sequence when the sign bit of integer is 1
 Godot has a bug when parsing negative number. This is a workaround.
 

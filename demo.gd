@@ -19,8 +19,5 @@ func _find_path_test():
 	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
 	print("Path:")
 	for svolink in svolink_path:
-		print("(", SVOLink.layer(svolink), ", ", SVOLink.offset(svolink), ", ", SVOLink.subgrid(svolink), ")")
-		
-	for svolink in svolink_path:
 		$FlightNavigation3D.draw_svolink_box(svolink)
 	#print(svolink_path.map(func(svolink): return SVOLink.get_format_string(svolink, $FlightNavigation3D.svo)))

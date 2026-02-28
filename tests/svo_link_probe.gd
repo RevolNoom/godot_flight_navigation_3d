@@ -6,6 +6,8 @@
 extends Node3D
 class_name SVOLinkProbe
 
+const SvoLink64 = preload("res://src/svo_link64.gd")
+
 ## Distance from camera to project the probe sphere
 @export var probe_distance: float = 0.2:
 	set(value):
@@ -39,7 +41,7 @@ var _camera: Camera3D
 var _sphere_mesh: MeshInstance3D
 var _box_mesh: MeshInstance3D
 var _label_3d: Label3D
-var _current_svolink: int = SVOLink.NULL
+var _current_svolink: int = SvoLink64.singleton.null_link()
 var _mouse_position: Vector2 = Vector2.ZERO
 var _is_mouse_pressed: bool = false
 
@@ -130,13 +132,13 @@ func _process(_delta):
 	if flight_navigation and flight_navigation.sparse_voxel_octree:
 		_current_svolink = flight_navigation.get_svolink_of(_sphere_mesh.global_position)
 	else:
-		_current_svolink = SVOLink.NULL
+		_current_svolink = SvoLink64.singleton.null_link()
 	
 	# Update box visualization continuously (handles camera movement)
 	_update_box_visualization()
 	
 	# Update label visibility and position based on mouse press state
-	if _is_mouse_pressed and _current_svolink != SVOLink.NULL:
+	if _is_mouse_pressed and _current_svolink != SvoLink64.singleton.null_link():
 		_label_3d.visible = true
 		_label_3d.global_position = _sphere_mesh.global_position + Vector3(0, sphere_radius * 3, 0)
 	#else:
@@ -160,14 +162,14 @@ func _on_mouse_click():
 		print("SVOLinkProbe: FlightNavigation3D or SVO not available")
 		return
 	
-	if _current_svolink == SVOLink.NULL:
+	if _current_svolink == SvoLink64.singleton.null_link():
 		print("SVOLinkProbe: No valid SVOLink at probe position")
 		return
 	
 	# Print SVOLink information to console
-	var layer = SVOLink.layer(_current_svolink)
-	var offset = SVOLink.offset(_current_svolink)
-	var subgrid = SVOLink.subgrid(_current_svolink)
+	var layer = SvoLink64.singleton.get_layer(_current_svolink)
+	var offset = SvoLink64.singleton.get_offset(_current_svolink)
+	var subgrid = SvoLink64.singleton.get_subgrid(_current_svolink)
 	var subgrid_vec3 = Morton3.decode_vec3i(subgrid)
 	
 	print("=== SVOLink Probe ===")
@@ -189,13 +191,13 @@ func _on_mouse_click():
 
 
 func _update_label_text():
-	if _current_svolink == SVOLink.NULL:
+	if _current_svolink == SvoLink64.singleton.null_link():
 		_label_3d.text = "NULL"
 		return
 	
-	var layer = SVOLink.layer(_current_svolink)
-	var offset = SVOLink.offset(_current_svolink)
-	var subgrid = SVOLink.subgrid(_current_svolink)
+	var layer = SvoLink64.singleton.get_layer(_current_svolink)
+	var offset = SvoLink64.singleton.get_offset(_current_svolink)
+	var subgrid = SvoLink64.singleton.get_subgrid(_current_svolink)
 	
 	var text = "SVOLink: %d\nL:%d O:%d S:%d" % [_current_svolink, layer, offset, subgrid]
 	
@@ -211,12 +213,12 @@ func _update_box_visualization():
 	if not _box_mesh:
 		return
 	
-	if _current_svolink == SVOLink.NULL or not flight_navigation or not flight_navigation.sparse_voxel_octree:
+	if _current_svolink == SvoLink64.singleton.null_link() or not flight_navigation or not flight_navigation.sparse_voxel_octree:
 		_box_mesh.visible = false
 		return
 	
 	# Get the layer and calculate the voxel/node size
-	var layer = SVOLink.layer(_current_svolink)
+	var layer = SvoLink64.singleton.get_layer(_current_svolink)
 	var svo = flight_navigation.sparse_voxel_octree
 	var box_size: Vector3
 	_label_3d.visible = true

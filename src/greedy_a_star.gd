@@ -2,6 +2,8 @@
 extends FlightPathfinder
 class_name GreedyAStar
 
+const SvoLink64 = preload("res://src/svo_link64.gd")
+
 ## [b]TODO:[/b] Support Face Centers in the future.[br]
 ## A Callable that determines which endpoints are used to calculate distance
 ## between two voxels/nodes 
@@ -55,8 +57,8 @@ func _init():
 	distance_function = distance_function
 
 func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
-	#var linkstart=SVOLink.get_format_string(start)
-	#var linkdes=SVOLink.get_format_string(destination)
+	#var linkstart=SvoLink64.singleton.get_format_string(start)
+	#var linkdes=SvoLink64.singleton.get_format_string(destination)
 	# The Priority Queue of nodes to search
 	# Element: [TOTAL_COST_ESTIMATED, SVOLink]
 	# Sorted by TCE. TCE = f(x) = g(x) + h(x).
@@ -75,7 +77,7 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	
 	# breadcrumb[i] = j means j is the closest route found 
 	# from @start to @destination to i
-	var breadcrumb: Dictionary = {start: SVOLink.NULL}
+	var breadcrumb: Dictionary = {start: SvoLink64.singleton.null_link()}
 	
 	
 	#var test:= PriorityQueue.new(
@@ -140,7 +142,7 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 			##print("Neighbor %d cost: %f" %[neighbor, travel_cost[neighbor]])
 			#var est = estimate_cost(neighbor, destination, svo)
 			#get_parent().draw_svolink_box(neighbor, Color.ORANGE_RED, Color.ORANGE_RED, 
-				#SVOLink.get_format_string(neighbor, svo) + "\n" + str(travel_cost[neighbor]) + "\n" + str(est))
+				#SvoLink64.singleton.get_format_string(neighbor, svo) + "\n" + str(travel_cost[neighbor]) + "\n" + str(est))
 		
 		
 	var path: PackedInt64Array = [destination]
@@ -164,10 +166,10 @@ func _compute_cost(start: int, destination: int, svo: SVO) -> float:
 		cost = _get_distance.callv(_get_endpoints.call(start, destination, svo))
 	
 	if use_size_compensation_factor:
-		return cost * compute_size_compensation_factor(SVOLink.layer(destination), svo.depth)
+		return cost * compute_size_compensation_factor(SvoLink64.singleton.get_layer(destination), svo.depth)
 	return cost
 
 
 func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
 	return w * _get_distance.callv(_get_endpoints.call(start, destination, svo))# \
-			#* compute_size_compensation_factor(SVOLink.layer(start), svo.depth)
+			#* compute_size_compensation_factor(SvoLink64.singleton.get_layer(start), svo.depth)

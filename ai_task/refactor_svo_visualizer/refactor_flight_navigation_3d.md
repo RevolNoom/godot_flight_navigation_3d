@@ -177,4 +177,4 @@ Provide support for SvoLink across multiple size.
 ##### SvoLink32
 Work with 32 bit integers. 4 layer bits, 22 offset bits, 6 subgrid bits
 ##### SvoLink64
-Work with 64 bit integers. 5 layer bits, 54 offset bits, 6 subgrid bits
+Work with 64 bit integers. 4 layer bits, 54 offset bits, 6 subgrid bits

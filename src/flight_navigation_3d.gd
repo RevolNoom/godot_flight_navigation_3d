@@ -4,6 +4,8 @@
 extends CSGBox3D
 class_name FlightNavigation3D
 
+const SvoLink64 = preload("res://src/svo_link64.gd")
+
 signal progress(step: ProgressStep, svo: SVO, work_completed: int, total_work: int)
 
 ## Enum used in tandem with [member progress] signal,
@@ -631,16 +633,16 @@ func _construct_svo(
 	svo.yn[0].resize(layer_0_size)
 	svo.zn[0].resize(layer_0_size)
 
-	svo.morton[0].fill(SVOLink.NULL)
-	svo.parent[0].fill(SVOLink.NULL)
+	svo.morton[0].fill(SvoLink64.singleton.null_link())
+	svo.parent[0].fill(SvoLink64.singleton.null_link())
 	#svo.first_child[0]
 	#svo.subgrid
-	svo.xp[0].fill(SVOLink.NULL)
-	svo.yp[0].fill(SVOLink.NULL)
-	svo.zp[0].fill(SVOLink.NULL)
-	svo.xn[0].fill(SVOLink.NULL)
-	svo.yn[0].fill(SVOLink.NULL)
-	svo.zn[0].fill(SVOLink.NULL)
+	svo.xp[0].fill(SvoLink64.singleton.null_link())
+	svo.yp[0].fill(SvoLink64.singleton.null_link())
+	svo.zp[0].fill(SvoLink64.singleton.null_link())
+	svo.xn[0].fill(SvoLink64.singleton.null_link())
+	svo.yn[0].fill(SvoLink64.singleton.null_link())
+	svo.zn[0].fill(SvoLink64.singleton.null_link())
 	#endregion
 
 	var current_active_layer_nodes = list_node_1_morton_sorted
@@ -674,15 +676,15 @@ func _construct_svo(
 			svo.zn[layer].resize(1)
 
 			svo.morton[layer][0] = 0
-			svo.parent[layer][0] = SVOLink.NULL
-			svo.first_child[layer][0] = SVOLink.from(layer-1, 0)
+			svo.parent[layer][0] = SvoLink64.singleton.null_link()
+			svo.first_child[layer][0] = SvoLink64.singleton.create(layer-1, 0)
 			#svo.subgrid
-			svo.xp[layer][0] = SVOLink.NULL
-			svo.yp[layer][0] = SVOLink.NULL
-			svo.zp[layer][0] = SVOLink.NULL
-			svo.xn[layer][0] = SVOLink.NULL
-			svo.yn[layer][0] = SVOLink.NULL
-			svo.zn[layer][0] = SVOLink.NULL
+			svo.xp[layer][0] = SvoLink64.singleton.null_link()
+			svo.yp[layer][0] = SvoLink64.singleton.null_link()
+			svo.zp[layer][0] = SvoLink64.singleton.null_link()
+			svo.xn[layer][0] = SvoLink64.singleton.null_link()
+			svo.yn[layer][0] = SvoLink64.singleton.null_link()
+			svo.zn[layer][0] = SvoLink64.singleton.null_link()
 			#endregion
 		else:
 			for i in range(1, current_active_layer_nodes.size()):
@@ -709,15 +711,15 @@ func _construct_svo(
 
 			# ~0 is 111111111...1111. An invalid initial value.
 			svo.morton[layer].fill(~0)
-			svo.parent[layer].fill(SVOLink.NULL)
-			svo.first_child[layer].fill(SVOLink.NULL)
+			svo.parent[layer].fill(SvoLink64.singleton.null_link())
+			svo.first_child[layer].fill(SvoLink64.singleton.null_link())
 			#svo.subgrid
-			svo.xp[layer].fill(SVOLink.NULL)
-			svo.yp[layer].fill(SVOLink.NULL)
-			svo.zp[layer].fill(SVOLink.NULL)
-			svo.xn[layer].fill(SVOLink.NULL)
-			svo.yn[layer].fill(SVOLink.NULL)
-			svo.zn[layer].fill(SVOLink.NULL)
+			svo.xp[layer].fill(SvoLink64.singleton.null_link())
+			svo.yp[layer].fill(SvoLink64.singleton.null_link())
+			svo.zp[layer].fill(SvoLink64.singleton.null_link())
+			svo.xn[layer].fill(SvoLink64.singleton.null_link())
+			svo.yn[layer].fill(SvoLink64.singleton.null_link())
+			svo.zn[layer].fill(SvoLink64.singleton.null_link())
 
 		#region Fill parent/children index
 		for active_node_idx in range(current_active_layer_nodes.size()):
@@ -729,8 +731,8 @@ func _construct_svo(
 				8*parent_idx[active_node_idx] + \
 				(current_active_layer_nodes[active_node_idx] & 0b111)
 			svo.first_child[layer][active_node_offset] = \
-				SVOLink.from(layer-1, 8*active_node_idx)
-			var link_to_parent = SVOLink.from(layer, active_node_offset)
+				SvoLink64.singleton.create(layer-1, 8*active_node_idx)
+			var link_to_parent = SvoLink64.singleton.create(layer, active_node_offset)
 			for child in range(8):
 				svo.parent[layer-1][8*active_node_idx + child] = \
 					link_to_parent
@@ -952,13 +954,13 @@ func _run_solid_voxelization(
 	var svo_inside = svo.inside
 	for i in range(0, flip_flag[1].size()):
 		var first_child_svolink = svo_first_child[1][i]
-		if first_child_svolink == SVOLink.NULL:
+		if first_child_svolink == SvoLink64.singleton.null_link():
 			continue
 
 		if not _is_end_of_x_linked_node_string(1, i, svo_first_child, svo_xp):
 			continue
 
-		var first_child_offset = SVOLink.offset(first_child_svolink)
+		var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
 		# Schwarz:
 		# "Note that after that, at the end of such node strings, where no
 		# more level-0 nodes abut, all four level-0 nodes with the same level-1
@@ -1065,14 +1067,14 @@ func _run_solid_voxelization(
 			flip_flag_layer.size())
 		for i in range(0, flip_flag_layer.size()):
 			var first_child_svolink = svo_first_child[layer][i]
-			if first_child_svolink == SVOLink.NULL:
+			if first_child_svolink == SvoLink64.singleton.null_link():
 				continue
 
 			if not _is_end_of_x_linked_node_string(
 					layer, i, svo_first_child, svo_xp):
 				continue
 
-			var first_child_offset = SVOLink.offset(first_child_svolink)
+			var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
 			#var child_on_xp_offset = first_child_offset + 1
 			#flip_flag_layer[i] = flip_flag_child_layer[child_on_xp_offset]
 
@@ -1153,9 +1155,9 @@ func _run_solid_voxelization(
 		for offset in range(svo_inside_layer.size()):
 			if svo_inside_layer[offset]:
 				var first_child_svolink = svo_first_child_layer[offset]
-				if first_child_svolink == SVOLink.NULL:
+				if first_child_svolink == SvoLink64.singleton.null_link():
 					continue
-				var first_child_offset = SVOLink.offset(first_child_svolink)
+				var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
 				for child in range(first_child_offset, first_child_offset + 8):
 					svo_inside_layer_child[child] = \
 						svo_inside_layer_child[child] ^ 1
@@ -1310,14 +1312,14 @@ func _calculate_coverage_factor(
 	for layer in range(1, new_svo_coverage.size()):
 		for i in range(new_svo_coverage[layer].size()):
 			var first_child_svolink = svo.first_child[layer][i]
-			if first_child_svolink == SVOLink.NULL and svo.support_inside:
+			if first_child_svolink == SvoLink64.singleton.null_link() and svo.support_inside:
 				if svo.inside[layer][i]:
 					new_svo_coverage[layer][i] = 1.0
 				else:
 					new_svo_coverage[layer][i] = 0.0
 				continue
 			var total_coverage: float = 0
-			var first_child_offset = SVOLink.offset(first_child_svolink)
+			var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
 			var child_layer = layer-1
 			for child_offset in range(
 					first_child_offset,
@@ -1336,13 +1338,13 @@ static func _is_end_of_x_linked_node_string(
 	svo_first_child: Array[PackedInt64Array],
 	svo_xp: Array[PackedInt64Array]) -> bool:
 	var xp_svolink = svo_xp[layer][node_offset]
-	if xp_svolink == SVOLink.NULL:
+	if xp_svolink == SvoLink64.singleton.null_link():
 		return true
 
-	var xp_layer = SVOLink.layer(xp_svolink)
-	var xp_offset = SVOLink.offset(xp_svolink)
+	var xp_layer = SvoLink64.singleton.get_layer(xp_svolink)
+	var xp_offset = SvoLink64.singleton.get_offset(xp_svolink)
 	var xp_first_child = svo_first_child[layer][xp_offset]
-	return not (xp_layer == layer and xp_first_child != SVOLink.NULL)
+	return not (xp_layer == layer and xp_first_child != SvoLink64.singleton.null_link())
 
 
 static func _has_full_xp_face_in_all_children(
@@ -1600,9 +1602,9 @@ static func _parallel_fill_neighbor_in_direction(
 		for offset in range(svo.morton[layer].size()):
 			var current_node_morton = svo.morton[layer][offset]
 			var parent_svolink = svo.parent[layer][offset]
-			var parent_layer = SVOLink.layer(parent_svolink)
-			var parent_offset = SVOLink.offset(parent_svolink)
-			var parent_first_child_offset = offset & ~0b111 # Alternatively: SVOLink.offset(svo.first_child[layer][offset])
+			var parent_layer = SvoLink64.singleton.get_layer(parent_svolink)
+			var parent_offset = SvoLink64.singleton.get_offset(parent_svolink)
+			var parent_first_child_offset = offset & ~0b111 # Alternatively: SvoLink64.singleton.get_offset(svo.first_child[layer][offset])
 			
 			var neighbor_morton = next_neighbor_calculator.call(current_node_morton)
 			
@@ -1610,11 +1612,11 @@ static func _parallel_fill_neighbor_in_direction(
 				#region Ask parent for neighbor SVOLink
 				var parent_neighbor_svolink = neighbor_direction[parent_layer][parent_offset]
 				
-				if parent_neighbor_svolink == SVOLink.NULL:
-					neighbor_direction[layer][offset] = SVOLink.NULL
+				if parent_neighbor_svolink == SvoLink64.singleton.null_link():
+					neighbor_direction[layer][offset] = SvoLink64.singleton.null_link()
 					continue
 					
-				var parent_neighbor_layer = SVOLink.layer(parent_neighbor_svolink)
+				var parent_neighbor_layer = SvoLink64.singleton.get_layer(parent_neighbor_svolink)
 				
 				# If parent's neighbor is on upper layer,
 				# then that upper layer node is our neighbor.
@@ -1622,25 +1624,25 @@ static func _parallel_fill_neighbor_in_direction(
 					neighbor_direction[layer][offset] = parent_neighbor_svolink
 					continue
 				
-				var parent_neighbor_offset = SVOLink.offset(parent_neighbor_svolink)
+				var parent_neighbor_offset = SvoLink64.singleton.get_offset(parent_neighbor_svolink)
 				
 				# If parent's neighbor has no child,
 				# Then parent's neighbor is our neighbor.
 				# Note: Layer 0 node always has no children. They contain only voxels.
 				if parent_neighbor_layer == 0 or\
-					svo.first_child[parent_neighbor_layer][parent_neighbor_offset] == SVOLink.NULL:
+					svo.first_child[parent_neighbor_layer][parent_neighbor_offset] == SvoLink64.singleton.null_link():
 					neighbor_direction[layer][offset] = parent_neighbor_svolink
 					continue
 				
 				var parent_neighbor_first_child_svolink = svo.first_child[parent_neighbor_layer][parent_neighbor_offset]
 	
-				neighbor_direction[layer][offset] = SVOLink.from(parent_layer - 1, 
-					(SVOLink.offset(parent_neighbor_first_child_svolink) & ~0b111)\
+				neighbor_direction[layer][offset] = SvoLink64.singleton.create(parent_layer - 1, 
+					(SvoLink64.singleton.get_offset(parent_neighbor_first_child_svolink) & ~0b111)\
 					| (neighbor_morton & 0b111))
 				continue
 				#endregion
 			else:
-				neighbor_direction[layer][offset] = SVOLink.from(layer, parent_first_child_offset | (neighbor_morton & 0b111))
+				neighbor_direction[layer][offset] = SvoLink64.singleton.create(layer, parent_first_child_offset | (neighbor_morton & 0b111))
 
 	
 ## Helper: Voxelize triangle when Z is dominant axis
@@ -2003,7 +2005,7 @@ static func _parallel_voxelize_subgrid(
 		
 			var node0_svolink = svo.svolink_from_morton(0, (node1_morton << 3) | child_index)
 
-			var node0_offset = SVOLink.offset(node0_svolink)
+			var node0_offset = SvoLink64.singleton.get_offset(node0_svolink)
 			var node0_aabb = AABB(
 				node0_position,
 				node_0_size)
@@ -2223,10 +2225,10 @@ static func _parallel_yz_plane_rasterization_f64(
 
 			# Could be null, because triangles on the face of navigation space
 			# might be projected to an outside voxel.
-			if voxel_svolink == SVOLink.NULL:
+			if voxel_svolink == SvoLink64.singleton.null_link():
 				continue
-			var offset = SVOLink.offset(voxel_svolink)
-			var subgrid = SVOLink.subgrid(voxel_svolink)
+			var offset = SvoLink64.singleton.get_offset(voxel_svolink)
+			var subgrid = SvoLink64.singleton.get_subgrid(voxel_svolink)
 			
 			var flip_mask: int = x_column_flip_bitmask_by_subgrid_index[subgrid]
 			#var subgrid_vec3 = Morton3.decode_vec3i(subgrid)
@@ -2368,10 +2370,10 @@ static func _parallel_yz_plane_rasterization_f32(
 
 			# Could be null, because triangles on the face of navigation space
 			# might be projected to an outside voxel.
-			if voxel_svolink == SVOLink.NULL:
+			if voxel_svolink == SvoLink64.singleton.null_link():
 				continue
-			var offset = SVOLink.offset(voxel_svolink)
-			var subgrid = SVOLink.subgrid(voxel_svolink)
+			var offset = SvoLink64.singleton.get_offset(voxel_svolink)
+			var subgrid = SvoLink64.singleton.get_subgrid(voxel_svolink)
 			
 			var flip_mask: int = x_column_flip_bitmask_by_subgrid_index[subgrid]
 			#var subgrid_vec3 = Morton3.decode_vec3i(subgrid)
@@ -2392,9 +2394,9 @@ static func _parallel_propagate_bit_flip(
 	var current_node_offset = list_head_node_offset_of_layer_0[head_node_index]
 	while true:
 		var neighbor_svolink = neighbor_direction_to_flip[0][current_node_offset]
-		if neighbor_svolink == SVOLink.NULL:
+		if neighbor_svolink == SvoLink64.singleton.null_link():
 			break
-		var neighbor_layer = SVOLink.layer(neighbor_svolink)
+		var neighbor_layer = SvoLink64.singleton.get_layer(neighbor_svolink)
 		if neighbor_layer != 0:
 			break
 		
@@ -2404,7 +2406,7 @@ static func _parallel_propagate_bit_flip(
 				svo_subgrid[current_node_offset] & (1 << subgrid_index)
 			if last_bit_in_the_column_is_solid:
 				flip_buffer = flip_buffer | neighbor_node_x_column_bits_by_subgrid_index[subgrid_index]
-		var neighbor_offset: int = SVOLink.offset(neighbor_svolink)
+		var neighbor_offset: int = SvoLink64.singleton.get_offset(neighbor_svolink)
 		svo_subgrid[neighbor_offset] = svo_subgrid[neighbor_offset] ^ flip_buffer
 		
 		# Increment condition
@@ -2424,13 +2426,13 @@ static func _parallel_propagate_flip_and_inside(
 	var current_node_offset = list_head_node_offset_of_layer[layer][head_node_offset]
 	while true:
 		var neighbor_svolink = neighbor_direction_layer[current_node_offset]
-		if neighbor_svolink == SVOLink.NULL:
+		if neighbor_svolink == SvoLink64.singleton.null_link():
 			break
-		var neighbor_layer = SVOLink.layer(neighbor_svolink)
+		var neighbor_layer = SvoLink64.singleton.get_layer(neighbor_svolink)
 		if neighbor_layer != layer:
 			break
 			
-		var neighbor_offset = SVOLink.offset(neighbor_svolink)
+		var neighbor_offset = SvoLink64.singleton.get_offset(neighbor_svolink)
 		if flip_flag_layer[current_node_offset]:
 			var neighbor_flip_flag = flip_flag_layer[neighbor_offset]
 			var neighbor_inside_flag = svo_inside_layer[neighbor_offset]
@@ -2491,12 +2493,12 @@ static func _voxels_overlapped_by_aabb(
 ## [member sparse_voxel_octree] must not be null.[br]
 func get_global_position_of(svolink: int) -> Vector3:
 	var voxel_size = _node_size(size, -2, sparse_voxel_octree.depth)
-	var layer = SVOLink.layer(svolink)
-	var offset = SVOLink.offset(svolink)
+	var layer = SvoLink64.singleton.get_layer(svolink)
+	var offset = SvoLink64.singleton.get_offset(svolink)
 	
 	var morton_code = sparse_voxel_octree.morton[layer][offset]
 	if layer == 0:
-		var voxel_morton = (morton_code << 6) | SVOLink.subgrid(svolink)#sparse_voxel_octree.subgrid[offset]
+		var voxel_morton = (morton_code << 6) | SvoLink64.singleton.get_subgrid(svolink)#sparse_voxel_octree.subgrid[offset]
 		var half_a_voxel = Vector3(0.5, 0.5, 0.5)
 		return global_transform * (
 			(Morton3.decode_vec3(voxel_morton) + half_a_voxel) 
@@ -2525,7 +2527,7 @@ func get_svolink_of(gposition: Vector3) -> int:
 	
 	# Points outside Navigation Space
 	if not aabb.has_point(local_pos):
-		return SVOLink.NULL
+		return SvoLink64.singleton.null_link()
 	
 	var link_layer := sparse_voxel_octree.depth - 1
 	var link_offset:= 0
@@ -2533,10 +2535,10 @@ func get_svolink_of(gposition: Vector3) -> int:
 	# Descend the tree layer by layer
 	while link_layer > 0:
 		var first_child = sparse_voxel_octree.first_child[link_layer][link_offset]
-		if first_child == SVOLink.NULL:
-			return SVOLink.from(link_layer, link_offset)
+		if first_child == SvoLink64.singleton.null_link():
+			return SvoLink64.singleton.create(link_layer, link_offset)
 
-		link_offset = SVOLink.offset(first_child)
+		link_offset = SvoLink64.singleton.get_offset(first_child)
 		link_layer -= 1
 		
 		var aabb_center := aabb.position + aabb.size/2
@@ -2558,7 +2560,7 @@ func get_svolink_of(gposition: Vector3) -> int:
 	
 	# Return the subgrid voxel that encloses @position
 	var subgridv = (local_pos - aabb.position) * 4 / aabb.size
-	return SVOLink.from(0, link_offset, Morton3.encode64v(subgridv))
+	return SvoLink64.singleton.create(0, link_offset, Morton3.encode64v(subgridv))
 	
 #endregion
 
@@ -2621,7 +2623,7 @@ func _initialize_debug_draw_multimesh():
 ## Return a reference to the box. [br] 
 ##
 ## Gives [param text] a custom value to insert a label in the center of the box.
-## null for default value of [method SVOLink.get_format_string].[br]
+## null for default value of [method SvoLink64.get_format_string].[br]
 ##
 ## [b]NOTE:[/b]: [member sparse_voxel_octree] must not be null.[br]
 func draw_svolink_box(svolink: int, 
@@ -2637,10 +2639,10 @@ func draw_svolink_box(svolink: int,
 	
 	cube.mesh.material = StandardMaterial3D.new()
 	cube.mesh.material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
-	label.text = text if text != null else SVOLink.get_format_string(svolink)
+	label.text = text if text != null else SvoLink64.singleton.get_format_string(svolink)
 			
-	var layer = SVOLink.layer(svolink)
-	var offset = SVOLink.offset(svolink)
+	var layer = SvoLink64.singleton.get_layer(svolink)
+	var offset = SvoLink64.singleton.get_offset(svolink)
 	
 	# Draw voxel
 	if layer == 0 and not(sparse_voxel_octree.support_inside
@@ -2682,7 +2684,7 @@ func draw():
 	for layer in range(1, draw_flag_by_layer.size()):
 		for offset in range(draw_flag_by_layer[layer].size()):
 			draw_flag_by_layer[layer][offset] = int(
-				sparse_voxel_octree.is_solid(SVOLink.from(layer, offset)))
+				sparse_voxel_octree.is_solid(SvoLink64.singleton.create(layer, offset)))
 	
 	
 	var debug_draw_node = $DebugDraw/SVONode
