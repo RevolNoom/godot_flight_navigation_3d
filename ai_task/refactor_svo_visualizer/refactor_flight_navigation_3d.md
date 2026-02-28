@@ -15,13 +15,15 @@ Apply dependency injection to make the system more flexible.
 
 ### IFlightNavigation3D
 Work as a Facade for the whole system, provide a simple interface for the users to use the features.
+Map svo coordinate to world coordinate and vice versa.
 
 #### Functions:
-- get/set_svo(svo: ISvo): Get or set the ISvo resource for the navigation system.
+- get_svo() -> ISvo: Get the ISvo resource for the navigation system.
+- set_svo(svo: ISvo): Get or set the ISvo resource for the navigation system.
 
 - draw(): Draw all SvoVisualizer in the scene by calling their draw() function.
-- find_path(start: Vector3, end: Vector3) -> PoolVector3Array: Look for SvoPathFinderNode in the scene and call their find_path(start: Vector3, end: Vector3, fn3d: FlightNavigation3D) function.
-- build_navigation(): Look for SvoVoxelizer in the scene and call their build_navigation()function.
+- find_path(start: Vector3, end: Vector3) -> PackedVector3Array: Look for SvoPathFinderNode in the scene and call their find_path(start: Vector3, end: Vector3, svo: ISvo) function. The result then goes through SvoPathSmoother if there is any SvoPathSmootherInstance in the scene, and finally return the path as an array of Vector3 positions in world coordinate.
+- voxelize(): Look for SvoVoxelizer in the scene and call their voxelize().
 
 #### Extended by
 ##### FlightNavigation3D
@@ -128,24 +130,51 @@ enum ProgressStep {
 - set_surface_voxelization_enabled(enable: bool): Set whether the voxelizer should perform surface voxelization.
 - get_surface_voxelization_separability() -> TriangleBoxOverlapCheck.Separability: Get the separability setting to be used for surface voxelization.
 - set_surface_voxelization_separability(separability: TriangleBoxOverlapCheck.Separability): Set the separability setting to be used for surface voxelization.
-- get_debug_delete_csg() -> bool: Return true if the voxelizer is set to delete CSG nodes  (created for each Voxelization targets) after voxelization.
-## are deleted after voxelization.
+- get_debug_delete_csg() -> bool: Return true if the voxelizer is set to delete CSG nodes (created for each Voxelization targets) after voxelization.
 ##### Features
-- voxelize(fn3d: IFlightNavigation3D) -> ISvo: Build and fill the SVO that represents the navigable space in the scene.
+- voxelize(fn3d: IFlightNavigation3D) -> ISvo: Build and fill a SVO that represents the navigable space in the scene.
 #### Extended by
 ##### SvoVoxelizer
 
 ### ISvoVisualizer
+- draw(svo: ISvo)
 #### Extended by
-##### SvoVisualizerSubgrid
-##### SvoVisualizerNode
+##### SvoVisualizer
+- draw(svo: ISvo): Draw the SVO in the scene. The visualization can be customized based on the data in the SVO (e.g. different color for solid and empty nodes, or visualize coverage with color gradient).
+##### SvoVisualizerForVoxelizationProgress
+Must be child of ISvoVoxelizer.
+Connect to the [progress] signal of ISvoVoxelizer and visualize the SVO as it is being built.
+
 
 ### ISvoPathFinder
+- find_path(start: Vector3, end: Vector3, svo: ISvo) -> Array[SVOLink]: Find a path from start to end position using the SVO.
 #### Extended by
-##### SvoPathFinderGreedyAStar
+##### SvoPathFinderGreedyAStarInstance
 ### ISvoPathSmoother
+Smooth the path found by ISvoPathFinder.
+#### Functions:
+- smooth_path(path: Array[SVOLink], svo: ISvo) -> Array[SVOLink]: Take the original path found by ISvoPathFinder and return a smoothed path. The smoothing algorithm can be based on the data in the SVO (e.g. try to find shortcuts by checking the occupancy of the SVO nodes along the path).
+#### Extended by
+##### SvoPathSmootherInstance
 ### Fn3dPathMarker
+[TODO][Need brainstorming] Used to pre-compute shortest paths to speed up path finding process.
 ### ISvoLink
+Provide support for SvoLink across multiple size.
+#### Functions:
+- null() -> int: Return the null SvoLink value.
+- get_subgrid_mask() -> int: Return the bitmask to extract the subgrid index from the SvoLink value.
+- get_offset_mask() -> int: Return the bitmask to extract the node offset.
+- get_layer_mask() -> int: Return the bitmask to extract the layer index.
+- create(layer: int, index: int, subgrid: int) -> int: Create a SvoLink value from the given layer index, node index and subgrid index.
+##### Getter/Setter
+- get_layer(svolink: int) -> int: Extract the layer index from the given SvoLink value.
+- set_layer(svolink: int, layer: int) -> int: Set the layer index in the given SvoLink value and return the new SvoLink value.
+- get_offset(svolink: int) -> int: Extract the node offset from the given SvoLink value.
+- set_offset(svolink: int, offset: int) -> int: Set the node offset in the given SvoLink value and return the new SvoLink value.
+- get_subgrid(svolink: int) -> int: Extract the subgrid index from the given SvoLink value.
+- set_subgrid(svolink: int, subgrid: int) -> int: Set the subgrid index in the given SvoLink value and return the new SvoLink value.
 #### Extended by
 ##### SvoLink32
+Work with 32 bit integers. 4 layer bits, 22 offset bits, 6 subgrid bits
 ##### SvoLink64
+Work with 64 bit integers. 5 layer bits, 54 offset bits, 6 subgrid bits

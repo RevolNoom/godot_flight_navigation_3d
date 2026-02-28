@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://c1axq013ak0v1"]
+[gd_scene load_steps=7 format=3 uid="uid://c1axq013ak0v1"]
 
 [ext_resource type="Script" uid="uid://dtmtfahi0uhx8" path="res://src/flight_navigation_3d.gd" id="1_28b6r"]
 
@@ -25,22 +25,22 @@ size = Vector3(0.01171875, 0.01171875, 0.01171875)
 transform_format = 1
 mesh = SubResource("BoxMesh_u4dg3")
 
-[node name="FlightNavigation3D" type="CSGBox3D" unique_id=1337363786]
+[node name="FlightNavigation3D" type="CSGBox3D"]
 calculate_tangents = false
 material = SubResource("StandardMaterial3D_u4dg3")
 script = ExtResource("1_28b6r")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=560341544]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 material_override = SubResource("StandardMaterial3D_e3o65")
 
-[node name="SVOLinkCubes" type="Node3D" parent="." unique_id=561389043]
+[node name="SVOLinkCubes" type="Node3D" parent="."]
 
-[node name="VoxelizationTargetShapes" type="CSGCombiner3D" parent="." unique_id=192714102]
+[node name="VoxelizationTargetShapes" type="CSGCombiner3D" parent="."]
 operation = 1
 
-[node name="DebugDraw" type="Node3D" parent="." unique_id=1080731974]
+[node name="DebugDraw" type="Node3D" parent="."]
 
-[node name="Voxel" type="MultiMeshInstance3D" parent="DebugDraw" unique_id=93847343]
+[node name="Voxel" type="MultiMeshInstance3D" parent="DebugDraw"]
 multimesh = SubResource("MultiMesh_e3o65")
 
-[node name="SVONode" type="Node3D" parent="DebugDraw" unique_id=426855348]
+[node name="SVONode" type="Node3D" parent="DebugDraw"]

@@ -76,20 +76,6 @@ func test_set_subgrid():
 	assert_eq(SVOLink.subgrid(result), expected_subgrid)
 
 
-func test_same_layer():
-	var link_a = SVOLink.from(4, 10, 1)
-	var link_b = SVOLink.from(4, 200, 2)
-	var result = SVOLink.same_layer(link_a, link_b)
-	assert_true(result)
-
-
-func test_not_same_layer():
-	var link_a = SVOLink.from(4, 10, 1)
-	var link_b = SVOLink.from(5, 10, 1)
-	var result = SVOLink.not_same_layer(link_a, link_b)
-	assert_true(result)
-
-
 # func test_get_format_string():
 # 	var input = SVOLink.from(2, 9, 5)
 # 	var result = SVOLink.get_format_string(input)

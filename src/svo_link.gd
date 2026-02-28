@@ -64,16 +64,6 @@ static func set_subgrid(new_subgrid: int, link: int) -> int:
 	return (link & ~SUBGRID_MASK) | (new_subgrid & SUBGRID_MASK)
 
 
-## Return true if [param link1] have same [method layer] field as [param link2] values
-static func same_layer(link1: int, link2: int) -> bool: 
-	return not not_same_layer(link1, link2)
-
-
-## Return true if [param link1] have different [method layer] field as [param link2] values
-static func not_same_layer(link1: int, link2: int) -> bool: 
-	return (link1^link2) & LAYER_MASK
-
-
 ## This is a debug function. Don't mind it.[br]
 ## Format: Layer MortonCode Subgrid
 static func get_format_string(svolink: int) -> String:
