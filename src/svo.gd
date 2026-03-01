@@ -35,8 +35,6 @@
 extends Resource
 class_name SVO
 
-const SvoLink64 = preload("res://src/svo_link64.gd")
-
 ## [b]NOTE:[/b] This value is read-only. Used for editor convenience.
 ## [br]
 ## The number of SVONode layers of the tree (doesn't count subgrid voxel layers). 
@@ -89,7 +87,8 @@ const SvoLink64 = preload("res://src/svo_link64.gd")
 ## (8 inside states in 1 byte),
 ## it was thought that the trade off between memory saved 
 ## and code coherence was not worth it. 
-## As such, this array is indexed similarly to other arrays ([member xn], [member yn], [member zn]...).
+## As such, this array is indexed similarly to other arrays 
+## ([member xn], [member yn], [member zn]...).
 @export var inside: Array[PackedByteArray] = []
 
 ## [b][DEBUG][/b] Flip flags used for solid voxelization,
@@ -343,7 +342,7 @@ func _get_voxels_on_face(
 
 
 ## Head nodes are nodes without -x neighbors
-func _get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> PackedInt64Array:
+func get_list_offset_of_head_node_in_x_direction_of_layer(layer: int) -> PackedInt64Array:
 	var list_size = 0
 	var xn_layer = xn[layer]
 	for i in range(0, xn_layer.size(), 2):

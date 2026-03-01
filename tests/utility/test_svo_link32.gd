@@ -22,9 +22,9 @@ func test_svolink32_masks():
 
 
 func test_svolink32_create_and_getters():
-	var layer = 3
-	var offset = 42
-	var subgrid = 17
+	var layer = 0b0011
+	var offset = 0b00_0000_0000_0000_0000_1010_10
+	var subgrid = 0b01_0001
 	var result = _svolink32.create(layer, offset, subgrid)
 	assert_eq(_svolink32.get_layer(result), layer)
 	assert_eq(_svolink32.get_offset(result), offset)
@@ -32,27 +32,34 @@ func test_svolink32_create_and_getters():
 
 
 func test_svolink32_setters():
-	var input = _svolink32.create(1, 300, 23)
-	var set_layer = _svolink32.set_layer(input, 7)
-	assert_eq(_svolink32.get_layer(set_layer), 7)
-	assert_eq(_svolink32.get_offset(set_layer), 300)
-	assert_eq(_svolink32.get_subgrid(set_layer), 23)
+	var input_layer = 0b0001
+	var input_offset = 0x0000_012C
+	var input_subgrid = 0b01_0111
+	var input = _svolink32.create(input_layer, input_offset, input_subgrid)
 
-	var set_offset = _svolink32.set_offset(input, 999)
-	assert_eq(_svolink32.get_layer(set_offset), 1)
-	assert_eq(_svolink32.get_offset(set_offset), 999)
-	assert_eq(_svolink32.get_subgrid(set_offset), 23)
+	var set_layer_value = 0b0111
+	var set_layer = _svolink32.set_layer(input, set_layer_value)
+	assert_eq(_svolink32.get_layer(set_layer), set_layer_value)
+	assert_eq(_svolink32.get_offset(set_layer), input_offset)
+	assert_eq(_svolink32.get_subgrid(set_layer), input_subgrid)
 
-	var set_subgrid = _svolink32.set_subgrid(input, 61)
-	assert_eq(_svolink32.get_layer(set_subgrid), 1)
-	assert_eq(_svolink32.get_offset(set_subgrid), 300)
-	assert_eq(_svolink32.get_subgrid(set_subgrid), 61)
+	var set_offset_value = 0x0000_03E7
+	var set_offset = _svolink32.set_offset(input, set_offset_value)
+	assert_eq(_svolink32.get_layer(set_offset), input_layer)
+	assert_eq(_svolink32.get_offset(set_offset), set_offset_value)
+	assert_eq(_svolink32.get_subgrid(set_offset), input_subgrid)
+
+	var set_subgrid_value = 0b11_1101
+	var set_subgrid = _svolink32.set_subgrid(input, set_subgrid_value)
+	assert_eq(_svolink32.get_layer(set_subgrid), input_layer)
+	assert_eq(_svolink32.get_offset(set_subgrid), input_offset)
+	assert_eq(_svolink32.get_subgrid(set_subgrid), set_subgrid_value)
 
 
 func test_svolink32_create_truncates_out_of_range_values():
-	var out_of_range_layer = 31
-	var out_of_range_offset = (1 << 24) - 1
-	var out_of_range_subgrid = 127
+	var out_of_range_layer = 0b1_1111
+	var out_of_range_offset = 0x00FF_FFFF
+	var out_of_range_subgrid = 0b111_1111
 	var link = _svolink32.create(
 		out_of_range_layer,
 		out_of_range_offset,

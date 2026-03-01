@@ -1,0 +1,206 @@
+## Interface-like base for SVO voxelizers.
+## Concrete implementations should build and return an [SVO].
+@tool
+extends Node
+class_name ISvoVoxelizer
+
+
+signal progress(
+	step: ProgressStep,
+	svo: SVO,
+	work_completed: int,
+	total_work: int
+)
+
+
+## Enum used in tandem with [member progress] signal.
+enum ProgressStep {
+	GET_ALL_VOXELIZATION_TARGET,
+	BUILD_MESH,
+	REMOVE_THIN_TRIANGLES,
+	OFFSET_VERTICES_TO_LOCAL_COORDINATE,
+	DETERMINE_ACTIVE_LAYER_1_NODES,
+	CONSTRUCT_SVO,
+	SOLID_VOXELIZATION,
+	HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
+	YZ_PLANE_RASTERIZATION,
+	PREPARE_FLAGS_AND_HEAD_NODES,
+	XP_BIT_FLIP_PROPAGATION,
+	PREPARE_FLIP_FLAG_LAYER_1,
+	FLIP_BOTTOM_UP_LAYER_1,
+	PROPAGATE_FLIP_INFORMATION_LAYER_1,
+	PREPARE_FLIP_FLAG_FROM_LAYER_2,
+	FLIP_BOTTOM_UP_FROM_LAYER_2,
+	PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2,
+	PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES,
+	PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS,
+	SURFACE_VOXELIZATION,
+	CALCULATE_COVERAGE_FACTOR,
+
+	## If used for draw-on-step-completion, nothing will be drawn.
+	MAX_STEP,
+}
+
+
+@export_subgroup("Multi-threading", "multi_threading_")
+@export var multi_threading_enabled: bool = true
+@export var multi_threading_priority: Thread.Priority = \
+	Thread.PRIORITY_LOW
+@export_subgroup("", "")
+
+@export_subgroup("Preprocessing", "")
+@export_flags_3d_navigation var voxelization_mask: int = 1
+@export var remove_thin_triangles: bool = true
+@export_subgroup("", "")
+
+@export_subgroup("SVO construction", "")
+@export_range(2, 15, 1) var layer_count: int = 7
+@export_enum(".tres", ".res") var resource_format: String = ".res"
+@export var support_float64: bool = false
+@export_subgroup("", "")
+
+@export_subgroup("Solid voxelization", "solid_voxelization_")
+@export var solid_voxelization_enabled: bool = true
+@export var solid_voxelization_calculate_coverage_factor: bool = true
+@export_range(0, 0.1, 0.000_000_1) var \
+	solid_voxelization_top_left_edge_epsilon: float = 0.000_01
+@export_range(0, 0.1, 0.000_000_1) var \
+	solid_voxelization_float_error_margin: float = 0.000_01
+@export_subgroup("", "")
+
+@export_subgroup("Surface voxelization", "surface_voxelization_")
+@export var surface_voxelization_enabled: bool = true
+@export var surface_voxelization_separability: \
+	TriangleBoxOverlapCheck.Separability = \
+	TriangleBoxOverlapCheck.Separability.SEPARATING_26
+@export_range(0, 0.1, 0.000_000_1) var \
+	surface_voxelization_float_error_margin: float = 0.000_1
+@export_subgroup("", "")
+
+@export_subgroup("Debug", "debug_")
+@export var debug_delete_csg: bool = true
+@export var debug_delete_flip_flag: bool = true
+@export_subgroup("", "")
+
+
+func get_is_multithreading_enabled() -> bool:
+	return multi_threading_enabled
+
+
+func set_is_multithreading_enabled(enabled: bool):
+	multi_threading_enabled = enabled
+
+
+func get_multithreading_priority() -> Thread.Priority:
+	return multi_threading_priority
+
+
+func set_multithreading_priority(priority: Thread.Priority):
+	multi_threading_priority = priority
+
+
+func get_voxelization_mask() -> int:
+	return voxelization_mask
+
+
+func set_voxelization_mask(mask: int):
+	voxelization_mask = mask
+
+
+func get_remove_thin_triangles() -> bool:
+	return remove_thin_triangles
+
+
+func set_remove_thin_triangles(remove: bool):
+	remove_thin_triangles = remove
+
+
+func get_layer_count() -> int:
+	return layer_count
+
+
+func set_layer_count(layer_count_value: int):
+	layer_count = clampi(layer_count_value, 2, 15)
+
+
+func get_resolution() -> int:
+	return 2 ** (layer_count + 1)
+
+
+func get_resource_format() -> String:
+	return resource_format
+
+
+func set_resource_format(format: String):
+	resource_format = format
+
+
+func get_support_float64() -> bool:
+	return support_float64
+
+
+func set_support_float64(support: bool):
+	support_float64 = support
+
+
+func get_solid_voxelization_enabled() -> bool:
+	return solid_voxelization_enabled
+
+
+func set_solid_voxelization_enabled(enable: bool):
+	solid_voxelization_enabled = enable
+
+
+func get_solid_voxelization_coverage_enabled() -> bool:
+	return solid_voxelization_calculate_coverage_factor
+
+
+func set_solid_voxelization_coverage_enabled(enabled: bool):
+	solid_voxelization_calculate_coverage_factor = enabled
+
+
+func get_solid_voxelization_top_left_edge_epsilon() -> float:
+	return solid_voxelization_top_left_edge_epsilon
+
+
+func set_solid_voxelization_top_left_edge_epsilon(epsilon: float):
+	solid_voxelization_top_left_edge_epsilon = epsilon
+
+
+func get_surface_voxelization_enabled() -> bool:
+	return surface_voxelization_enabled
+
+
+func set_surface_voxelization_enabled(enable: bool):
+	surface_voxelization_enabled = enable
+
+
+func get_surface_voxelization_separability() -> \
+	TriangleBoxOverlapCheck.Separability:
+	return surface_voxelization_separability
+
+
+func set_surface_voxelization_separability(
+	separability: TriangleBoxOverlapCheck.Separability):
+	surface_voxelization_separability = separability
+
+
+func get_debug_delete_csg() -> bool:
+	return debug_delete_csg
+
+
+func set_debug_delete_csg(enable: bool):
+	debug_delete_csg = enable
+
+
+func get_debug_delete_flip_flag() -> bool:
+	return debug_delete_flip_flag
+
+
+func set_debug_delete_flip_flag(enable: bool):
+	debug_delete_flip_flag = enable
+
+
+func voxelize(_fn3d) -> SVO:
+	printerr("ISvoVoxelizer.voxelize() is abstract.")
+	return null

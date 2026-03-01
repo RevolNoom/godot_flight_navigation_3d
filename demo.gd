@@ -5,8 +5,7 @@ extends Node3D
 func _ready() -> void:
 	#TriangleBoxOverlapCheck_ReferenceCode._automated_test()
 	#TriangleBoxOverlapCheck._automated_test()
-	var svo = await flight_nav.build_navigation()
-	flight_nav.sparse_voxel_octree = svo
+	await flight_nav.build_navigation()
 	#flight_nav.draw()
 	print("Done")
 	_find_path_test()

@@ -16,8 +16,7 @@ func _ready() -> void:
 	print("Building navigation data...")
 	
 	# Build navigation data
-	var svo = await flight_nav.build_navigation()
-	flight_nav.sparse_voxel_octree = svo
+	await flight_nav.build_navigation()
 	
 	# Assign FlightNavigation3D reference to probe
 	probe.flight_navigation = flight_nav

@@ -223,9 +223,9 @@ func _update_box_visualization():
 	var box_size: Vector3
 	_label_3d.visible = true
 	if layer == 0:
-		box_size = FlightNavigation3D._node_size(flight_navigation.size, -2, svo.depth)
+		box_size = FlightNavigation3D.calculate_node_size(flight_navigation.size, -2, svo.depth)
 	else:
-		box_size = FlightNavigation3D._node_size(flight_navigation.size, layer, svo.depth)
+		box_size = FlightNavigation3D.calculate_node_size(flight_navigation.size, layer, svo.depth)
 	_label_3d.text = str(box_size)
 	
 	# Get the center position of the voxel/node
