@@ -1,0 +1,21 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/svo_visualizer_subgrid.gd" id="1_subgrid"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_subgrid"]
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.039215688)
+
+[sub_resource type="BoxMesh" id="BoxMesh_subgrid"]
+material = SubResource("StandardMaterial3D_subgrid")
+size = Vector3(0.01484375, 0.01484375, 0.01484375)
+
+[sub_resource type="MultiMesh" id="MultiMesh_subgrid"]
+transform_format = 1
+mesh = SubResource("BoxMesh_subgrid")
+
+[node name="SvoVisualizerSubgrid" type="Node3D"]
+script = ExtResource("1_subgrid")
+
+[node name="Voxel" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_subgrid")

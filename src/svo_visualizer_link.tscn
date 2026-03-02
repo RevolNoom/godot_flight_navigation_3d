@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/svo_visualizer_link.gd" id="1_link"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_voxels"]
+transparency = 1
+albedo_color = Color(0, 1, 0, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_voxels"]
+material = SubResource("StandardMaterial3D_voxels")
+size = Vector3(1, 1, 1)
+
+[sub_resource type="MultiMesh" id="MultiMesh_voxels"]
+transform_format = 1
+mesh = SubResource("BoxMesh_voxels")
+
+[node name="SvoVisualizerLink" type="Node3D"]
+script = ExtResource("1_link")
+
+[node name="SvoNodes" type="Node3D" parent="."]
+
+[node name="Voxels" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_voxels")

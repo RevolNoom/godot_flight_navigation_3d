@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://2n2s5bkng6wh"]
+
+[ext_resource type="Script" uid="uid://b251qkechxj5j" path="res://src/svo_voxelizer.gd" id="1_vxogv"]
+
+[node name="SvoVoxelizer" type="Node"]
+script = ExtResource("1_vxogv")
