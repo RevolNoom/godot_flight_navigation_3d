@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://ddmyey078ydbx"]
 
-[ext_resource type="Script" path="res://src/svo_visualizer_layer.gd" id="1_layer"]
+[ext_resource type="Script" uid="uid://1ybxtp0voil2" path="res://src/visualizer/svo_visualizer_layer.gd" id="1_layer"]
 
 [node name="SvoVisualizerLayer" type="Node3D"]
 script = ExtResource("1_layer")

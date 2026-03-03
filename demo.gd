@@ -4,7 +4,7 @@ extends Node3D
 
 func _ready() -> void:
 	#TriangleBoxOverlapCheck_ReferenceCode._automated_test()
-	#TriangleBoxOverlapCheck._automated_test()
+	#ITriangleBoxOverlapCheck._automated_test()
 	await flight_nav.build_navigation()
 	#flight_nav.draw()
 	print("Done")
@@ -14,9 +14,18 @@ func _ready() -> void:
 
 func _find_path_test():
 	#print($FlightNavigation3D.svo.layers[4])
-	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
-	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
+	var path = flight_nav.find_path($Start.global_position, $End.global_position)
+	var svolink_path: Array[int] = []
+	svolink_path.resize(path.size())
+	for i in range(path.size()):
+		svolink_path[i] = flight_nav.get_svolink_of(path[i])
 	print("Path:")
+	var visualizer_link := flight_nav.get_node("SvoVisualizerLink") as SvoVisualizerLink
+	visualizer_link.svo_nodes.clear()
 	for svolink in svolink_path:
-		$FlightNavigation3D.draw_svolink_box(svolink)
-	#print(svolink_path.map(func(svolink): return SVOLink.get_format_string(svolink, $FlightNavigation3D.svo)))
+		if SvoLink64.singleton.get_layer(svolink) > 0:
+			visualizer_link.add_node(svolink, SvoLink64.singleton.get_format_string(svolink))
+		else:
+			visualizer_link.add_voxel(svolink, SvoLink64.singleton.get_format_string(svolink))
+			
+	flight_nav.draw()

@@ -36,8 +36,6 @@ enum ProgressStep {
 	PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS,
 	SURFACE_VOXELIZATION,
 	CALCULATE_COVERAGE_FACTOR,
-
-	## If used for draw-on-step-completion, nothing will be drawn.
 	MAX_STEP,
 }
 
@@ -71,8 +69,8 @@ enum ProgressStep {
 @export_subgroup("Surface voxelization", "surface_voxelization_")
 @export var surface_voxelization_enabled: bool = true
 @export var surface_voxelization_separability: \
-	TriangleBoxOverlapCheck.Separability = \
-	TriangleBoxOverlapCheck.Separability.SEPARATING_26
+	ITriangleBoxOverlapCheck.Separability = \
+	ITriangleBoxOverlapCheck.Separability.SEPARATING_26
 @export_range(0, 0.1, 0.000_000_1) var \
 	surface_voxelization_float_error_margin: float = 0.000_1
 @export_subgroup("", "")
@@ -176,12 +174,12 @@ func set_surface_voxelization_enabled(enable: bool):
 
 
 func get_surface_voxelization_separability() -> \
-	TriangleBoxOverlapCheck.Separability:
+	ITriangleBoxOverlapCheck.Separability:
 	return surface_voxelization_separability
 
 
 func set_surface_voxelization_separability(
-	separability: TriangleBoxOverlapCheck.Separability):
+	separability: ITriangleBoxOverlapCheck.Separability):
 	surface_voxelization_separability = separability
 
 

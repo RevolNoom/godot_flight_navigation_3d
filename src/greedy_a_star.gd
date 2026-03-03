@@ -2,7 +2,6 @@
 extends FlightPathfinder
 class_name GreedyAStar
 
-const SvoLink64 = preload("res://src/svo_link64.gd")
 
 ## [b]TODO:[/b] Support Face Centers in the future.[br]
 ## A Callable that determines which endpoints are used to calculate distance
@@ -109,7 +108,7 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 		#print(best_node[TOTAL_COST_ESTIMATED])
 		#if best_node_link == 172096:
 			#breakpoint
-		var bn_neighbors := svo.neighbors_of(best_node_link)
+		var bn_neighbors := svo.get_neighbors_of(best_node_link)
 		#var bnn_debug = Array(bn_neighbors).map(func (n):
 			#return SVOIteratorRandom._new(svo, n).get_debug_dict()
 			#)
@@ -138,7 +137,7 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	#for debug_link in [3335]:
 		#print("%d cost: %f" %[debug_link, travel_cost[debug_link]])
 		#get_parent().draw_svolink_box(debug_link, Color.PEACH_PUFF, Color.PEACH_PUFF, str(travel_cost[debug_link]))
-		#for neighbor in svo.neighbors_of(debug_link):
+		#for neighbor in svo.get_neighbors_of(debug_link):
 			##print("Neighbor %d cost: %f" %[neighbor, travel_cost[neighbor]])
 			#var est = estimate_cost(neighbor, destination, svo)
 			#get_parent().draw_svolink_box(neighbor, Color.ORANGE_RED, Color.ORANGE_RED, 

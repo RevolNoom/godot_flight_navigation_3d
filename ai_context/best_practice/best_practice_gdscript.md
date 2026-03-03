@@ -5,12 +5,21 @@
 ## Documentation guideline
 https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_documentation_comments.html#bbcode-and-class-reference
 
-## Extends class_name instead of class path
+## Use "extends class_name" instead of script path
 ### Example 1
 #### Bad
 extends "res://src/i_svo_link.gd"
 #### Good
 extends ISvoLink
+
+## Children nodes creation
+### Prefer creating in the scene editor when:
+#### They have the same lifespan as scene root
+
+### Prefer creating by code when:
+#### Their lifespans are hard to determine 
+#### Their numbers are determined dynamically at runtime
+
 
 ## Use flipped bit sequence when the sign bit of integer is 1
 Godot has a bug when parsing negative number. This is a workaround.

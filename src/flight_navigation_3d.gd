@@ -4,9 +4,6 @@
 extends CSGBox3D
 class_name FlightNavigation3D
 
-const SvoLink64 = preload("res://src/svo_link64.gd")
-const ISvoVisualizerScript = preload("res://src/i_svo_visualizer.gd")
-
 @export var sparse_voxel_octree: SVO
 
 ## Pathfinding algorithm used for [method find_path]
@@ -158,7 +155,7 @@ func _get_child_voxelizers() -> Array[ISvoVoxelizer]:
 func _get_child_visualizers() -> Array[Node]:
 	var list_child_visualizers: Array[Node] = []
 	for child in get_children():
-		if child is ISvoVisualizerScript:
+		if child is ISvoVisualizer:
 			list_child_visualizers.push_back(child)
 	return list_child_visualizers
 
@@ -168,7 +165,8 @@ func morton_origin_offset() -> Vector3:
 	return -size / 2
 
 
-## Return the size (in local meter) of a node at [param layer]
+## Return the size (in local meter) of a node at [param layer].
+## Note: This function is made static to be used safely in asynchronous context.
 static func calculate_node_size(
 	flight_navigation_size: Vector3,
 	layer: int,
@@ -198,7 +196,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 	var child_visualizer_count := 0
 	for child in get_children():
-		if child is ISvoVisualizerScript:
+		if child is ISvoVisualizer:
 			child_visualizer_count += 1
 	if child_visualizer_count == 0:
 		warnings.push_back("No child ISvoVisualizer found. draw() will do nothing.")

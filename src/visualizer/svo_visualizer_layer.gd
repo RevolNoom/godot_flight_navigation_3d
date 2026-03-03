@@ -4,15 +4,22 @@
 extends ISvoVisualizer
 class_name SvoVisualizerLayer
 
-const SvoLink64 = preload("res://src/svo_link64.gd")
 
 @export var multithreading_enabled: bool = true
 @export var multithreading_priority: Thread.Priority = \
 	Thread.PRIORITY_LOW
 
-## [layer_index:int] -> [enabled:bool]
-@export var layer_enabled_by_index: Dictionary = {}
+@export var layer_enabled_by_index: Dictionary = {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: true, 11: true, 12: true, 13: true, 14: true, 15: true}
 
+func _ready():
+	for layer_index in range(16):
+		var instance: MultiMeshInstance3D = _get_layer_instance(layer_index)
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
+		var boxmesh := BoxMesh.new()
+		boxmesh.material = StandardMaterial3D.new()
+		multimesh.mesh = boxmesh
+		instance.multimesh = multimesh
 
 func draw(fn3d: FlightNavigation3D):
 	if fn3d == null:
@@ -32,12 +39,6 @@ func draw(fn3d: FlightNavigation3D):
 
 	for layer_index in range(16):
 		var instance: MultiMeshInstance3D = _get_layer_instance(layer_index)
-		if instance == null:
-			printerr(
-				"SvoVisualizerLayer.draw(): missing root child Layer_%d node." %
-				layer_index
-			)
-			continue
 
 		if not get_draw_layer(layer_index):
 			_clear_layer_instance(instance)
@@ -70,32 +71,22 @@ func draw(fn3d: FlightNavigation3D):
 				list_solid_count_by_batch
 			)
 
-		var boxmesh := BoxMesh.new()
-		boxmesh.size = FlightNavigation3D.calculate_node_size(
-			fn3d.size,
-			layer_index,
-			concrete_svo.depth
-		) * 0.95
-		boxmesh.material = StandardMaterial3D.new()
-		boxmesh.material.albedo_color = Color(
-			1.0 * (layer_index + 1) / concrete_svo.depth,
-			randf(),
-			1.0 - (layer_index + 1) / concrete_svo.depth
-		)
-
 		var multimesh: MultiMesh = instance.multimesh
-		if multimesh == null:
-			multimesh = MultiMesh.new()
-			instance.multimesh = multimesh
-		multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
-		multimesh.mesh = boxmesh
-		multimesh.instance_count = total_instance_count
-
 		var node_size: Vector3 = FlightNavigation3D.calculate_node_size(
 			fn3d.size,
 			layer_index,
 			concrete_svo.depth
 		)
+		var boxmesh: BoxMesh = multimesh.mesh as BoxMesh
+		boxmesh.size = node_size * 0.95
+		var material: StandardMaterial3D = \
+			boxmesh.material as StandardMaterial3D
+		material.albedo_color = Color(
+			1.0 * (layer_index + 1) / concrete_svo.depth,
+			randf(),
+			1.0 - (layer_index + 1) / concrete_svo.depth
+		)
+		multimesh.instance_count = total_instance_count
 		if multithreading_enabled:
 			await Parallel.execute_batched(
 				async_context,
@@ -135,29 +126,23 @@ func set_draw_layer(layer_index: int, enabled: bool):
 
 
 func get_draw_layer(layer_index: int) -> bool:
-	if not layer_enabled_by_index.has(layer_index):
-		return false
-	return bool(layer_enabled_by_index[layer_index])
+	return layer_enabled_by_index[layer_index]
 
 
 func _clear_debug_draw_svonode():
 	for layer_index in range(16):
 		var instance: MultiMeshInstance3D = _get_layer_instance(layer_index)
-		if instance != null:
-			_clear_layer_instance(instance)
+		_clear_layer_instance(instance)
 
 
 func _get_layer_instance(layer_index: int) -> MultiMeshInstance3D:
-	return get_node_or_null(
+	return get_node(
 		"Layer_%d" % layer_index
 	) as MultiMeshInstance3D
 
 
 func _clear_layer_instance(instance: MultiMeshInstance3D):
-	if instance == null:
-		return
-	if instance.multimesh != null:
-		instance.multimesh.instance_count = 0
+	instance.multimesh.instance_count = 0
 
 
 static func _parallel_batched_write_node_transforms(

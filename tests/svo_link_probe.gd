@@ -6,7 +6,6 @@
 extends Node3D
 class_name SVOLinkProbe
 
-const SvoLink64 = preload("res://src/svo_link64.gd")
 
 ## Distance from camera to project the probe sphere
 @export var probe_distance: float = 0.2:

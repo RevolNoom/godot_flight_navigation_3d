@@ -1,7 +1,7 @@
 ## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel.
 ##
 ## Godot Vector uses float32. At 
-extends TriangleBoxOverlapCheck
+extends ITriangleBoxOverlapCheck
 class_name TriangleBoxOverlapCheckF64
 
 var epsilon: float

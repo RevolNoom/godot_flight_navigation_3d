@@ -1,7 +1,7 @@
 ## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel.
 ## Used for surface voxelization.
 extends RefCounted
-class_name TriangleBoxOverlapCheck
+class_name ITriangleBoxOverlapCheck
 
 ## Determines how "thick" the surface voxelization is.
 enum Separability {

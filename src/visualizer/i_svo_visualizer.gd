@@ -4,7 +4,6 @@
 extends Node3D
 class_name ISvoVisualizer
 
-
 func draw(_fn3d: FlightNavigation3D):
 	printerr("ISvoVisualizer.draw() is abstract.")
 	return null

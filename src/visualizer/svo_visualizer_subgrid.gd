@@ -4,12 +4,19 @@
 extends ISvoVisualizer
 class_name SvoVisualizerSubgrid
 
-const multi_threading_enabled: bool = true
-const multi_threading_priority: Thread.Priority = Thread.PRIORITY_LOW
+@export var multi_threading_enabled: bool = true
+@export var multi_threading_priority: Thread.Priority = Thread.PRIORITY_LOW
 
-@onready var debug_draw_voxel: MultiMeshInstance3D = \
-	get_node("Voxel") as MultiMeshInstance3D
+@onready var voxels: MultiMeshInstance3D = \
+	get_node("Voxels") as MultiMeshInstance3D
 
+func _ready():
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
+	voxels.multimesh = multimesh
+	var boxmesh := BoxMesh.new()
+	boxmesh.material = StandardMaterial3D.new()
+	voxels.multimesh.mesh = boxmesh
 
 func draw(fn3d: FlightNavigation3D):
 	if fn3d == null:
@@ -20,11 +27,7 @@ func draw(fn3d: FlightNavigation3D):
 		printerr("SvoVisualizerSubgrid.draw(): fn3d.sparse_voxel_octree is null.")
 		return
 
-	await _draw_solid_voxels(fn3d, concrete_svo)
-
-
-func _draw_solid_voxels(fn3d: FlightNavigation3D, concrete_svo: SVO):
-	var async_context: Signal = fn3d.get_tree().process_frame
+	var async_context: Signal = get_tree().process_frame
 	var list_solid_bit_count_by_subgrid: PackedInt64Array = []
 	if multi_threading_enabled:
 		list_solid_bit_count_by_subgrid = \
@@ -81,41 +84,26 @@ func _draw_solid_voxels(fn3d: FlightNavigation3D, concrete_svo: SVO):
 			list_voxel_transform
 		)
 
-	if debug_draw_voxel.multimesh == null:
-		printerr(
-			"SvoVisualizerSubgrid.draw(): " +
-			"Voxel must have a MultiMesh assigned in scene."
-		)
-		return
-	debug_draw_voxel.multimesh.instance_count = total_solid_bit_count
-	debug_draw_voxel.multimesh.transform_format = \
-		MultiMesh.TransformFormat.TRANSFORM_3D
-
-	if debug_draw_voxel.multimesh.mesh == null:
-		printerr(
-			"SvoVisualizerSubgrid.draw(): " +
-			"Voxel.multimesh.mesh must be assigned in scene."
-		)
-		return
-	debug_draw_voxel.multimesh.mesh.size = voxel_size * 0.95
+	voxels.multimesh.instance_count = total_solid_bit_count
+	voxels.multimesh.mesh.size = voxel_size * 0.95
 
 	if multi_threading_enabled:
 		await Parallel.execute_batched(
 			async_context,
 			total_solid_bit_count,
-			multi_threading_priority,
-			100000,
-			_parallel_batched_write_multimesh_instance_transforms.bind(
-				debug_draw_voxel.multimesh,
-				list_voxel_transform
+				multi_threading_priority,
+				100000,
+				_parallel_batched_write_multimesh_instance_transforms.bind(
+					voxels.multimesh,
+					list_voxel_transform
+				)
 			)
-		)
 	else:
 		_parallel_batched_write_multimesh_instance_transforms(
 			0,
 			0,
 			total_solid_bit_count,
-			debug_draw_voxel.multimesh,
+			voxels.multimesh,
 			list_voxel_transform
 		)
 
