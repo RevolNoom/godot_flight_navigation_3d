@@ -4,7 +4,7 @@
 extends ISvoLink
 class_name SvoLink32
 
-const _NULL: int = ~0
+const _NULL: int = 0xFFFF_FFFF
 const _SUBGRID_BITS: int = 6
 const _OFFSET_BITS: int = 22
 const _LAYER_BITS: int = 4
