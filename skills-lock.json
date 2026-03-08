@@ -1,0 +1,475 @@
+{
+  "version": 1,
+  "skills": {
+    "godot-2d-animation": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "986e94f145aae79848e31baaf0e777d5e3a765267f901ca01d178521981d62c6"
+    },
+    "godot-2d-physics": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "5fb014d89b305e162abcf06f9492df515b9e96d69a2ce8dfb3c9b199b23e1518"
+    },
+    "godot-3d-lighting": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "31460cff3dedc3600c1c3f3e6283a1a9e9a0835f089d10b8e77cec2791279309"
+    },
+    "godot-3d-materials": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "70eb8abecb3bddaa6923595a6e51de033b63a2bef86d9e65f7f0ea85a4a80919"
+    },
+    "godot-3d-world-building": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "bd3fc00966863d8fcd8e5c0b8b8845d1940e73fc338cd659e5925d9bdf0b0a00"
+    },
+    "godot-ability-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "bab30937b409b3200d8a08f556ec65673d753a6d98bab4523ccb712d95b93925"
+    },
+    "godot-adapt-2d-to-3d": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "940cd734dbe409c755e0a14374273aedc5d4437747732a690e9a5bf86c66b0d6"
+    },
+    "godot-adapt-3d-to-2d": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "a7c2be5390055428231326b60af33ba45edd165da0c93b8f7b264bbf29fa1864"
+    },
+    "godot-adapt-desktop-to-mobile": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "e01df606b2f6a90ce95b5dbdcd81b5d191e2e471a2421004c9d9583e956efd26"
+    },
+    "godot-adapt-mobile-to-desktop": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "6764142d6d93d2a9aa13de9f4a29f67a8b6e04415f9fbccf2a00b74124255363"
+    },
+    "godot-adapt-single-to-multiplayer": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "0a2a1424b67f70ebd2ae2e1dd0482a8b24d7372513bdc8078b415b57b005baa9"
+    },
+    "godot-animation-player": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "aa98f26c509c6a96318ffacb75ca3e987c805d35323ebc910f22bb01ff1b6bbf"
+    },
+    "godot-animation-tree-mastery": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "e016936c61400a188e20cd0c842a0410396c3b5ef35223cea0068d6a7a53d9a9"
+    },
+    "godot-audio-systems": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "bb30282c307ebacc2dccfaee1ae69855570dc780b488479fa1013f6f46616899"
+    },
+    "godot-autoload-architecture": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "7be3df276f013005e0a0bbfe6b6a821eebe8b75eb1a864d01f2089c9a3233f51"
+    },
+    "godot-camera-systems": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "f667c816f1ad40f522f0dd78b748cddde32a70f97bd4bd805989aa791113b9ad"
+    },
+    "godot-characterbody-2d": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "ecbf70353fd58c12d3ba69a0c804b9072511aa67c1a6e345c21c332849e7e4e4"
+    },
+    "godot-combat-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "fb6d332abd719289ba7f7361e4a3a897f6772552794aeafed3f3978bf9b32da0"
+    },
+    "godot-composition": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "68a941d634066e17fb024e5e6f4220faa398a2042b9ef70d625732c97c6db4f8"
+    },
+    "godot-composition-apps": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "88415a216e702349e3d69ab1146947f09328d66e0a1ce2f21010610c908e8054"
+    },
+    "godot-debugging-profiling": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "ea26e18c06d69cd92026f06c3736fb286f77712dcef55aa72db19780730d171c"
+    },
+    "godot-dialogue-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "68d786fc2f1cfe913663ce16024dd8baf908ed75bab73d15b1d54ebeba8d39ed"
+    },
+    "godot-economy-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "63115cbc01005b779b44c3ffd106e08137cd6524eef931f6367a30d673540f19"
+    },
+    "godot-export-builds": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "61cd30889d90495d7d95092672af584ed4f6f49e86f37f87c75cc2c2013d4b2d"
+    },
+    "godot-game-loop-collection": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "844349f155c7d4bfea626a856b072316213212b04d817c9bf1fd3f0b7a06c245"
+    },
+    "godot-game-loop-harvest": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "618d3f1cbdc95658ad71b8872629add0d7f30bcee931dff2d9faf21ce445daac"
+    },
+    "godot-game-loop-time-trial": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "ff4d782003ad27b9a9de7d4bdffc5e5a0ef4c82fa70748d1b4fa268e6d289465"
+    },
+    "godot-game-loop-waves": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "a33637c82ea4629754b45c7d5e5a70735400081da30da12ac7c44d9b5cfb828b"
+    },
+    "godot-gdscript-mastery": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "d72d1d059eff68c19a3fd6af934052a3d329e71f9799b2f53f35fdaef4e4135a"
+    },
+    "godot-genre-action-rpg": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "315ea4b86a040b403a3f96c2e7b9b2f425fc1148f743506fe8b757e1930efed7"
+    },
+    "godot-genre-battle-royale": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "84e388bd78746e1b731c8ac1c0b4c9542eae469aada52ac06b86d9795bb5d7e5"
+    },
+    "godot-genre-card-game": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "1d74bbb7bcb1ec6782e5bf1be8502957ef1e0e82655cf3b0914088cea48059df"
+    },
+    "godot-genre-educational": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "8e0e048c3606c6a56a21c7348eab1408bd3bb4e783e851e6798760df883b0d67"
+    },
+    "godot-genre-fighting": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "56811888ea176f201f2f3763ea600f9e2344ec5379a088845289e24140d36e74"
+    },
+    "godot-genre-horror": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "b12dfdf2edcdf575237a44962500cb007f803339c144073f9577a05a6c08643a"
+    },
+    "godot-genre-idle-clicker": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "4447342aebb81a1222af4843e54edcd770cdfd23c9adb0b878fed1652d139f50"
+    },
+    "godot-genre-metroidvania": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "d23337f3ca0bcaf3f879ef3ad98985924abfadbd606f15907c56f878480a43f2"
+    },
+    "godot-genre-moba": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "311642d2cfb41651530e8e43c39187a6f7012d07f69d2b96185b2ad8d4cd097e"
+    },
+    "godot-genre-open-world": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "2a4fa7c15dc8927824572aacb15d762ffb3607d629a03a04c6a98fee37062337"
+    },
+    "godot-genre-party": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "83bb183e8df06ed44fa02db98ef3e74cbec645bd407f9cff5760c595d5264b95"
+    },
+    "godot-genre-platformer": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "19cc7ac707d03ad940497867aec6df4639b6bf498c2308873f1898e39be3153b"
+    },
+    "godot-genre-puzzle": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "f2c5a0377b9d3ae3d8cf693d8b50bb00a503703e9642e3cd0631849186378926"
+    },
+    "godot-genre-racing": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "c4a9339fee6491f9b0d223d90748bc41d915465e7f834103315bbb89573cb585"
+    },
+    "godot-genre-rhythm": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "860f496afeb8cae737e52c0af498c0d2aa4dd1df948bcbb48a7b2ea5a35dac53"
+    },
+    "godot-genre-roguelike": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "ef416b23ecb4f5349a3ef7bc766e1a1cb42bee7f056e334b0d5baee8fdaee3e8"
+    },
+    "godot-genre-romance": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "4946d9e7b68ea6c59195be0dafb53efa8ece98745416678946271e7777389486"
+    },
+    "godot-genre-rts": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "6b66d3b6722ef93cea41e23ab5f7423041ff74cd9fcbc03dba111f2ce9cd10b6"
+    },
+    "godot-genre-sandbox": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "4fca790e6698a53cd06a366b3d41ca01b3fbd9c7cdc9819dbf43bff4edfe6346"
+    },
+    "godot-genre-shooter": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "9e778a68b64e3447b0b8137e88ee0f40140f68c9aaa5b05169cab28de8dc0036"
+    },
+    "godot-genre-simulation": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "f994469c325627be74905510a225b14d15d336640b9b7028a422f6da96124960"
+    },
+    "godot-genre-sports": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "0dd29538a1e6a65681767927c70f2c3f280489e0ecb517e761073b0a462874ef"
+    },
+    "godot-genre-stealth": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "d1bb547fd3f9a729601c3014e1cffd70f6ddd798496cf43759f278a971da5ca8"
+    },
+    "godot-genre-survival": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "d78b10ef4695f0f763920a7c13ac8c75db56379dc81dc6dfb3a850fe30a41c3b"
+    },
+    "godot-genre-tower-defense": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "f16afdbe808340c2d3c8c6dfdda293a6680da460a8a63ec0c677b23301aa29eb"
+    },
+    "godot-genre-visual-novel": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "c227d758da00aa5e1e8da9344924db7fbc58c76a2c5a6b3984fc7ae7ca7db0d5"
+    },
+    "godot-input-handling": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "12025eda783fd83d01c9876aee5b1e2ba425f3ccb09d6ec142cd915dcc0de44a"
+    },
+    "godot-inventory-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "bda19f20dbf29a4c3e9c4d33e682d73ac78b29b7c4cb2d435ff35f1ea59c3541"
+    },
+    "godot-master": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "062d373e9bfe5d485b0fabc7f5ca80bc54fab9b8a5b79b671b14a3e687129a72"
+    },
+    "godot-mcp-scene-builder": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "c844b2cc98c785961ad6e47a4347b7168c5f2c39f1c2b618923d7dcf3c826325"
+    },
+    "godot-mcp-setup": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "a551d79967aac3f558ca07bf6259d0c22b7a968d003dcf5947aedb892fe9a888"
+    },
+    "godot-mechanic-revival": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "a5c0b783752c67d8c5e3e0c5a3a265e8867e5a0bffd02cc4e313ece1eac77b26"
+    },
+    "godot-mechanic-secrets": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "586b25b2c1398bfe13e601d31ef41070767ecd1ed6d42652929a608d447da69b"
+    },
+    "godot-multiplayer-networking": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "a8821c11f1c61bad50c1ca8b0e01634e0f26eb11ea9085f6ed811b94ade26e2d"
+    },
+    "godot-navigation-pathfinding": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "f85229823d19116d525e5d6f19d6920e62579f9f97fd0fd58124defc27a4005a"
+    },
+    "godot-particles": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "cae814ad9cf8e9a0c39868b18811df824099d0798f953a591becb0848111a9f5"
+    },
+    "godot-performance-optimization": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "81fcc286e64ee5dbecdef43797f30bcd422b9efb3bf6901fd321c1461dd6a25d"
+    },
+    "godot-physics-3d": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "550ff0e4f3ca3d2df7a96c6dbc517260dbc0b6e11292968abfb6887cee719c21"
+    },
+    "godot-platform-console": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "76b76cfaa3fc13c1f0eed567aec0bc3d644f52095adf9d32560dd377f7d0ef0f"
+    },
+    "godot-platform-desktop": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "d93f83a1fe5013a1772daee570510b20d5d722fffb64a73234cfb04d0b927b1a"
+    },
+    "godot-platform-mobile": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "4e756af3382c5d984f526ba806eba01d3b6d5395e152058527f27be368c990f2"
+    },
+    "godot-platform-vr": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "53bf33fe557dd6341a4e9295d9db936bedea748dabce3154a41e5737322a5fbb"
+    },
+    "godot-platform-web": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "da7c7462ea83739030ab52d2490fbfe182d2c9b3045a54051a74c53d97811233"
+    },
+    "godot-procedural-generation": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "0d4d8f366dfbd2b454bf6eb58851e90ad2c598d9b78bc930b3c918be27ebf0ef"
+    },
+    "godot-project-foundations": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "5105c2648f9c31ec59a8671f1e89e4df6e7951da92d18c77dfb300ce5688535c"
+    },
+    "godot-project-templates": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "9ab262d42e400ecafb8933fffa22f1e4bf45e55f98d6496098d5600119b25ba1"
+    },
+    "godot-quest-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "cde4346f8495a15075c84dd83eea9450fed09d1c14867555b3ad756c4099bb1d"
+    },
+    "godot-resource-data-patterns": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "c8667695941a99f9b1e649e8d6ec236c9bd19a2d2348231686907c7caf047272"
+    },
+    "godot-rpg-stats": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "b9f95430751cc80402dac42a0d3fc37930da804ac489e3982d0b11385186b1fe"
+    },
+    "godot-save-load-systems": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "88ff2da22b25aa0a05557e4f348e76eca24ad8b248d59a1f0848a41c2dce750a"
+    },
+    "godot-scene-management": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "15617d34339c4699fddb107c74b62e57e80c26b4103b02522f23bea2574d33ac"
+    },
+    "godot-server-architecture": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "113fcd185a5b540697236b5e75e2615f5126954e1321218c472a19c074fdf2e6"
+    },
+    "godot-shaders-basics": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "f0054d1a74581cb5cabe03b6684ce306e4601b3f6b82b16bb2f2d216c45b7436"
+    },
+    "godot-signal-architecture": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "7c186cbc253e8af660da2338eae1359aa523833cfc1a173f97c25da4a4ed785d"
+    },
+    "godot-skill-discovery": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "461a9b453a006d4cfd742e19ab3f4f8101950246bb413626dbb3d314ca698693"
+    },
+    "godot-skill-judge": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "ea060ccdb03d50ea6146fe59c9752d2086a885784fd8a2985e79244fdf1f198e"
+    },
+    "godot-state-machine-advanced": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "19fa1fe57fdf4a072efc055ef6c3333265cc37bb4325f93746886e0e183e5226"
+    },
+    "godot-testing-patterns": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "1888f8763f5ec8130c8f40a96e7de4ba4e0fd819f2f054ab52a8e0d62474bdcf"
+    },
+    "godot-theme-easter": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "cf2bc7ac57c2eca5871f20d170ef8942c6be3284f28399a742c996072a6edb47"
+    },
+    "godot-tilemap-mastery": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "a7d8937af08d9bc1962cab8da48fdc6568b59e70c37ee1b4fb444fd83551973f"
+    },
+    "godot-turn-system": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "87b3ece445e4d7e7e0d2af2896077467fe4da117370998455e7c5869cf862d40"
+    },
+    "godot-tweening": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "b46a9843cc61c8e8d66dc3374f48d023572383a0548df46b66d3c3aeb7e38a80"
+    },
+    "godot-ui-containers": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "2ac34efb09fbaf6c24878ae4489991cb5cc1422f3f736df9083445c499e3f52d"
+    },
+    "godot-ui-rich-text": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "c351a9ea8f56fe699e4bda031ead3223bd9ee8889d214661cdcd1e3d41151d3d"
+    },
+    "godot-ui-theming": {
+      "source": "thedivergentai/gd-agentic-skills",
+      "sourceType": "github",
+      "computedHash": "ee5b37b779c526f08f7c5cc080ba4427e3cabec0341bcf7080d8959e5688b79f"
+    }
+  }
+}

@@ -14,7 +14,7 @@ const _SUBGRID_MASK: int = 0x3F
 const _OFFSET_MASK: int = 0x0FFF_FFFF_FFFF_FFC0
 const _LAYER_MASK: int = ~(_SUBGRID_MASK | _OFFSET_MASK)
 
-static var singleton = SvoLink64.new()
+static var singleton: SvoLink64 = SvoLink64.new()
 
 func null_link() -> int:
 	return _NULL

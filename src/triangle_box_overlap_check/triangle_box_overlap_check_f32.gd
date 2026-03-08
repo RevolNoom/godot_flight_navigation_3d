@@ -330,7 +330,7 @@ func _init(
 					- n_zx_e2.dot(Vector2(v2.z, v2.x))
 			#endregion
 	
-	pass # Debug breakpoint
+	# Initialization complete.
 
 
 ## Return true if triangle's plane

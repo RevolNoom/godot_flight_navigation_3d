@@ -13,7 +13,7 @@ const _SUBGRID_MASK: int = 0x3F
 const _OFFSET_MASK: int = 0x0FFF_FFC0
 const _LAYER_MASK: int = 0xF000_0000
 
-static var singleton = SvoLink32.new()
+static var singleton: SvoLink32 = SvoLink32.new()
 
 
 func null_link() -> int:

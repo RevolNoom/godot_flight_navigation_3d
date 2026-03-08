@@ -17,23 +17,23 @@ static func generate_lut_bit_1_count_by_u8() -> PackedInt32Array:
 
 static func generate_lut_subgrid_voxel_indexes_on_face() -> Dictionary[StringName, PackedInt32Array]:
 	return {
-		"xn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(0, -1, -1)),
-		"xp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(3, -1, -1)),
-		"yn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, 0, -1)),
-		"yp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, 3, -1)),
-		"zn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 0)),
-		"zp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 3)),
+		&"xn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(0, -1, -1)),
+		&"xp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(3, -1, -1)),
+		&"yn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, 0, -1)),
+		&"yp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, 3, -1)),
+		&"zn": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 0)),
+		&"zp": _get_subgrid_voxel_indexes_where_component_equals(Vector3i(-1, -1, 3)),
 	}
 
 
 static func generate_lut_children_node_by_face() -> Dictionary[StringName, PackedInt64Array]:
 	return {
-		"xn": _shift_to_svolink_index_field([0, 2, 4, 6]),
-		"xp": _shift_to_svolink_index_field([1, 3, 5, 7]),
-		"yn": _shift_to_svolink_index_field([0, 1, 4, 5]),
-		"yp": _shift_to_svolink_index_field([2, 3, 6, 7]),
-		"zn": _shift_to_svolink_index_field([0, 1, 2, 3]),
-		"zp": _shift_to_svolink_index_field([4, 5, 6, 7]),
+		&"xn": _shift_to_svolink_index_field([0, 2, 4, 6]),
+		&"xp": _shift_to_svolink_index_field([1, 3, 5, 7]),
+		&"yn": _shift_to_svolink_index_field([0, 1, 4, 5]),
+		&"yp": _shift_to_svolink_index_field([2, 3, 6, 7]),
+		&"zn": _shift_to_svolink_index_field([0, 1, 2, 3]),
+		&"zp": _shift_to_svolink_index_field([4, 5, 6, 7]),
 	}
 
 
@@ -46,12 +46,12 @@ static func generate_x_column_flip_bitmask_by_subgrid_index() -> PackedInt64Arra
 
 
 static func _get_x_column_flip_bitmask_by_subgrid_index(
-	subgrid_idx: int):
+	subgrid_idx: int) -> int:
 	var start_x = Morton3.decode_vec3i(subgrid_idx).x
 	var list_flip_index: PackedInt32Array = []
 	for next_x in range(start_x, 4):
 		list_flip_index.push_back(Morton3.set_x(subgrid_idx, next_x))
-	var bitmask = _compress_subgrid_indexes_into_bitmask(
+	var bitmask: int = _compress_subgrid_indexes_into_bitmask(
 		list_flip_index)
 	return bitmask
 

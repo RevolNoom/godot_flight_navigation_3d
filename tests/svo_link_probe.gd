@@ -28,6 +28,10 @@ class_name SVOLinkProbe
 ## Font size for the 3D label
 @export var label_font_size: int = 32
 
+## Enable verbose console output when probing.
+## Disabled by default to keep automated runs quieter.
+@export var enable_console_output: bool = false
+
 ## Whether to show the probe sphere
 @export var show_probe: bool = true:
 	set(value):
@@ -44,16 +48,16 @@ var _current_svolink: int = SvoLink64.singleton.null_link()
 var _mouse_position: Vector2 = Vector2.ZERO
 var _is_mouse_pressed: bool = false
 
-func _ready():
+func _ready() -> void:
 	
 	# Create sphere mesh for probe visualization
 	_sphere_mesh = MeshInstance3D.new()
-	var sphere = SphereMesh.new()
+	var sphere: SphereMesh = SphereMesh.new()
 	sphere.radius = sphere_radius
 	sphere.height = sphere_radius * 2
 	_sphere_mesh.mesh = sphere
 	
-	var material = StandardMaterial3D.new()
+	var material: StandardMaterial3D = StandardMaterial3D.new()
 	material.albedo_color = sphere_color
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.albedo_color.a = 0.7
@@ -63,11 +67,11 @@ func _ready():
 	
 	# Create box mesh for voxel visualization
 	_box_mesh = MeshInstance3D.new()
-	var box = BoxMesh.new()
+	var box: BoxMesh = BoxMesh.new()
 	box.size = Vector3.ONE
 	_box_mesh.mesh = box
 	
-	var box_material = StandardMaterial3D.new()
+	var box_material: StandardMaterial3D = StandardMaterial3D.new()
 	box_material.albedo_color = Color(0.0, 1.0, 1.0, 0.3)  # Cyan with transparency
 	box_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	box_material.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -91,7 +95,13 @@ func _ready():
 	_camera = get_parent() as Camera3D
 	if not _camera:
 		push_error("SVOLinkProbe must be a child of Camera3D")
+		set_process(false)
+		set_process_input(false)
 		return
+
+	if OS.has_feature("headless"):
+		set_process(false)
+		set_process_input(false)
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -106,7 +116,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 	return warnings
 
 
-func _input(event):
+func _input(event: InputEvent) -> void:
 	if not _camera or not flight_navigation:
 		return
 	
@@ -126,7 +136,7 @@ func _input(event):
 				_label_3d.visible = false
 
 
-func _process(_delta):
+func _process(_delta: float) -> void:
 	# Update current SVOLink at probe position
 	if flight_navigation and flight_navigation.sparse_voxel_octree:
 		_current_svolink = flight_navigation.get_svolink_of(_sphere_mesh.global_position)
@@ -144,71 +154,74 @@ func _process(_delta):
 		#_label_3d.visible = false
 
 
-func _update_probe_position():
+func _update_probe_position() -> void:
 	if not _camera or not _sphere_mesh:
 		return
 	
 	# Project mouse position into 3D world
-	var from = _camera.project_ray_origin(_mouse_position)
-	var direction = _camera.project_ray_normal(_mouse_position)
-	var probe_position = from + direction * probe_distance
+	var from: Vector3 = _camera.project_ray_origin(_mouse_position)
+	var direction: Vector3 = _camera.project_ray_normal(_mouse_position)
+	var probe_position: Vector3 = from + direction * probe_distance
 	
 	_sphere_mesh.global_position = probe_position
 
 
-func _on_mouse_click():
+func _on_mouse_click() -> void:
 	if not flight_navigation or not flight_navigation.sparse_voxel_octree:
-		print("SVOLinkProbe: FlightNavigation3D or SVO not available")
+		if enable_console_output:
+			print("SVOLinkProbe: FlightNavigation3D or SVO not available")
 		return
 	
 	if _current_svolink == SvoLink64.singleton.null_link():
-		print("SVOLinkProbe: No valid SVOLink at probe position")
+		if enable_console_output:
+			print("SVOLinkProbe: No valid SVOLink at probe position")
 		return
 	
 	# Print SVOLink information to console
-	var layer = SvoLink64.singleton.get_layer(_current_svolink)
-	var offset = SvoLink64.singleton.get_offset(_current_svolink)
-	var subgrid = SvoLink64.singleton.get_subgrid(_current_svolink)
-	var subgrid_vec3 = Morton3.decode_vec3i(subgrid)
-	
-	print("=== SVOLink Probe ===")
-	print("SVOLink: ", _current_svolink)
-	print("Layer: ", layer)
-	print("Offset: ", offset)
-	print("Subgrid: ", subgrid, " (", subgrid_vec3, ")")
-	print("Position: ", _sphere_mesh.global_position)
-	
-	# Check if solid
-	if flight_navigation.sparse_voxel_octree.support_inside:
-		var is_solid = flight_navigation.sparse_voxel_octree.is_solid(_current_svolink)
-		print("Is Solid: ", is_solid)
-	
-	print("====================")
+	if enable_console_output:
+		var layer: int = SvoLink64.singleton.get_layer(_current_svolink)
+		var offset: int = SvoLink64.singleton.get_offset(_current_svolink)
+		var subgrid: int = SvoLink64.singleton.get_subgrid(_current_svolink)
+		var subgrid_vec3: Vector3i = Morton3.decode_vec3i(subgrid)
+
+		print("=== SVOLink Probe ===")
+		print("SVOLink: ", _current_svolink)
+		print("Layer: ", layer)
+		print("Offset: ", offset)
+		print("Subgrid: ", subgrid, " (", subgrid_vec3, ")")
+		print("Position: ", _sphere_mesh.global_position)
+
+		# Check if solid
+		if flight_navigation.sparse_voxel_octree.support_inside:
+			var is_solid: bool = flight_navigation.sparse_voxel_octree.is_solid(_current_svolink)
+			print("Is Solid: ", is_solid)
+
+		print("====================")
 	
 	# Update label text
 	_update_label_text()
 
 
-func _update_label_text():
+func _update_label_text() -> void:
 	if _current_svolink == SvoLink64.singleton.null_link():
 		_label_3d.text = "NULL"
 		return
 	
-	var layer = SvoLink64.singleton.get_layer(_current_svolink)
-	var offset = SvoLink64.singleton.get_offset(_current_svolink)
-	var subgrid = SvoLink64.singleton.get_subgrid(_current_svolink)
+	var layer: int = SvoLink64.singleton.get_layer(_current_svolink)
+	var offset: int = SvoLink64.singleton.get_offset(_current_svolink)
+	var subgrid: int = SvoLink64.singleton.get_subgrid(_current_svolink)
 	
-	var text = "SVOLink: %d\nL:%d O:%d S:%d" % [_current_svolink, layer, offset, subgrid]
+	var text: String = "SVOLink: %d\nL:%d O:%d S:%d" % [_current_svolink, layer, offset, subgrid]
 	
 	# Add solid state if available
 	if flight_navigation and flight_navigation.sparse_voxel_octree and flight_navigation.sparse_voxel_octree.support_inside:
-		var is_solid = flight_navigation.sparse_voxel_octree.is_solid(_current_svolink)
+		var is_solid: bool = flight_navigation.sparse_voxel_octree.is_solid(_current_svolink)
 		text += "\nSolid: %s" % ("Yes" if is_solid else "No")
 	
 	_label_3d.text = text
 
 
-func _update_box_visualization():
+func _update_box_visualization() -> void:
 	if not _box_mesh:
 		return
 	
@@ -228,7 +241,7 @@ func _update_box_visualization():
 	_label_3d.text = str(box_size)
 	
 	# Get the center position of the voxel/node
-	var center_position = flight_navigation.get_global_position_of(_current_svolink)
+	var center_position: Vector3 = flight_navigation.get_global_position_of(_current_svolink)
 	
 	# Update box mesh transform to match FlightNavigation transform basis.
 	# Using only global_rotation drops scale and causes incorrect box sizes.

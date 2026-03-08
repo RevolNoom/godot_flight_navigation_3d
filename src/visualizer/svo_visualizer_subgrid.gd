@@ -10,7 +10,10 @@ class_name SvoVisualizerSubgrid
 @onready var voxels: MultiMeshInstance3D = \
 	get_node("Voxels") as MultiMeshInstance3D
 
-func _ready():
+func _ready() -> void:
+	if voxels == null:
+		push_warning("SvoVisualizerSubgrid: missing child node Voxels")
+		return
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TransformFormat.TRANSFORM_3D
 	voxels.multimesh = multimesh
@@ -18,13 +21,26 @@ func _ready():
 	boxmesh.material = StandardMaterial3D.new()
 	voxels.multimesh.mesh = boxmesh
 
-func draw(fn3d: FlightNavigation3D):
+func draw(fn3d: FlightNavigation3D) -> void:
 	if fn3d == null:
 		printerr("SvoVisualizerSubgrid.draw(): fn3d is null.")
 		return
 	var concrete_svo: SVO = fn3d.sparse_voxel_octree
 	if concrete_svo == null:
 		printerr("SvoVisualizerSubgrid.draw(): fn3d.sparse_voxel_octree is null.")
+		return
+	if voxels == null:
+		printerr("SvoVisualizerSubgrid.draw(): missing child node Voxels.")
+		return
+	if voxels.multimesh == null:
+		printerr("SvoVisualizerSubgrid.draw(): Voxels node must have a MultiMesh.")
+		return
+	if voxels.multimesh.mesh == null:
+		printerr("SvoVisualizerSubgrid.draw(): Voxels.multimesh.mesh must be assigned.")
+		return
+	var voxel_mesh := voxels.multimesh.mesh as BoxMesh
+	if voxel_mesh == null:
+		printerr("SvoVisualizerSubgrid.draw(): Voxels.multimesh.mesh must be BoxMesh.")
 		return
 
 	var async_context: Signal = get_tree().process_frame
@@ -49,7 +65,7 @@ func draw(fn3d: FlightNavigation3D):
 	var list_voxel_transform: Array[Transform3D] = []
 	list_voxel_transform.resize(total_solid_bit_count)
 
-	var voxel_size = FlightNavigation3D.calculate_node_size(
+	var voxel_size: Vector3 = FlightNavigation3D.calculate_node_size(
 		fn3d.size,
 		-2,
 		concrete_svo.depth
@@ -85,7 +101,7 @@ func draw(fn3d: FlightNavigation3D):
 		)
 
 	voxels.multimesh.instance_count = total_solid_bit_count
-	voxels.multimesh.mesh.size = voxel_size * 0.95
+	voxel_mesh.size = voxel_size * 0.95
 
 	if multi_threading_enabled:
 		await Parallel.execute_batched(

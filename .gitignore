@@ -1,6 +1,5 @@
-# VSCode configurations
-.roo
-.vscode
+.*
+skills
 
 # Godot 4+ specific ignores
 .godot/

@@ -4,9 +4,9 @@ extends ISvoVisualizer
 class_name SvoVisualizerLink
 
 ## [svolink:int] -> [label_text:String]
-@export var svo_nodes: Dictionary = {}
+@export var svo_nodes: Dictionary[int, String] = {}
 ## [svolink:int] -> [label_text:String]
-@export var voxels: Dictionary = {}
+@export var voxels: Dictionary[int, String] = {}
 @export var node_color: Color = Color.RED
 @export var leaf_color: Color = Color.GREEN
 
@@ -16,9 +16,7 @@ class_name SvoVisualizerLink
 	get_node("Voxels") as MultiMeshInstance3D
 
 
-func draw(
-	fn3d: FlightNavigation3D
-):
+func draw(fn3d: FlightNavigation3D) -> void:
 	if fn3d == null:
 		printerr("SvoVisualizerLink.draw(): fn3d is null.")
 		return
@@ -29,10 +27,17 @@ func draw(
 
 	_clear_svo_node_boxes()
 	_clear_voxel_instances()
+	if svo_nodes_root == null:
+		printerr("SvoVisualizerLink.draw(): missing child node SvoNodes.")
+		return
+	if voxels_instance == null:
+		printerr("SvoVisualizerLink.draw(): missing child node Voxels.")
+		return
+
 	var voxel_transforms: Array[Transform3D] = []
 	for key in svo_nodes.keys():
 		var svolink: int = int(key)
-		var label_text: String = str(svo_nodes[key])
+		var label_text: String = str(svo_nodes.get(key, ""))
 		_draw_svo_node_box(fn3d, concrete_svo, svolink, node_color, label_text)
 
 	for key in voxels.keys():
@@ -72,8 +77,9 @@ func _draw_svo_node_box(
 	label.name = "Label3D"
 	cube.add_child(label)
 
-	cube_mesh.material = StandardMaterial3D.new()
-	cube_mesh.material.transparency = \
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	cube_mesh.material = material
+	material.transparency = \
 		BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
 	label.text = text
 
@@ -83,9 +89,9 @@ func _draw_svo_node_box(
 		layer,
 		svo.depth
 	)
-	cube_mesh.material.albedo_color = in_node_color
+	material.albedo_color = in_node_color
 	label.pixel_size = cube_mesh.size.x / 400
-	cube_mesh.material.albedo_color.a = 0.2
+	material.albedo_color.a = 0.2
 	svo_nodes_root.add_child(cube)
 	cube.global_position = fn3d.get_global_position_of(svolink)
 	return cube
@@ -95,7 +101,7 @@ func _draw_voxel_instances(
 	fn3d: FlightNavigation3D,
 	svo: SVO,
 	voxel_transforms: Array[Transform3D]
-):
+)-> void:
 	if voxels_instance.multimesh == null:
 		printerr("SvoVisualizerLink.draw(): Voxels node must have a MultiMesh.")
 		return
@@ -116,12 +122,14 @@ func _draw_voxel_instances(
 		svo.depth
 	)
 	voxel_mesh.size = voxel_size
-	if voxel_mesh.material == null:
-		voxel_mesh.material = StandardMaterial3D.new()
-	voxel_mesh.material.transparency = \
+	var voxel_material: StandardMaterial3D = voxel_mesh.material as StandardMaterial3D
+	if voxel_material == null:
+		voxel_material = StandardMaterial3D.new()
+		voxel_mesh.material = voxel_material
+	voxel_material.transparency = \
 		BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
-	voxel_mesh.material.albedo_color = leaf_color
-	voxel_mesh.material.albedo_color.a = 0.2
+	voxel_material.albedo_color = leaf_color
+	voxel_material.albedo_color.a = 0.2
 
 	multimesh.instance_count = voxel_transforms.size()
 	for instance_index in range(voxel_transforms.size()):
@@ -130,12 +138,16 @@ func _draw_voxel_instances(
 			voxel_transforms[instance_index]
 		)
 
-func _clear_svo_node_boxes():
+func _clear_svo_node_boxes() -> void:
+	if svo_nodes_root == null:
+		return
 	for child in svo_nodes_root.get_children():
 		svo_nodes_root.remove_child(child)
 		child.queue_free()
 
 
-func _clear_voxel_instances():
+func _clear_voxel_instances() -> void:
+	if voxels_instance == null:
+		return
 	if voxels_instance.multimesh != null:
 		voxels_instance.multimesh.instance_count = 0

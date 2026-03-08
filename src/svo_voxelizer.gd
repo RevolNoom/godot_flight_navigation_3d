@@ -2,73 +2,71 @@
 ## Contains voxelization pipeline extracted from FlightNavigation3D.
 @tool
 @warning_ignore_start("integer_division")
-extends "res://src/i_svo_voxelizer.gd"
+extends ISvoVoxelizer
 class_name SvoVoxelizer
 
-func voxelize(fn3d) -> SVO:
+func voxelize(fn3d: FlightNavigation3D) -> SVO:
 	if fn3d == null:
 		printerr("SvoVoxelizer.voxelize(): fn3d is null.")
 		return null
 
-	var result = await _voxelize_from_fn3d_logic(fn3d)
+	var result: SVO = await _voxelize_from_fn3d_logic(fn3d)
 	return result
 
-func _voxelize_from_fn3d_logic(fn3d) -> SVO:
+func _voxelize_from_fn3d_logic(fn3d: FlightNavigation3D) -> SVO:
 	#region Copy variables to make voxelize() reentrant
-	@warning_ignore_start("confusable_local_usage", "shadowed_variable")
 	# Multi-threading
-	var multi_threading_enabled = multi_threading_enabled
-	var multi_threading_priority = multi_threading_priority
+	var cfg_multi_threading_enabled: bool = multi_threading_enabled
+	var cfg_multi_threading_priority: Thread.Priority = multi_threading_priority
 
 	# Preprocessing
-	var voxelization_mask = voxelization_mask
-	var remove_thin_triangles = remove_thin_triangles
+	var cfg_voxelization_mask: int = voxelization_mask
+	var cfg_remove_thin_triangles: bool = remove_thin_triangles
 
 	# SVO construction
-	var layer_count = layer_count
-	var support_float64 = support_float64
+	var cfg_layer_count: int = layer_count
+	var cfg_support_float64: bool = support_float64
 
 	# Solid Voxelization
-	var solid_voxelization_enabled = solid_voxelization_enabled
-	var solid_voxelization_calculate_coverage_factor = \
+	var cfg_solid_voxelization_enabled: bool = solid_voxelization_enabled
+	var cfg_solid_voxelization_calculate_coverage_factor: bool = \
 		solid_voxelization_calculate_coverage_factor
-	var solid_voxelization_top_left_edge_epsilon = \
+	var cfg_solid_voxelization_top_left_edge_epsilon: float = \
 		solid_voxelization_top_left_edge_epsilon
-	var solid_voxelization_float_error_margin = \
+	var cfg_solid_voxelization_float_error_margin: float = \
 		solid_voxelization_float_error_margin
 
 	# Surface Voxelization
-	var surface_voxelization_enabled = surface_voxelization_enabled
-	var surface_voxelization_separability = \
+	var cfg_surface_voxelization_enabled: bool = surface_voxelization_enabled
+	var cfg_surface_voxelization_separability: ITriangleBoxOverlapCheck.Separability = \
 		surface_voxelization_separability
-	var surface_voxelization_float_error_margin = \
+	var cfg_surface_voxelization_float_error_margin: float = \
 		surface_voxelization_float_error_margin
 
 	# Debug
-	var debug_delete_csg = debug_delete_csg
-	var debug_delete_flip_flag = debug_delete_flip_flag
-	@warning_ignore_restore(
-		"confusable_local_usage",
-		"shadowed_variable"
-	)
+	var cfg_debug_delete_csg: bool = debug_delete_csg
+	var cfg_debug_delete_flip_flag: bool = debug_delete_flip_flag
 	#endregion
 
 	#region Commonly used variables
 	var async_context: Signal = fn3d.get_tree().process_frame
-	var list_voxelization_target: Array[Node] = \
-		fn3d.get_tree().get_nodes_in_group("voxelization_target")
+	var list_voxelization_target: Array[VoxelizationTarget] = []
+	for node in fn3d.get_tree().get_nodes_in_group("voxelization_target"):
+		var voxelization_target := node as VoxelizationTarget
+		if voxelization_target != null:
+			list_voxelization_target.push_back(voxelization_target)
 	var flight_navigation_size: Vector3 = fn3d.size
 
 	var voxel_size: Vector3 = FlightNavigation3D.calculate_node_size(
 		flight_navigation_size,
 		-2,
-		layer_count
+		cfg_layer_count
 	)
 	var origin_offset = -flight_navigation_size / 2
 	#endregion
 
 	var factory_triangle_box_test: IFactoryTriangleBoxOverlapCheck
-	if support_float64:
+	if cfg_support_float64:
 		factory_triangle_box_test = \
 			FactoryTriangleBoxOverlapCheckF64.new()
 	else:
@@ -79,11 +77,11 @@ func _voxelize_from_fn3d_logic(fn3d) -> SVO:
 		fn3d,
 		async_context,
 		list_voxelization_target,
-		voxelization_mask,
-		debug_delete_csg,
-		remove_thin_triangles,
-		multi_threading_enabled,
-		multi_threading_priority,
+		cfg_voxelization_mask,
+		cfg_debug_delete_csg,
+		cfg_remove_thin_triangles,
+		cfg_multi_threading_enabled,
+		cfg_multi_threading_priority,
 		origin_offset
 	)
 
@@ -93,13 +91,18 @@ func _voxelize_from_fn3d_logic(fn3d) -> SVO:
 			triangles,
 			factory_triangle_box_test,
 			voxel_size,
-			surface_voxelization_float_error_margin,
+			cfg_surface_voxelization_float_error_margin,
 			flight_navigation_size,
-			multi_threading_enabled,
-			multi_threading_priority
+			cfg_multi_threading_enabled,
+			cfg_multi_threading_priority
 		)
 	if active_layer_1_result.is_empty():
 		printerr("Nothing to voxelize")
+		return null
+	if not active_layer_1_result.has("list_pair_node1_overlap_triangle_index") \
+		or not active_layer_1_result.has("unique_morton_count") \
+		or not active_layer_1_result.has("list_node_1_morton_grouped"):
+		printerr("SvoVoxelizer._voxelize_from_fn3d_logic(): malformed active layer result.")
 		return null
 
 	var list_pair_node1_overlap_triangle_index: Array[Vector4i] = \
@@ -114,31 +117,31 @@ func _voxelize_from_fn3d_logic(fn3d) -> SVO:
 	var svo = await _construct_svo(
 		async_context,
 		list_node_1_morton_grouped,
-		layer_count,
-		multi_threading_enabled,
-		multi_threading_priority
+		cfg_layer_count,
+		cfg_multi_threading_enabled,
+		cfg_multi_threading_priority
 	)
 	if svo == null:
 		printerr("No layer 1 node found")
 		return null
 
-	if solid_voxelization_enabled:
+	if cfg_solid_voxelization_enabled:
 		await _run_solid_voxelization(
 			async_context,
 			svo,
 			triangles,
 			voxel_size,
 			flight_navigation_size,
-			support_float64,
-			solid_voxelization_top_left_edge_epsilon,
-			solid_voxelization_float_error_margin,
-			debug_delete_flip_flag,
-			multi_threading_enabled,
-			multi_threading_priority,
-			layer_count
+			cfg_support_float64,
+			cfg_solid_voxelization_top_left_edge_epsilon,
+			cfg_solid_voxelization_float_error_margin,
+			cfg_debug_delete_flip_flag,
+			cfg_multi_threading_enabled,
+			cfg_multi_threading_priority,
+			cfg_layer_count
 		)
 
-	if surface_voxelization_enabled:
+	if cfg_surface_voxelization_enabled:
 		await _run_surface_voxelization(
 			async_context,
 			svo,
@@ -147,29 +150,29 @@ func _voxelize_from_fn3d_logic(fn3d) -> SVO:
 			unique_morton_count,
 			list_node_1_morton_grouped,
 			voxel_size,
-			surface_voxelization_separability,
-			surface_voxelization_float_error_margin,
+			cfg_surface_voxelization_separability,
+			cfg_surface_voxelization_float_error_margin,
 			flight_navigation_size,
 			factory_triangle_box_test,
-			multi_threading_enabled,
-			multi_threading_priority
+			cfg_multi_threading_enabled,
+			cfg_multi_threading_priority
 		)
 
-	if solid_voxelization_calculate_coverage_factor:
+	if cfg_solid_voxelization_calculate_coverage_factor:
 		await _calculate_coverage_factor(
 			async_context,
 			svo,
-			multi_threading_enabled,
-			multi_threading_priority
+			cfg_multi_threading_enabled,
+			cfg_multi_threading_priority
 		)
 
 	return svo
 
 
 func _prepare_triangles(
-	fn3d,
+	fn3d: FlightNavigation3D,
 	async_context: Signal,
-	list_voxelization_target: Array[Node],
+	list_voxelization_target: Array[VoxelizationTarget],
 	voxelization_mask: int,
 	debug_delete_csg: bool,
 	remove_thin_triangles: bool,
@@ -181,7 +184,7 @@ func _prepare_triangles(
 	#region Get all voxelization_target
 	progress.emit(ProgressStep.GET_ALL_VOXELIZATION_TARGET, null, 0, 1)
 	Fn3dUtility.filter_in_place(list_voxelization_target,
-	func (target, _index: int) -> bool:
+	func (target: VoxelizationTarget, _index: int) -> bool:
 		return target.voxelization_mask & voxelization_mask != 0
 	)
 
@@ -190,15 +193,19 @@ func _prepare_triangles(
 
 	#region Build mesh
 	progress.emit(ProgressStep.BUILD_MESH, null, 0, 1)
-	var voxelization_target_shapes = \
-		fn3d.get_node("VoxelizationTargetShapes")
+	var voxelization_target_shapes: Node = \
+		fn3d.get_node_or_null("VoxelizationTargetShapes")
+	if voxelization_target_shapes == null:
+		printerr("SvoVoxelizer._prepare_triangles(): missing child node 'VoxelizationTargetShapes'.")
+		progress.emit(ProgressStep.BUILD_MESH, null, 1, 1)
+		return []
 
 	for child_shapes in voxelization_target_shapes.get_children():
 		voxelization_target_shapes.remove_child(child_shapes)
 		child_shapes.free()
 
 	for target in list_voxelization_target:
-		var csg_shapes = target.get_csg()
+		var csg_shapes: Array[CSGShape3D] = target.get_csg()
 		for shape in csg_shapes:
 			voxelization_target_shapes.add_child(shape)
 			shape.global_transform = target.global_transform
@@ -208,7 +215,10 @@ func _prepare_triangles(
 	# right away does not return the actual result.
 	# So we must wait until next frame.
 	await async_context
-	var mesh = fn3d.bake_static_mesh()
+	var mesh: Mesh = fn3d.bake_static_mesh()
+	if mesh == null:
+		progress.emit(ProgressStep.BUILD_MESH, null, 1, 1)
+		return []
 	if debug_delete_csg:
 		for child_shapes in voxelization_target_shapes.get_children():
 			voxelization_target_shapes.remove_child(child_shapes)

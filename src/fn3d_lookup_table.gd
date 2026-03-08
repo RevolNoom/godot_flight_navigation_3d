@@ -9,27 +9,27 @@ class_name Fn3dLookupTable
 ## Indexes of subgrid voxels on each face of a layer-0 node.
 static var subgrid_voxel_indexes_on_face:\
 	Dictionary[StringName, PackedInt32Array] = {
-		"xn": PackedInt32Array([
+		&"xn": PackedInt32Array([
 			0b000_000, 0b000_010, 0b000_100, 0b000_110, 0b010_000, 0b010_010, 0b010_100, 0b010_110,
 			0b100_000, 0b100_010, 0b100_100, 0b100_110, 0b110_000, 0b110_010, 0b110_100, 0b110_110,
 		]),
-		"xp": PackedInt32Array([
+		&"xp": PackedInt32Array([
 			0b001_001, 0b001_011, 0b001_101, 0b001_111, 0b011_001, 0b011_011, 0b011_101, 0b011_111,
 			0b101_001, 0b101_011, 0b101_101, 0b101_111, 0b111_001, 0b111_011, 0b111_101, 0b111_111,
 		]),
-		"yn": PackedInt32Array([
+		&"yn": PackedInt32Array([
 			0b000_000, 0b000_001, 0b000_100, 0b000_101, 0b001_000, 0b001_001, 0b001_100, 0b001_101,
 			0b100_000, 0b100_001, 0b100_100, 0b100_101, 0b101_000, 0b101_001, 0b101_100, 0b101_101,
 		]),
-		"yp": PackedInt32Array([
+		&"yp": PackedInt32Array([
 			0b010_010, 0b010_011, 0b010_110, 0b010_111, 0b011_010, 0b011_011, 0b011_110, 0b011_111,
 			0b110_010, 0b110_011, 0b110_110, 0b110_111, 0b111_010, 0b111_011, 0b111_110, 0b111_111,
 		]),
-		"zn": PackedInt32Array([
+		&"zn": PackedInt32Array([
 			0b000_000, 0b000_001, 0b000_010, 0b000_011, 0b001_000, 0b001_001, 0b001_010, 0b001_011,
 			0b010_000, 0b010_001, 0b010_010, 0b010_011, 0b011_000, 0b011_001, 0b011_010, 0b011_011,
 		]),
-		"zp": PackedInt32Array([
+		&"zp": PackedInt32Array([
 			0b100_100, 0b100_101, 0b100_110, 0b100_111, 0b101_100, 0b101_101, 0b101_110, 0b101_111,
 			0b110_100, 0b110_101, 0b110_110, 0b110_111, 0b111_100, 0b111_101, 0b111_110, 0b111_111,
 		]),
@@ -40,12 +40,12 @@ static var subgrid_voxel_indexes_on_face:\
 ## Each index are shifted 6 bits to be added to SVOLink index field directly.
 static var children_node_by_face:\
 	Dictionary[StringName, PackedInt64Array] = {
-		"xn": PackedInt64Array([0, 128, 256, 384]),
-		"xp": PackedInt64Array([64, 192, 320, 448]),
-		"yn": PackedInt64Array([0, 64, 256, 320]),
-		"yp": PackedInt64Array([128, 192, 384, 448]),
-		"zn": PackedInt64Array([0, 64, 128, 192]),
-		"zp": PackedInt64Array([256, 320, 384, 448]),
+		&"xn": PackedInt64Array([0, 128, 256, 384]),
+		&"xp": PackedInt64Array([64, 192, 320, 448]),
+		&"yn": PackedInt64Array([0, 64, 256, 320]),
+		&"yp": PackedInt64Array([128, 192, 384, 448]),
+		&"zn": PackedInt64Array([0, 64, 128, 192]),
+		&"zp": PackedInt64Array([256, 320, 384, 448]),
 	}
 
 
@@ -222,3 +222,9 @@ static var neighbor_node_x_column_bits_by_subgrid_index:\
 		0b111_101: 0b00110000_00110000_00000000_00000000_00000000_00000000_00000000_00000000,
 		0b111_111: ~0b00111111_00111111_11111111_11111111_11111111_11111111_11111111_11111111,
 	}
+
+
+static func _static_init() -> void:
+	subgrid_voxel_indexes_on_face.make_read_only()
+	children_node_by_face.make_read_only()
+	neighbor_node_x_column_bits_by_subgrid_index.make_read_only()

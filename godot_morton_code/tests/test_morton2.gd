@@ -2,514 +2,462 @@ extends GutTest
 
 class_name Morton2Test
 
-func test_encode64():
-	var cases = [
-		{
-			"x": 0b0,
-			"y": 0b0,
-			"expected": 0b0,
-		},
-		{
-			"x": 0b1111_1111_1111_1111_1111_1111_1111_1111,
-			"y": 0b0,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"x": 0b0,
-			"y": 0b1111_1111_1111_1111_1111_1111_1111_1111,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"x": 0b1111_1111_1111_1111_1111_1111_1111_1111,
-			"y": 0b1111_1111_1111_1111_1111_1111_1111_1111,
-			"expected": ~0b0,
-		},
+class BinaryIntCase:
+	extends RefCounted
+
+	var lhs: int
+	var rhs: int
+	var expected: int
+
+	func _init(lhs_value: int, rhs_value: int, expected_value: int) -> void:
+		lhs = lhs_value
+		rhs = rhs_value
+		expected = expected_value
+
+
+class Vector2iEncodeCase:
+	extends RefCounted
+
+	var input: Vector2i
+	var expected: int
+
+	func _init(input_value: Vector2i, expected_value: int) -> void:
+		input = input_value
+		expected = expected_value
+
+
+class Vector2DecodeCase:
+	extends RefCounted
+
+	var code: int
+	var expected: Vector2
+
+	func _init(code_value: int, expected_value: Vector2) -> void:
+		code = code_value
+		expected = expected_value
+
+
+class Vector2iDecodeCase:
+	extends RefCounted
+
+	var code: int
+	var expected: Vector2i
+
+	func _init(code_value: int, expected_value: Vector2i) -> void:
+		code = code_value
+		expected = expected_value
+
+
+class CodeIntCase:
+	extends RefCounted
+
+	var code: int
+	var value: int
+	var expected: int
+
+	func _init(code_value: int, case_value: int, expected_value: int) -> void:
+		code = code_value
+		value = case_value
+		expected = expected_value
+
+
+class UnaryIntCase:
+	extends RefCounted
+
+	var code: int
+	var expected: int
+
+	func _init(code_value: int, expected_value: int) -> void:
+		code = code_value
+		expected = expected_value
+
+
+class ComparisonCase:
+	extends RefCounted
+
+	var lhs: int
+	var rhs: int
+	var expected: bool
+
+	func _init(lhs_value: int, rhs_value: int, expected_value: bool) -> void:
+		lhs = lhs_value
+		rhs = rhs_value
+		expected = expected_value
+
+
+func _assert_binary_int_result_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: BinaryIntCase = case_data_value
+		var result: int = operation.call(case_data.lhs, case_data.rhs)
+		assert_eq(result, case_data.expected)
+
+
+func _assert_vector2i_encode_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: Vector2iEncodeCase = case_data_value
+		var result: int = operation.call(case_data.input)
+		assert_eq(result, case_data.expected)
+
+
+func _assert_vector2_decode_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: Vector2DecodeCase = case_data_value
+		var result: Vector2 = operation.call(case_data.code)
+		assert_eq(result, case_data.expected)
+
+
+func _assert_vector2i_decode_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: Vector2iDecodeCase = case_data_value
+		var result: Vector2i = operation.call(case_data.code)
+		assert_eq(result, case_data.expected)
+
+
+func _assert_code_int_result_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: CodeIntCase = case_data_value
+		var result: int = operation.call(case_data.code, case_data.value)
+		assert_eq(result, case_data.expected)
+
+
+func _assert_unary_int_result_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: UnaryIntCase = case_data_value
+		var result: int = operation.call(case_data.code)
+		assert_eq(result, case_data.expected)
+
+
+func _assert_comparison_cases(cases: Array, operation: Callable) -> void:
+	for case_data_value in cases:
+		var case_data: ComparisonCase = case_data_value
+		var result: bool = operation.call(case_data.lhs, case_data.rhs)
+		assert_eq(result, case_data.expected)
+
+
+func test_encode64() -> void:
+	var cases: Array = [
+		BinaryIntCase.new(0b0, 0b0, 0b0),
+		BinaryIntCase.new(
+			0b1111_1111_1111_1111_1111_1111_1111_1111,
+			0b0,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		BinaryIntCase.new(
+			0b0,
+			0b1111_1111_1111_1111_1111_1111_1111_1111,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		BinaryIntCase.new(
+			0b1111_1111_1111_1111_1111_1111_1111_1111,
+			0b1111_1111_1111_1111_1111_1111_1111_1111,
+			~0b0
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.encode64(tc["x"], tc["y"])
-		assert_eq(result, tc["expected"])
+	_assert_binary_int_result_cases(cases, Morton2.encode64)
 
 
-func test_encode64v():
-	var cases = [
-		{
-			"input": Vector2i(0b0, 0b0),
-			"expected": 0b0,
-		},
-		{
-			"input": Vector2i(
+func test_encode64v() -> void:
+	var cases: Array = [
+		Vector2iEncodeCase.new(Vector2i(0, 0), 0b0),
+		Vector2iEncodeCase.new(
+			Vector2i(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b0),
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		Vector2iEncodeCase.new(
+			Vector2i(0b0, 0b1111_1111_1111_1111_1111_1111_1111_1111),
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		Vector2iEncodeCase.new(
+			Vector2i(
 				0b1111_1111_1111_1111_1111_1111_1111_1111,
-				0b0,
+				0b1111_1111_1111_1111_1111_1111_1111_1111
 			),
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"input": Vector2i(
-				0b0,
+			~0b0
+		),
+	]
+
+	_assert_vector2i_encode_cases(cases, Morton2.encode64v)
+
+
+func test_decode_vec2() -> void:
+	var cases: Array = [
+		Vector2DecodeCase.new(0b0, Vector2(0.0, 0.0)),
+		Vector2DecodeCase.new(
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			Vector2(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b0)
+		),
+		Vector2DecodeCase.new(
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			Vector2(0b0, 0b1111_1111_1111_1111_1111_1111_1111_1111)
+		),
+		Vector2DecodeCase.new(
+			~0b0,
+			Vector2(
 				0b1111_1111_1111_1111_1111_1111_1111_1111,
-			),
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"input": Vector2i(
+				0b1111_1111_1111_1111_1111_1111_1111_1111
+			)
+		),
+	]
+
+	_assert_vector2_decode_cases(cases, Morton2.decode_vec2)
+
+
+func test_decode_vec2i() -> void:
+	var cases: Array = [
+		Vector2iDecodeCase.new(0b0, Vector2i(0, 0)),
+		Vector2iDecodeCase.new(
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			Vector2i(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b0)
+		),
+		Vector2iDecodeCase.new(
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			Vector2i(0b0, 0b1111_1111_1111_1111_1111_1111_1111_1111)
+		),
+		Vector2iDecodeCase.new(
+			~0b0,
+			Vector2i(
 				0b1111_1111_1111_1111_1111_1111_1111_1111,
-				0b1111_1111_1111_1111_1111_1111_1111_1111,
-			),
-			"expected": ~0b0,
-		},
+				0b1111_1111_1111_1111_1111_1111_1111_1111
+			)
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.encode64v(tc["input"])
-		assert_eq(result, tc["expected"])
+	_assert_vector2i_decode_cases(cases, Morton2.decode_vec2i)
 
 
-func test_decode_vec2():
-	var cases = [
-		{
-			"code": 0b0,
-			"expected": Vector2(0.0, 0.0),
-		},
-		{
-			"code": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"expected": Vector2(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b0),
-		},
-		{
-			"code": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"expected": Vector2(0b0, 0b1111_1111_1111_1111_1111_1111_1111_1111),
-		},
-		{
-			"code": ~0b0,
-			"expected": Vector2(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b1111_1111_1111_1111_1111_1111_1111_1111),
-		},
+func test_set_x() -> void:
+	var cases: Array = [
+		CodeIntCase.new(
+			0b0,
+			4294967295,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		CodeIntCase.new(
+			~0b0,
+			0,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.decode_vec2(tc["code"])
-		assert_eq(result, tc["expected"])
+	_assert_code_int_result_cases(cases, Morton2.set_x)
 
 
-func test_decode_vec2i():
-	var cases = [
-		{
-			"code": 0b0,
-			"expected": Vector2i(0.0, 0.0),
-		},
-		{
-			"code": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"expected": Vector2i(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b0),
-		},
-		{
-			"code": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"expected": Vector2i(0b0, 0b1111_1111_1111_1111_1111_1111_1111_1111),
-		},
-		{
-			"code": ~0b0,
-			"expected": Vector2i(0b1111_1111_1111_1111_1111_1111_1111_1111, 0b1111_1111_1111_1111_1111_1111_1111_1111),
-		},
+func test_set_y() -> void:
+	var cases: Array = [
+		CodeIntCase.new(
+			0b0,
+			4294967295,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		CodeIntCase.new(
+			~0b0,
+			0,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.decode_vec2i(tc["code"])
-		assert_eq(result, tc["expected"])
+	_assert_code_int_result_cases(cases, Morton2.set_y)
 
 
-func test_set_x():
-	var cases = [
-		{
-			"code": 0b0,
-			"new_x": 4294967295,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"code": ~0b0,
-			"new_x": 0,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_add() -> void:
+	var cases: Array = [
+		BinaryIntCase.new(0b1110, 0b10111, 0b1100001),
+		BinaryIntCase.new(0b1110, 0b11, 0b100101),
+		BinaryIntCase.new(
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			0b10,
+			0b0
+		),
+		BinaryIntCase.new(
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			0b1,
+			0b0
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.set_x(tc["code"], tc["new_x"])
-		assert_eq(result, tc["expected"])
+	_assert_binary_int_result_cases(cases, Morton2.add)
 
 
-func test_set_y():
-	var cases = [
-		{
-			"code": 0b0,
-			"new_y": 4294967295,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"code": ~0b0,
-			"new_y": 0,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_sub() -> void:
+	var cases: Array = [
+		BinaryIntCase.new(0b1100001, 0b1110, 0b10111),
+		BinaryIntCase.new(0b100101, 0b1110, 0b11),
+		BinaryIntCase.new(
+			0b0,
+			0b10,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		BinaryIntCase.new(
+			0b0,
+			0b1,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.set_y(tc["code"], tc["new_y"])
-		assert_eq(result, tc["expected"])
+	_assert_binary_int_result_cases(cases, Morton2.sub)
 
 
-func test_add():
-	var cases = [
-		{
-			"lhs": 0b1110,
-			"rhs": 0b10111,
-			"expected": 0b1100001,
-		},
-		{
-			"lhs": 0b1110,
-			"rhs": 0b11,
-			"expected": 0b100101,
-		},
-		{
-			"lhs": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"rhs": 0b10,
-			"expected": 0b0,
-		},
-		{
-			"lhs": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"rhs": 0b1,
-			"expected": 0b0,
-		},
+func test_add_x() -> void:
+	var cases: Array = [
+		CodeIntCase.new(0b10111, 1, 0b1000010),
+		CodeIntCase.new(0b10111, -1, 0b10110),
+		CodeIntCase.new(
+			0b0,
+			-1,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		CodeIntCase.new(
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			1,
+			0b0
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.add(tc["lhs"], tc["rhs"])
-		assert_eq(result, tc["expected"])
+	_assert_code_int_result_cases(cases, Morton2.add_x)
 
 
-func test_sub():
-	var cases = [
-		{
-			"lhs": 0b1100001,
-			"rhs": 0b1110,
-			"expected": 0b10111,
-		},
-		{
-			"lhs": 0b100101,
-			"rhs": 0b1110,
-			"expected": 0b11,
-		},
-		{
-			"lhs": 0b0,
-			"rhs": 0b10,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"lhs": 0b0,
-			"rhs": 0b1,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_add_y() -> void:
+	var cases: Array = [
+		CodeIntCase.new(0b10111, 1, 0b11101),
+		CodeIntCase.new(0b10111, -1, 0b10101),
+		CodeIntCase.new(
+			0b0,
+			-1,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
+		CodeIntCase.new(
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			1,
+			0b0
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.sub(tc["lhs"], tc["rhs"])
-		assert_eq(result, tc["expected"])
+	_assert_code_int_result_cases(cases, Morton2.add_y)
 
 
-func test_add_x():
-	var cases = [
-		{
-			"code": 0b10111,
-			"x": 1,
-			"expected": 0b1000010,
-		},
-		{
-			"code": 0b10111,
-			"x": -1,
-			"expected": 0b10110,
-		},
-		{
-			"code": 0b0,
-			"x": -1,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"code": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"x": 1,
-			"expected": 0b0,
-		},
+func test_sub_x() -> void:
+	var cases: Array = [
+		CodeIntCase.new(0b10111, 1, 0b10110),
+		CodeIntCase.new(0b10111, -1, 0b1000010),
+		CodeIntCase.new(
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			-1,
+			0b0
+		),
+		CodeIntCase.new(
+			0b0,
+			1,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.add_x(tc["code"], tc["x"])
-		assert_eq(result, tc["expected"])
+	_assert_code_int_result_cases(cases, Morton2.sub_x)
 
 
-func test_add_y():
-	var cases = [
-		{
-			"code": 0b10111,
-			"y": 1,
-			"expected": 0b11101,
-		},
-		{
-			"code": 0b10111,
-			"y": -1,
-			"expected": 0b10101,
-		},
-		{
-			"code": 0b0,
-			"y": -1,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
-		{
-			"code": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"y": 1,
-			"expected": 0b0,
-		},
+func test_sub_y() -> void:
+	var cases: Array = [
+		CodeIntCase.new(0b10111, 1, 0b10101),
+		CodeIntCase.new(0b10111, -1, 0b11101),
+		CodeIntCase.new(
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			-1,
+			0b0
+		),
+		CodeIntCase.new(
+			0b0,
+			1,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.add_y(tc["code"], tc["y"])
-		assert_eq(result, tc["expected"])
+	_assert_code_int_result_cases(cases, Morton2.sub_y)
 
 
-func test_sub_x():
-	var cases = [
-		{
-			"code": 0b10111,
-			"x": 1,
-			"expected": 0b10110,
-		},
-		{
-			"code": 0b10111,
-			"x": -1,
-			"expected": 0b1000010,
-		},
-		{
-			"code": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"x": -1,
-			"expected": 0b0,
-		},
-		{
-			"code": 0b0,
-			"x": 1,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_inc_x() -> void:
+	var cases: Array = [
+		UnaryIntCase.new(0b10111, 0b1000010),
+		UnaryIntCase.new(
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			0b0
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.sub_x(tc["code"], tc["x"])
-		assert_eq(result, tc["expected"])
+	_assert_unary_int_result_cases(cases, Morton2.inc_x)
 
 
-func test_sub_y():
-	var cases = [
-		{
-			"code": 0b10111,
-			"y": 1,
-			"expected": 0b10101,
-		},
-		{
-			"code": 0b10111,
-			"y": -1,
-			"expected": 0b11101,
-		},
-		{
-			"code": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"y": -1,
-			"expected": 0b0,
-		},
-		{
-			"code": 0b0,
-			"y": 1,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_inc_y() -> void:
+	var cases: Array = [
+		UnaryIntCase.new(0b10111, 0b11101),
+		UnaryIntCase.new(0b1110, 0b100100),
+		UnaryIntCase.new(
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
+			0b0
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.sub_y(tc["code"], tc["y"])
-		assert_eq(result, tc["expected"])
+	_assert_unary_int_result_cases(cases, Morton2.inc_y)
 
 
-func test_inc_x():
-	var cases = [
-		{
-			"code": 0b10111,
-			"expected": 0b1000010,
-		},
-		{
-			"code": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"expected": 0b0,
-		},
+func test_dec_x() -> void:
+	var cases: Array = [
+		UnaryIntCase.new(0b10111, 0b10110),
+		UnaryIntCase.new(
+			0b0,
+			0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.inc_x(tc["code"])
-		assert_eq(result, tc["expected"])
+	_assert_unary_int_result_cases(cases, Morton2.dec_x)
 
 
-func test_inc_y():
-	var cases = [
-		{
-			"code": 0b10111,
-			"expected": 0b11101,
-		},
-		{
-			"code": 0b1110,
-			"expected": 0b100100,
-		},
-		{
-			"code": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-			"expected": 0b0,
-		},
+func test_dec_y() -> void:
+	var cases: Array = [
+		UnaryIntCase.new(0b10111, 0b10101),
+		UnaryIntCase.new(
+			0b0,
+			~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101
+		),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.inc_y(tc["code"])
-		assert_eq(result, tc["expected"])
+	_assert_unary_int_result_cases(cases, Morton2.dec_y)
 
 
-func test_dec_x():
-	var cases = [
-		{
-			"code": 0b10111,
-			"expected": 0b10110,
-		},
-		{
-			"code": 0b0,
-			"expected": 0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_gt() -> void:
+	var cases: Array = [
+		ComparisonCase.new(0b1100001, 0b1110, true),
+		ComparisonCase.new(0b1000010, 0b11101, false),
+		ComparisonCase.new(0b100101, 0b100101, false),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.dec_x(tc["code"])
-		assert_eq(result, tc["expected"])
+	_assert_comparison_cases(cases, Morton2.gt)
 
 
-func test_dec_y():
-	var cases = [
-		{
-			"code": 0b10111,
-			"expected": 0b10101,
-		},
-		{
-			"code": 0b0,
-			"expected": ~0b0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101_0101,
-		},
+func test_ge() -> void:
+	var cases: Array = [
+		ComparisonCase.new(0b1100001, 0b1110, true),
+		ComparisonCase.new(0b1000010, 0b11101, false),
+		ComparisonCase.new(0b100101, 0b100101, true),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.dec_y(tc["code"])
-		assert_eq(result, tc["expected"])
+	_assert_comparison_cases(cases, Morton2.ge)
 
 
-func test_gt():
-	var cases = [
-		{
-			"lhs": 0b1100001,
-			"rhs": 0b1110,
-			"expected": true,
-		},
-		{
-			"lhs": 0b1000010,
-			"rhs": 0b11101,
-			"expected": false,
-		},
-		{
-			"lhs": 0b100101,
-			"rhs": 0b100101,
-			"expected": false,
-		},
+func test_lt() -> void:
+	var cases: Array = [
+		ComparisonCase.new(0b10011, 0b11101, true),
+		ComparisonCase.new(0b1000010, 0b11101, false),
+		ComparisonCase.new(0b100101, 0b100101, false),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.gt(tc["lhs"], tc["rhs"])
-		assert_eq(result, tc["expected"])
+	_assert_comparison_cases(cases, Morton2.lt)
 
 
-func test_ge():
-	var cases = [
-		{
-			"lhs": 0b1100001,
-			"rhs": 0b1110,
-			"expected": true,
-		},
-		{
-			"lhs": 0b1000010,
-			"rhs": 0b11101,
-			"expected": false,
-		},
-		{
-			"lhs": 0b100101,
-			"rhs": 0b100101,
-			"expected": true,
-		},
+func test_le() -> void:
+	var cases: Array = [
+		ComparisonCase.new(0b10011, 0b11101, true),
+		ComparisonCase.new(0b1000010, 0b11101, false),
+		ComparisonCase.new(0b100101, 0b100101, true),
 	]
 
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.ge(tc["lhs"], tc["rhs"])
-		assert_eq(result, tc["expected"])
-
-
-func test_lt():
-	var cases = [
-		{
-			"lhs": 0b10011,
-			"rhs": 0b11101,
-			"expected": true,
-		},
-		{
-			"lhs": 0b1000010,
-			"rhs": 0b11101,
-			"expected": false,
-		},
-		{
-			"lhs": 0b100101,
-			"rhs": 0b100101,
-			"expected": false,
-		},
-	]
-
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.lt(tc["lhs"], tc["rhs"])
-		assert_eq(result, tc["expected"])
-
-
-func test_le():
-	var cases = [
-		{
-			"lhs": 0b10011,
-			"rhs": 0b11101,
-			"expected": true,
-		},
-		{
-			"lhs": 0b1000010,
-			"rhs": 0b11101,
-			"expected": false,
-		},
-		{
-			"lhs": 0b100101,
-			"rhs": 0b100101,
-			"expected": true,
-		},
-	]
-
-	for i in range(cases.size()):
-		var tc = cases[i]
-		var result = Morton2.le(tc["lhs"], tc["rhs"])
-		assert_eq(result, tc["expected"])
+	_assert_comparison_cases(cases, Morton2.le)

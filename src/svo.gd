@@ -80,7 +80,7 @@ class_name SVO
 ## True if this [SVO] supports inside/outside state query.
 @export var support_inside: bool:
 	get:
-		return inside.size()
+		return inside.size() > 0
 
 ## Use [member is_solid()] to determine whether a node is inside or outside an object. [br]
 ## [b]NOTE:[/b] Although it is possible to pack each inside state as a bit 
@@ -100,7 +100,7 @@ class_name SVO
 ## True if this [SVO] supports solid percentage coverage per node.
 @export var support_coverage: bool:
 	get:
-		return coverage.size()
+		return coverage.size() > 0
 		
 ## Coverage factor (the percentage of the voxel covered by the object).
 ## Is a number between 0 and 1.
@@ -533,7 +533,8 @@ func get_center(svolink: int) -> Vector3:
 	
 	# For layer 0, the center is the center of the subgrid voxel
 	if layer == 0:
-		var voxel_corner_position = Morton3.decode_vec3(subgrid[offset])
+		var subgrid_index: int = SvoLink64.singleton.get_subgrid(svolink)
+		var voxel_corner_position = Morton3.decode_vec3(subgrid_index)
 		var half_a_voxel = Vector3(0.5, 0.5, 0.5)
 		return node_corner_position * node_size + voxel_corner_position + half_a_voxel
 	

@@ -81,11 +81,17 @@ enum ProgressStep {
 @export_subgroup("", "")
 
 
+func _abstract_fail(method_name: String) -> void:
+	var message: String = "ISvoVoxelizer.%s() is abstract. Override in subclass." % method_name
+	push_error(message)
+	assert(false, message)
+
+
 func get_is_multithreading_enabled() -> bool:
 	return multi_threading_enabled
 
 
-func set_is_multithreading_enabled(enabled: bool):
+func set_is_multithreading_enabled(enabled: bool) -> void:
 	multi_threading_enabled = enabled
 
 
@@ -93,7 +99,7 @@ func get_multithreading_priority() -> Thread.Priority:
 	return multi_threading_priority
 
 
-func set_multithreading_priority(priority: Thread.Priority):
+func set_multithreading_priority(priority: Thread.Priority) -> void:
 	multi_threading_priority = priority
 
 
@@ -101,7 +107,7 @@ func get_voxelization_mask() -> int:
 	return voxelization_mask
 
 
-func set_voxelization_mask(mask: int):
+func set_voxelization_mask(mask: int) -> void:
 	voxelization_mask = mask
 
 
@@ -109,7 +115,7 @@ func get_remove_thin_triangles() -> bool:
 	return remove_thin_triangles
 
 
-func set_remove_thin_triangles(remove: bool):
+func set_remove_thin_triangles(remove: bool) -> void:
 	remove_thin_triangles = remove
 
 
@@ -117,7 +123,7 @@ func get_layer_count() -> int:
 	return layer_count
 
 
-func set_layer_count(layer_count_value: int):
+func set_layer_count(layer_count_value: int) -> void:
 	layer_count = clampi(layer_count_value, 2, 15)
 
 
@@ -129,7 +135,7 @@ func get_resource_format() -> String:
 	return resource_format
 
 
-func set_resource_format(format: String):
+func set_resource_format(format: String) -> void:
 	resource_format = format
 
 
@@ -137,7 +143,7 @@ func get_support_float64() -> bool:
 	return support_float64
 
 
-func set_support_float64(support: bool):
+func set_support_float64(support: bool) -> void:
 	support_float64 = support
 
 
@@ -145,7 +151,7 @@ func get_solid_voxelization_enabled() -> bool:
 	return solid_voxelization_enabled
 
 
-func set_solid_voxelization_enabled(enable: bool):
+func set_solid_voxelization_enabled(enable: bool) -> void:
 	solid_voxelization_enabled = enable
 
 
@@ -153,7 +159,7 @@ func get_solid_voxelization_coverage_enabled() -> bool:
 	return solid_voxelization_calculate_coverage_factor
 
 
-func set_solid_voxelization_coverage_enabled(enabled: bool):
+func set_solid_voxelization_coverage_enabled(enabled: bool) -> void:
 	solid_voxelization_calculate_coverage_factor = enabled
 
 
@@ -161,7 +167,7 @@ func get_solid_voxelization_top_left_edge_epsilon() -> float:
 	return solid_voxelization_top_left_edge_epsilon
 
 
-func set_solid_voxelization_top_left_edge_epsilon(epsilon: float):
+func set_solid_voxelization_top_left_edge_epsilon(epsilon: float) -> void:
 	solid_voxelization_top_left_edge_epsilon = epsilon
 
 
@@ -169,17 +175,17 @@ func get_surface_voxelization_enabled() -> bool:
 	return surface_voxelization_enabled
 
 
-func set_surface_voxelization_enabled(enable: bool):
+func set_surface_voxelization_enabled(enable: bool) -> void:
 	surface_voxelization_enabled = enable
 
 
-func get_surface_voxelization_separability() -> \
-	ITriangleBoxOverlapCheck.Separability:
+func get_surface_voxelization_separability() -> ITriangleBoxOverlapCheck.Separability:
 	return surface_voxelization_separability
 
 
 func set_surface_voxelization_separability(
-	separability: ITriangleBoxOverlapCheck.Separability):
+	separability: ITriangleBoxOverlapCheck.Separability
+) -> void:
 	surface_voxelization_separability = separability
 
 
@@ -187,7 +193,7 @@ func get_debug_delete_csg() -> bool:
 	return debug_delete_csg
 
 
-func set_debug_delete_csg(enable: bool):
+func set_debug_delete_csg(enable: bool) -> void:
 	debug_delete_csg = enable
 
 
@@ -195,10 +201,10 @@ func get_debug_delete_flip_flag() -> bool:
 	return debug_delete_flip_flag
 
 
-func set_debug_delete_flip_flag(enable: bool):
+func set_debug_delete_flip_flag(enable: bool) -> void:
 	debug_delete_flip_flag = enable
 
 
-func voxelize(_fn3d) -> SVO:
-	printerr("ISvoVoxelizer.voxelize() is abstract.")
+func voxelize(_fn3d: FlightNavigation3D) -> SVO:
+	_abstract_fail("voxelize")
 	return null

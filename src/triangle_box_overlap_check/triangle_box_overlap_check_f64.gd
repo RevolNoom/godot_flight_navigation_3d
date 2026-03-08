@@ -441,7 +441,7 @@ func _init(
 					- Dvector.dot(n_zx_e2, temp_v2_0)
 			#endregion
 	
-	pass # Debug breakpoint
+	# Initialization complete.
 
 
 ## Return true if triangle's plane

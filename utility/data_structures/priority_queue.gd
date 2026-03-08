@@ -65,7 +65,6 @@ func push(obj: Variant):
 ## [b]WARNING:[/b] If PriorityQueue [method is_empty], [method pop] will crash
 func pop() -> Variant:
 	var result = _heap[0]
-	_heap[0] = null
 	_size -= 1
 	_swap(0, _size)
 	_slide_down(0)

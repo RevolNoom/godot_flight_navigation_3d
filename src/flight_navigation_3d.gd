@@ -13,14 +13,25 @@ class_name FlightNavigation3D
 ## Return a path that connects [param from] and [param to].[br]
 ## [param from], [param to] are in global coordinate.[br]
 func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
+	if sparse_voxel_octree == null:
+		printerr("FlightNavigation3D.find_path(): sparse_voxel_octree is null.")
+		return []
+	if pathfinder == null:
+		printerr("FlightNavigation3D.find_path(): pathfinder is null.")
+		return []
+
 	var from_svolink: int = get_svolink_of(from)
 	var to_svolink: int = get_svolink_of(to)
-	var svolink_path: Array = pathfinder.find_path(
+	if from_svolink == SvoLink64.singleton.null_link() \
+		or to_svolink == SvoLink64.singleton.null_link():
+		return []
+
+	var svolink_path: PackedInt64Array = pathfinder.find_path(
 		from_svolink,
 		to_svolink,
 		sparse_voxel_octree
 	)
-	var vec3_path = PackedVector3Array()
+	var vec3_path: PackedVector3Array = []
 	vec3_path.resize(svolink_path.size())
 	for i in range(svolink_path.size()):
 		vec3_path[i] = get_global_position_of(svolink_path[i])
@@ -67,23 +78,35 @@ func draw():
 ## Return global position of center of the node or subgrid voxel identified as [param svolink].[br]
 ## [member sparse_voxel_octree] must not be null.[br]
 func get_global_position_of(svolink: int) -> Vector3:
-	var voxel_size = calculate_node_size(size, -2, sparse_voxel_octree.depth)
-	var layer = SvoLink64.singleton.get_layer(svolink)
-	var offset = SvoLink64.singleton.get_offset(svolink)
+	if sparse_voxel_octree == null:
+		printerr("FlightNavigation3D.get_global_position_of(): sparse_voxel_octree is null.")
+		return Vector3.ZERO
+	if svolink == SvoLink64.singleton.null_link():
+		return Vector3.ZERO
 
-	var morton_code = sparse_voxel_octree.morton[layer][offset]
+	var voxel_size = calculate_node_size(size, -2, sparse_voxel_octree.depth)
+	var layer: int = SvoLink64.singleton.get_layer(svolink)
+	if layer < 0 or layer >= sparse_voxel_octree.depth:
+		printerr("FlightNavigation3D.get_global_position_of(): layer out of bounds.")
+		return Vector3.ZERO
+	var offset: int = SvoLink64.singleton.get_offset(svolink)
+	if offset < 0 or offset >= sparse_voxel_octree.morton[layer].size():
+		printerr("FlightNavigation3D.get_global_position_of(): offset out of bounds.")
+		return Vector3.ZERO
+
+	var morton_code: int = sparse_voxel_octree.morton[layer][offset]
 	if layer == 0:
-		var voxel_morton = (morton_code << 6) | \
+		var voxel_morton: int = (morton_code << 6) | \
 			SvoLink64.singleton.get_subgrid(svolink)
-		var half_a_voxel = Vector3(0.5, 0.5, 0.5)
+		var half_a_voxel: Vector3 = Vector3(0.5, 0.5, 0.5)
 		return global_transform * (
 			(Morton3.decode_vec3(voxel_morton) + half_a_voxel) *
 			voxel_size +
 			morton_origin_offset()
 		)
 
-	var half_a_node = Vector3(0.5, 0.5, 0.5)
-	var result = global_transform * (
+	var half_a_node: Vector3 = Vector3(0.5, 0.5, 0.5)
+	var result: Vector3 = global_transform * (
 		(Morton3.decode_vec3(morton_code) + half_a_node) *
 		calculate_node_size(size, layer, sparse_voxel_octree.depth) +
 		morton_origin_offset()
@@ -98,7 +121,14 @@ func get_global_position_of(svolink: int) -> Vector3:
 ## [br]
 ## [param gposition]: Global position that needs conversion to [SVOLink].
 func get_svolink_of(gposition: Vector3) -> int:
-	var local_pos = to_local(gposition) - morton_origin_offset()
+	if sparse_voxel_octree == null:
+		printerr("FlightNavigation3D.get_svolink_of(): sparse_voxel_octree is null.")
+		return SvoLink64.singleton.null_link()
+	if sparse_voxel_octree.depth <= 0:
+		printerr("FlightNavigation3D.get_svolink_of(): sparse_voxel_octree.depth must be > 0.")
+		return SvoLink64.singleton.null_link()
+
+	var local_pos: Vector3 = to_local(gposition) - morton_origin_offset()
 	var extent: Vector3 = size
 	var aabb := AABB(Vector3.ZERO, extent)
 
@@ -106,12 +136,14 @@ func get_svolink_of(gposition: Vector3) -> int:
 	if not aabb.has_point(local_pos):
 		return SvoLink64.singleton.null_link()
 
-	var link_layer := sparse_voxel_octree.depth - 1
-	var link_offset := 0
+	var link_layer: int = sparse_voxel_octree.depth - 1
+	var link_offset: int = 0
 
 	# Descend the tree layer by layer
 	while link_layer > 0:
-		var first_child = sparse_voxel_octree.first_child[link_layer][link_offset]
+		if link_offset < 0 or link_offset >= sparse_voxel_octree.first_child[link_layer].size():
+			return SvoLink64.singleton.null_link()
+		var first_child: int = sparse_voxel_octree.first_child[link_layer][link_offset]
 		if first_child == SvoLink64.singleton.null_link():
 			return SvoLink64.singleton.create(link_layer, link_offset)
 
@@ -135,9 +167,16 @@ func get_svolink_of(gposition: Vector3) -> int:
 
 		aabb = AABB(new_pos, aabb.size / 2)
 
+	if link_offset < 0 or link_offset >= sparse_voxel_octree.morton[0].size():
+		return SvoLink64.singleton.null_link()
+
 	# Return the subgrid voxel that encloses @position
-	var subgridv = (local_pos - aabb.position) * 4 / aabb.size
-	return SvoLink64.singleton.create(0, link_offset, Morton3.encode64v(subgridv))
+	var subgridv: Vector3 = (local_pos - aabb.position) * 4.0 / aabb.size
+	var subgrid_x: int = clampi(floori(subgridv.x), 0, 3)
+	var subgrid_y: int = clampi(floori(subgridv.y), 0, 3)
+	var subgrid_z: int = clampi(floori(subgridv.z), 0, 3)
+	var subgrid_morton: int = Morton3.encode64(subgrid_x, subgrid_y, subgrid_z)
+	return SvoLink64.singleton.create(0, link_offset, subgrid_morton)
 
 
 #endregion

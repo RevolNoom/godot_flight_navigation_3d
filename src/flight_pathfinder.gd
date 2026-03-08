@@ -4,7 +4,9 @@
 extends Resource
 class_name FlightPathfinder
 
-func _init():
+static var _did_warn_closest_faces_unimplemented: bool = false
+
+func _init() -> void:
 	printerr("FlightPathfinder is abstract. Instantiate a derived class instead.")
 
 ## Return a path of [SVOLink]s connecting [param from] and [param to] through [param svo].[br]
@@ -84,8 +86,12 @@ static func manhattan(pos1: Vector3, pos2: Vector3) -> float:
 ##
 ## [param svolink1] and [param svolink2] are [SVOLink]s.[br]
 static func get_closest_faces(svolink1: int, svolink2: int, svo: SVO) -> PackedVector3Array:
-	printerr("get_closest_faces TODO")
-	return []
+	if not _did_warn_closest_faces_unimplemented:
+		push_warning(
+			"FlightPathfinder.get_closest_faces() is not implemented yet; falling back to centers."
+		)
+		_did_warn_closest_faces_unimplemented = true
+	return get_centers(svolink1, svolink2, svo)
 
 
 ## Return array of 2 Vector3 that are centers of two nodes/voxels 

@@ -3,8 +3,25 @@ extends GutTest
 class_name ISvoLinkTest
 
 
+func _case_singleton(case_data: Dictionary) -> ISvoLink:
+	return case_data["singleton"] as ISvoLink
+
+
+func _case_name(case_data: Dictionary) -> String:
+	return str(case_data["name"])
+
+
+func _create_case_link(case_data: Dictionary) -> int:
+	var singleton: ISvoLink = _case_singleton(case_data)
+	return singleton.create(
+		int(case_data["layer"]),
+		int(case_data["offset"]),
+		int(case_data["subgrid"])
+	)
+
+
 func test_svo_link_null(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32",
 			"singleton": SvoLink32.singleton,
@@ -16,13 +33,13 @@ func test_svo_link_null(
 			"expected": ~0,
 		},
 	])
-):
-	var singleton = p["singleton"]
-	assert_eq(singleton.null_link(), p["expected"], p["name"])
+) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
+	assert_eq(singleton.null_link(), int(p["expected"]), _case_name(p))
 
 
 func test_svo_link_masks(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32",
 			"singleton": SvoLink32.singleton,
@@ -38,27 +55,27 @@ func test_svo_link_masks(
 			"expected_layer": ~0x0FFF_FFFF_FFFF_FFFF,
 		},
 	])
-):
-	var singleton = p["singleton"]
+) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
 	assert_eq(
 		singleton.get_subgrid_mask(),
-		p["expected_subgrid"],
-		"%s subgrid mask" % p["name"]
+		int(p["expected_subgrid"]),
+		"%s subgrid mask" % _case_name(p)
 	)
 	assert_eq(
 		singleton.get_offset_mask(),
-		p["expected_offset"],
-		"%s offset mask" % p["name"]
+		int(p["expected_offset"]),
+		"%s offset mask" % _case_name(p)
 	)
 	assert_eq(
 		singleton.get_layer_mask(),
-		p["expected_layer"],
-		"%s layer mask" % p["name"]
+		int(p["expected_layer"]),
+		"%s layer mask" % _case_name(p)
 	)
 
 
 func test_svo_link_create_and_getters(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32 basic",
 			"singleton": SvoLink32.singleton,
@@ -102,20 +119,16 @@ func test_svo_link_create_and_getters(
 			"subgrid": 0b11_1111,
 		},
 	])
-):
-	var singleton = p["singleton"]
-	var result = singleton.create(
-		p["layer"],
-		p["offset"],
-		p["subgrid"]
-	)
-	assert_eq(singleton.get_layer(result), p["layer"], p["name"])
-	assert_eq(singleton.get_offset(result), p["offset"], p["name"])
-	assert_eq(singleton.get_subgrid(result), p["subgrid"], p["name"])
+) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
+	var result: int = _create_case_link(p)
+	assert_eq(singleton.get_layer(result), int(p["layer"]), _case_name(p))
+	assert_eq(singleton.get_offset(result), int(p["offset"]), _case_name(p))
+	assert_eq(singleton.get_subgrid(result), int(p["subgrid"]), _case_name(p))
 
 
 func test_svo_link_set_layer(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32 set layer",
 			"singleton": SvoLink32.singleton,
@@ -149,21 +162,21 @@ func test_svo_link_set_layer(
 			"set_value": 0b0_0001,
 		},
 	])
-):
-	var singleton = p["singleton"]
-	var input = singleton.create(
-		p["input_layer"],
-		p["input_offset"],
-		p["input_subgrid"]
+	) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
+	var input: int = singleton.create(
+		int(p["input_layer"]),
+		int(p["input_offset"]),
+		int(p["input_subgrid"])
 	)
-	var result = singleton.set_layer(input, p["set_value"])
-	assert_eq(singleton.get_layer(result), p["set_value"], p["name"])
-	assert_eq(singleton.get_offset(result), p["input_offset"], p["name"])
-	assert_eq(singleton.get_subgrid(result), p["input_subgrid"], p["name"])
+	var result: int = singleton.set_layer(input, int(p["set_value"]))
+	assert_eq(singleton.get_layer(result), int(p["set_value"]), _case_name(p))
+	assert_eq(singleton.get_offset(result), int(p["input_offset"]), _case_name(p))
+	assert_eq(singleton.get_subgrid(result), int(p["input_subgrid"]), _case_name(p))
 
 
 func test_svo_link_set_offset(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32 set offset",
 			"singleton": SvoLink32.singleton,
@@ -197,21 +210,21 @@ func test_svo_link_set_offset(
 			"set_value": 0x003F_FFFF_FFFF_FFFF,
 		},
 	])
-):
-	var singleton = p["singleton"]
-	var input = singleton.create(
-		p["input_layer"],
-		p["input_offset"],
-		p["input_subgrid"]
+	) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
+	var input: int = singleton.create(
+		int(p["input_layer"]),
+		int(p["input_offset"]),
+		int(p["input_subgrid"])
 	)
-	var result = singleton.set_offset(input, p["set_value"])
-	assert_eq(singleton.get_layer(result), p["input_layer"], p["name"])
-	assert_eq(singleton.get_offset(result), p["set_value"], p["name"])
-	assert_eq(singleton.get_subgrid(result), p["input_subgrid"], p["name"])
+	var result: int = singleton.set_offset(input, int(p["set_value"]))
+	assert_eq(singleton.get_layer(result), int(p["input_layer"]), _case_name(p))
+	assert_eq(singleton.get_offset(result), int(p["set_value"]), _case_name(p))
+	assert_eq(singleton.get_subgrid(result), int(p["input_subgrid"]), _case_name(p))
 
 
 func test_svo_link_set_subgrid(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32 set subgrid",
 			"singleton": SvoLink32.singleton,
@@ -245,21 +258,21 @@ func test_svo_link_set_subgrid(
 			"set_value": 0b00_0011,
 		},
 	])
-):
-	var singleton = p["singleton"]
-	var input = singleton.create(
-		p["input_layer"],
-		p["input_offset"],
-		p["input_subgrid"]
+	) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
+	var input: int = singleton.create(
+		int(p["input_layer"]),
+		int(p["input_offset"]),
+		int(p["input_subgrid"])
 	)
-	var result = singleton.set_subgrid(input, p["set_value"])
-	assert_eq(singleton.get_layer(result), p["input_layer"], p["name"])
-	assert_eq(singleton.get_offset(result), p["input_offset"], p["name"])
-	assert_eq(singleton.get_subgrid(result), p["set_value"], p["name"])
+	var result: int = singleton.set_subgrid(input, int(p["set_value"]))
+	assert_eq(singleton.get_layer(result), int(p["input_layer"]), _case_name(p))
+	assert_eq(singleton.get_offset(result), int(p["input_offset"]), _case_name(p))
+	assert_eq(singleton.get_subgrid(result), int(p["set_value"]), _case_name(p))
 
 
 func test_svo_link_create_truncates_out_of_range_values(
-	p = use_parameters([
+	p: Dictionary = use_parameters([
 		{
 			"name": "SvoLink32 over by one bit",
 			"singleton": SvoLink32.singleton,
@@ -301,21 +314,21 @@ func test_svo_link_create_truncates_out_of_range_values(
 			"expected_subgrid": 0x3F,
 		},
 	])
-):
-	var singleton = p["singleton"]
-	var result = singleton.create(
-		p["layer"],
-		p["offset"],
-		p["subgrid"]
+	) -> void:
+	var singleton: ISvoLink = _case_singleton(p)
+	var result: int = singleton.create(
+		int(p["layer"]),
+		int(p["offset"]),
+		int(p["subgrid"])
 	)
-	assert_eq(singleton.get_layer(result), p["expected_layer"], p["name"])
+	assert_eq(singleton.get_layer(result), int(p["expected_layer"]), _case_name(p))
 	assert_eq(
 		singleton.get_offset(result),
-		p["expected_offset"],
-		p["name"]
+		int(p["expected_offset"]),
+		_case_name(p)
 	)
 	assert_eq(
 		singleton.get_subgrid(result),
-		p["expected_subgrid"],
-		p["name"]
+		int(p["expected_subgrid"]),
+		_case_name(p)
 	)
