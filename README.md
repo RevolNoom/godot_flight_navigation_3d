@@ -1,171 +1,220 @@
-# Godot Flight Navigation 3D 
+# Godot Flight Navigation 3D
 
-Godot Flight Navigation 3D provides flying and swimming navigation in free 3D space for Godot Engine. 
-It builds a Sparse Voxel Octree (SVO) representing solid and empty space, and applies a Greedy A* algorithm for pathfinding.
+Godot Flight Navigation 3D provides flying and swimming navigation in free 3D space for Godot Engine.
+It builds a Sparse Voxel Octree (SVO) representing solid and empty space, then runs a pathfinder such as `GreedyAStar` to connect points in 3D.
 
-## Supported Godot builds:
+## Supported Godot builds
 
-- Godot_v4.4.1-stable_linux.x86_64
+- `Godot_v4.4.1-stable_linux.x86_64`
+- `Godot_v4.5-stable_linux.x86_64`
 
-- Godot_v4.5-stable_linux.x86_64
+Other Godot 4 builds may also work, but they are not explicitly verified here yet.
 
-There might actually be more supported builds than listed here. I don't have time to test them out, yet.
+## Documentation map
+
+- This file explains setup, workflow, and important behavior.
+- `docs/API_REFERENCE.md` contains the consolidated class and API reference.
+- `tests/` acts as executable behavior documentation for many edge cases and regressions.
 
 ## Features
 
-- **Multi-threaded CPU voxelization** for fast processing
-- Supports up to **9 layers of voxelization** (512 x 512 x 512) on 8GB RAM
-- Works with many node types:
-  - All `CollisionObject3D` nodes
-  - All `CSGShape3D` nodes
-  - Collision shapes: Box, Sphere, Capsule, Cylinder, ConcavePolygon, ConvexPolygon
-  - Meshes: BoxMesh, SphereMesh, CapsuleMesh, CylinderMesh, ArrayMesh, TorusMesh
-- **Editor integration**: Bake navigation data with a single click
-- **Customizable parameters**: Depth, solid voxelization, resource format, etc.
-- **Pathfinding API**: Find paths between arbitrary 3D positions
-- **Debug visualization**: Draw SVO nodes and voxel occupancy for inspection
+- Multi-threaded CPU voxelization for faster preprocessing
+- Supports up to 9 SVO layers (`512 x 512 x 512` node space on the current implementation target)
+- Works with many obstacle sources through `VoxelizationTarget`
+  - `CollisionObject3D`
+  - `CollisionShape3D`
+  - `MeshInstance3D`
+  - `CSGShape3D`
+- Supported collision shapes and meshes include:
+  - `Box`
+  - `Sphere`
+  - `Capsule`
+  - `Cylinder`
+  - `ConcavePolygon`
+  - `ConvexPolygon`
+  - `ArrayMesh`
+  - `TorusMesh`
+- Editor integration for one-click baking
+- Script API for baking, coordinate conversion, and path queries
+- Debug visualizers for nodes, links, and subgrid voxels
 
+## Quick start
 
-## How To Use
+### 1. Mark voxelization sources
 
-### Setup scene
+Add `VoxelizationTarget` as a child of each static obstacle source that should contribute to the navigation volume.
 
+> `VoxelizationTarget` is intended for static geometry. Runtime obstacle edits still require a rebuild.
 
-1. **Add `VoxelizationTarget`** as a child to any static obstacle objects.  
-   > _Note: All voxelization targets should be static, due to "No runtime update" limitation (see below)._
+![Obstacles setup](imgs/obstacles_setup.png "Obstacles setup")
 
-   ![Obstacles setup](imgs/obstacles_setup.png "Obstacles setup")
+### 2. Add the navigation volume
 
-2. **Add a `FlightNavigation3D` node** and set its `CSGBox3D.size` property to encompass your navigation space (ensure all sides are equal).
+Add a `FlightNavigation3D` node and configure its `CSGBox3D.size` so it encloses the navigable region.
+For best results, keep the volume cubic.
 
-   ![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
+![FlightNavigation3D object setup](imgs/flight_navigation_object_setup.png "FlightNavigation3D object setup")
 
+### 3. Add exactly one voxelizer child
 
-3. Configure parameters for the navigation space. Some important parameters are:
+`FlightNavigation3D.build_navigation()` expects exactly one child implementing `ISvoVoxelizer`.
+The stock choice is `SvoVoxelizer`.
 
-+ `Depth`: controls how detailed the navigation space will be. 
-	Memory and computational power consumption rises exponentially per depth level.
-	It is recommended to start off small, and then increase depth only when you need finer-grained movement.
+Important configuration options on the voxelizer include:
 
-+ `Perform Solid Voxelization`: Enables inside/outside detection for navigation.
-
+- `layer_count`: Higher values increase detail and memory cost exponentially.
+- `solid_voxelization_enabled`: Enables inside/outside information, which is required for robust solid queries.
+- `surface_voxelization_enabled`: Enables boundary rasterization.
+- `support_float64`: Enables the float64 triangle-box implementation, which may help some precision-sensitive cases but still starts from Godot-side float32 geometry data.
 
 ![FlightNavigation3D parameter setup](imgs/flight_navigation_parameter_setup.png "FlightNavigation3D parameter setup")
 
-### Build navigation space
+## Building navigation data
 
-#### Using editor plugin
+### Using the editor plugin
 
-- Select the `FlightNavigation3D` node.  
-- Click the **"Voxelize"** button in the editor toolbar to start the process.
-  A progress popup will appear. When finished, the SVO resource will be visible in the Inspector.
+- Select the `FlightNavigation3D` node.
+- Click the **Voxelize** toolbar button.
+- Wait for the bake to finish.
+- The generated `SVO` resource will be assigned to `sparse_voxel_octree`.
 
-  ![Bake navigation using editor plugin](imgs/bake_navigation.png "Bake navigation using editor plugin")
+![Bake navigation using editor plugin](imgs/bake_navigation.png "Bake navigation using editor plugin")
 
-#### Using GDScript
+### Using GDScript
 
 ```gdscript
-	var svo = await $FlightNavigation3D.build_navigation()
-	$FlightNavigation3D.sparse_voxel_octree = svo
+await $FlightNavigation3D.build_navigation()
 
-	# Optional: Visualize the navigation space
-	$FlightNavigation3D.draw()
+# Optional debug draw
+await $FlightNavigation3D.draw()
 ```
 
-### Find path between two positions in space
+Behavior notes:
+
+- `build_navigation()` is asynchronous and must be awaited.
+- It assigns the returned `SVO` to `FlightNavigation3D.sparse_voxel_octree`.
+- If there is not exactly one child voxelizer, the method prints an error and leaves the current resource unchanged.
+
+## Finding a path
 
 ```gdscript
-	# find_path works with global positions
-	var path = $FlightNavigation3D.find_path($Start.global_position, $End.global_position)
+# find_path() works in global coordinates
+var path: PackedVector3Array = $FlightNavigation3D.find_path(
+	$Start.global_position,
+	$End.global_position
+)
 
-	# Visualize the path
-	var svolink_path = Array(path).map(func(pos): return $FlightNavigation3D.get_svolink_of(pos))
+if not path.is_empty():
+	var svolink_path := Array(path).map(
+		func(pos: Vector3) -> int:
+			return $FlightNavigation3D.get_svolink_of(pos)
+	)
 	for svolink in svolink_path:
 		$FlightNavigation3D.draw_svolink_box(svolink)
 ```
 
 ![Find path - Result illustration](imgs/find_path_result_illustration.png "Find path - Result illustration")
 
-### Write your own pathfinding algorithm
+`find_path()` returns an empty array when:
 
-/TODO/
-You can implement your own pathfinding algorithm by extending the [`FlightPathfinder`](src/flight_pathfinder.gd) class.
+- no `sparse_voxel_octree` is assigned
+- no `pathfinder` resource is assigned
+- either endpoint lies outside the navigation volume
+- either endpoint resolves to a null `SVOLink`
+- either endpoint is solid
+- the selected pathfinder fails to find a route
 
-## Limitations
+The solid-endpoint rejection is intentional and now covered by tests.
 
-- **No runtime update**:
+## Extending pathfinding
 
-By design, the SVO packs data tightly to save space and lookup neighbor quickly.
-Thus, addition/removal/transformation of objects inside the navigation space 
-cannot be updated easily. You must re-voxelize every time there are 
-relative movements of static objects to FlightNavigation3D (which is expensive).
+Create a custom resource that extends `FlightPathfinder`, then assign it to `FlightNavigation3D.pathfinder`.
 
-## Future Improvements
+At minimum, override:
 
-- Implement some tips and tricks from paper to speedup voxelization.
+- `_find_path(from, to, svo)`
 
-- Voxelization using GPU
+Optional customization points include:
+
+- `_compute_cost(start, destination, svo)`
+- `_estimate_cost(start, destination, svo)`
+
+See `docs/API_REFERENCE.md` for the public contract and helper methods.
+
+## Important caveats and current behavior
+
+### Confirmed behavior
+
+- `build_navigation()` must be awaited and requires exactly one child voxelizer.
+- `find_path()` rejects solid start and goal voxels rather than pathing from inside geometry.
+- `GreedyAStar.endpoints` currently supports only `Voxel Centers`.
+- Legacy serialized `Face Centers` values are normalized back to `Voxel Centers` instead of being honored.
+
+### Known limitations
+
+- **No runtime incremental updates**  
+  The SVO is tightly packed and optimized for queries, not live edits. Moving or changing static geometry requires rebuilding the navigation resource.
+
+- **`FlightPathfinder.get_closest_faces()` is not implemented**  
+  It currently warns once and falls back to node/voxel centers.
+
+- **`GreedyAStar.use_unit_cost` remains experimental**  
+  The code explicitly marks it as TODO, so treat non-default tuning carefully.
+
+- **`GreedyAStar.w` needs caution**  
+  The current source comments note that setting `w = 2` can freeze the search.
+
+- **Float precision still needs more investigation**  
+  The project exposes float32 and float64 triangle-box implementations, but Godot geometry inputs are still float32-based. Remaining rasterization divergence between float32 and float64 paths should be treated as an open investigation area rather than a solved guarantee.
+
+- **Boundary precision can still matter**  
+  `FlightNavigation3D.get_svolink_of()` documents that points landing exactly on faces may map differently because of floating-point error.
+
+- **`MultiMeshInstance3D` voxelization is still stubbed out**  
+  `VoxelizationTarget` recognizes the parent type but currently returns no generated CSG for it.
+
+## Main runtime architecture
+
+| Class | Role |
+| --- | --- |
+| `FlightNavigation3D` | Scene node that owns the navigation volume, baked SVO resource, and pathfinder resource |
+| `ISvoVoxelizer` / `SvoVoxelizer` | Baking pipeline that converts scene geometry into an `SVO` |
+| `ISvo` / `SVO` | Packed sparse voxel octree storage and query API |
+| `FlightPathfinder` / `GreedyAStar` | Pathfinding resource abstraction and default implementation |
+| `VoxelizationTarget` | Marks scene geometry that should be converted into CSG for voxelization |
+| `Fn3dLookupTable` | Shared lookup tables for faces, child ordering, and bit operations |
+| `SvoLink32` / `SvoLink64` | Packed link encodings for nodes and subgrid voxels |
+| `ITriangleBoxOverlapCheck` family | Surface/solid voxelization triangle-box overlap tests |
+| `ISvoVisualizer` family | Optional debug drawing helpers |
+
+For class-by-class details, see `docs/API_REFERENCE.md`.
 
 ## Credits
 
 - [Schwarz, M., Seidel, H.-P. 2010. Fast parallel surface and solid voxelization on GPUs. ACM Transactions on Graphics, 29, 6 (Proceedings of SIGGRAPH Asia 2010), Article 179.](http://research.michael-schwarz.com/publ/2010/vox/)
-
 - [Daniel Brewer. 3D Flight Navigation Using Sparse Voxel Octrees.](https://www.gameaipro.com/GameAIPro3/GameAIPro3_Chapter21_3D_Flight_Navigation_Using_Sparse_Voxel_Octrees.pdf)
-
 - [Code reference from Forceflow's CUDA voxelizer](https://github.com/Forceflow/cuda_voxelizer)
 
-## Modifications From Papers
+## Notes on implementation differences from referenced papers
 
-### SVOLink: 32-bit to 64-bit
+### `SVOLink`: 32-bit to 64-bit
 
-SVO Link is originally an int32, packed with: 
+The original paper-oriented link packing assumes a 32-bit representation.
+This project also provides a 64-bit representation with significantly more room for node offsets.
 
-- Original: 32 bits (4 bits layer, 22 bits node, 6 bits subnode)
-- GDScript: 64 bits (4 bits layer, 54 bits node, 6 bits subnode)
-- Allows for extremely large navigation spaces.
-- It was felt that 54 is a beautiful number that can represent a full space of 2^18 x 2^18 x 2^18 SVO Node.
-Such requirements does not exist in real life. Therefore, the number of bits for layer and node index might change in the future.
+- Original reference: 32 bits (`4 bits layer`, `22 bits node`, `6 bits subnode`)
+- Project `SvoLink64`: 64 bits (`4 bits layer`, `54 bits node`, `6 bits subgrid`)
 
-### Sparse voxel octree structure
+This keeps the implementation practical for large scenes and convenient in GDScript.
 
-Daniel Brewer's approach structures data into layers of SVO Nodes. 
-Each node contains all relevant information to it (morton code, link to parents, link to neighbors,...).
-Since GDScript does not support `struct` like C++, implementing SVO Node means it has to extends Object (or RefCounted/Resource).
-Such implementation in GDScript faces a few drawbacks:
+### Packed-array SVO storage instead of per-node objects
 
-+ Billions of separate SVONode memory allocations would terribly fragments physical memory. 
+Rather than storing each node as a separate object, this project stores SVO attributes in parallel packed arrays.
+This design is easier to serialize in Godot resources and avoids the allocation overhead of huge object graphs.
 
-+ Memory access takes 1 extra pointer jump (for a total of 3).
+Main trade-offs:
 
-+ Redundant memory usage (inherited attributes from Object).
-
-+ Sparse Voxel Octree cannot be serialized into Resource in a simple manner.
-
-Drawbacks in general include:
-
-+ SVO Node in the leaf layer has no children, only voxels. 
-As such, 1 int64 (SVO Link to first child) of the most crowded layer is wasted for storing nothing.
-With 64-bit SVOLink, this attribute can be used to store subgrid mask instead, 
-but it makes logic hard to read and maintain.
-
-After 2 overhauls, I have found the most simple data structure to work with GDScript:
-
-![Compare old - new data structure](imgs/data_structure_old_compare_new.png "Compare old - new data structure")
-
-Instead of packing all data into 1 big tree, each attribute of SVO Node splits into its own tree.
-Each tree is an Array[PackedArray]. The advantages of this approach are:
-
-+ Little redundant memory usage. There's only little extra overhead in arrays management.
-
-+ Memory allocations are contiguous, can be easily pre-allocated.
-
-+ Memory access takes only 2 pointer jumps.
-
-+ Sparse Voxel Octree can be simply serialized, because PackedArray supports serialization.
-
-+ Use only as much memory as needed. 
-Things like coverage percentage (implemented in the future) can be turned on and off depending on the need of the game.
-
-The disadvantages are:
-
-+ Accessing data of a single node takes extra time, as its attributes are spread all over the places.
+- Better serialization and memory locality
+- Less object overhead
+- Faster bulk allocation
+- More indirect access when inspecting all attributes of one logical node

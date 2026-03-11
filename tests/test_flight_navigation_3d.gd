@@ -99,6 +99,44 @@ func test_find_path_smoke_converts_query_positions_and_result_links() -> void:
 	_assert_vector3_almost_eq(result[1], to_position, "Path destination should match query center")
 
 
+func test_find_path_returns_empty_when_start_voxel_is_solid() -> void:
+	var blocked_subgrid := Vector3i(0, 1, 2)
+	var destination_subgrid := Vector3i(3, 2, 1)
+	var blocked_link: int = _create_leaf_link(blocked_subgrid)
+	var destination_link: int = _create_leaf_link(destination_subgrid)
+	var pathfinder: RecordingPathfinder = RecordingPathfinder.new([blocked_link, destination_link])
+	_navigation.sparse_voxel_octree = _create_single_leaf_svo([blocked_subgrid])
+	_navigation.pathfinder = pathfinder
+
+	var result: PackedVector3Array = _navigation.find_path(
+		_navigation.get_global_position_of(blocked_link),
+		_navigation.get_global_position_of(destination_link)
+	)
+
+	assert_true(result.is_empty())
+	assert_eq(pathfinder.last_from, SvoLink64.singleton.null_link())
+	assert_eq(pathfinder.last_to, SvoLink64.singleton.null_link())
+
+
+func test_find_path_returns_empty_when_goal_voxel_is_solid() -> void:
+	var start_subgrid := Vector3i(0, 1, 2)
+	var blocked_subgrid := Vector3i(3, 2, 1)
+	var start_link: int = _create_leaf_link(start_subgrid)
+	var blocked_link: int = _create_leaf_link(blocked_subgrid)
+	var pathfinder: RecordingPathfinder = RecordingPathfinder.new([start_link, blocked_link])
+	_navigation.sparse_voxel_octree = _create_single_leaf_svo([blocked_subgrid])
+	_navigation.pathfinder = pathfinder
+
+	var result: PackedVector3Array = _navigation.find_path(
+		_navigation.get_global_position_of(start_link),
+		_navigation.get_global_position_of(blocked_link)
+	)
+
+	assert_true(result.is_empty())
+	assert_eq(pathfinder.last_from, SvoLink64.singleton.null_link())
+	assert_eq(pathfinder.last_to, SvoLink64.singleton.null_link())
+
+
 func test_layer_zero_centers_round_trip_through_global_conversion() -> void:
 	_navigation.sparse_voxel_octree = _create_single_leaf_svo()
 	var subgrid_positions: Array[Vector3i] = [
@@ -126,7 +164,7 @@ func test_layer_zero_centers_round_trip_through_global_conversion() -> void:
 		)
 
 
-func _create_single_leaf_svo() -> SVO:
+func _create_single_leaf_svo(solid_subgrids: Array[Vector3i] = []) -> SVO:
 	var svo: SVO = SVO.new()
 	svo.set_layer_count(1)
 	svo.set_node_count_in_layer(0, 1)
@@ -134,7 +172,10 @@ func _create_single_leaf_svo() -> SVO:
 	svo.set_first_child(0, 0, SvoLink64.singleton.null_link())
 	svo.set_parent(0, 0, SvoLink64.singleton.null_link())
 	svo.subgrid.resize(1)
-	svo.subgrid[0] = 0
+	var solid_bitmask: int = 0
+	for subgrid_position in solid_subgrids:
+		solid_bitmask |= 1 << Morton3.encode64v(subgrid_position)
+	svo.subgrid[0] = solid_bitmask
 	return svo
 
 

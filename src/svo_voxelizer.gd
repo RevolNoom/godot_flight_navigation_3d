@@ -2198,9 +2198,9 @@ static func _parallel_yz_plane_rasterization_f32(
 			voxel_center_yz[1] = (voxel_z+0.5) * voxel_size_yz[1]
 			
 			var triangle_overlap_voxel_center =\
-				(n_yz_e0.dot(voxel_center_yz) + d_yz_e0 + f_yz_e0 > 0)\
-				and (n_yz_e1.dot(voxel_center_yz) + d_yz_e1 + f_yz_e1 > 0)\
-				and (n_yz_e2.dot(voxel_center_yz) + d_yz_e2 + f_yz_e2 > 0)
+				(n_yz_e0.dot(voxel_center_yz) + d_yz_e0 + f_yz_e0 + solid_voxelization_float_error_margin > 0)\
+				and (n_yz_e1.dot(voxel_center_yz) + d_yz_e1 + f_yz_e1 + solid_voxelization_float_error_margin > 0)\
+				and (n_yz_e2.dot(voxel_center_yz) + d_yz_e2 + f_yz_e2 + solid_voxelization_float_error_margin > 0)
 			
 			if not triangle_overlap_voxel_center:
 				continue

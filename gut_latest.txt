@@ -1,0 +1,98 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+---  GUT  ---
+[1m[INFO]:  [0musing [/home/rev/snap/code/219/.local/share/godot/app_userdata/FlightNavigation3D] for temporary output.
+Godot version:  4.5.0
+GUT version:  9.5.0
+[4m
+
+res://tests/test_flight_navigation_3d.gd
+[0m* test_build_navigation_assigns_result_from_single_voxelizer_child
+* test_find_path_returns_empty_when_sparse_voxel_octree_is_missing
+FlightNavigation3D.find_path(): sparse_voxel_octree is null.
+* test_find_path_returns_empty_when_pathfinder_is_missing
+FlightNavigation3D.find_path(): pathfinder is null.
+* test_find_path_smoke_converts_query_positions_and_result_links
+* test_find_path_returns_empty_when_start_voxel_is_solid
+* test_find_path_returns_empty_when_goal_voxel_is_solid
+* test_layer_zero_centers_round_trip_through_global_conversion
+[33m[WARNING]:  [0mTest script has 8 unfreed children.  Increase log level for more details.
+[1m7/7 passed.
+[0m[4m
+
+res://tests/test_flight_pathfinder.gd
+[0m* test_find_path_dispatches_to_overridden_implementation
+* test_default_compute_and_estimate_cost_use_euclidean_distance_between_centers
+* test_compute_size_compensation_factor_matches_formula_and_favors_larger_nodes
+* test_distance_helpers_match_expected_metrics
+* test_get_centers_and_closest_faces_fallback_return_node_centers
+WARNING: FlightPathfinder.get_closest_faces() is not implemented yet; falling back to centers.
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] get_closest_faces (res://src/flight_pathfinder.gd:90)
+         [1] test_get_centers_and_closest_faces_fallback_return_node_centers (res://tests/test_flight_pathfinder.gd:82)
+         [2] _run_test (res://addons/gut/gut.gd:612)
+         [3] _test_the_scripts (res://addons/gut/gut.gd:815)
+         [4] test_scripts (res://addons/gut/gut.gd:1027)
+         [5] run_tests (res://addons/gut/gui/GutRunner.gd:194)
+         [6] _run_tests (res://addons/gut/cli/gut_cli.gd:238)
+         [7] main (res://addons/gut/cli/gut_cli.gd:284)
+         [8] _init (res://addons/gut/gut_cmdln.gd:39)
+[34m[ExpectedError][0mExpected engine error containing 'not implemented yet'.  
+[1m5/5 passed.
+[0m[4m
+
+res://tests/test_greedy_a_star.gd
+[0m* test_endpoints_rejects_face_centers_and_normalizes_to_voxel_centers
+* test_distance_function_normalizes_invalid_values_and_keeps_supported_ones
+[1m2/2 passed.
+[0m[4m
+
+res://tests/test_svo.gd
+[0m* test_get_svolink_from_node_morton_returns_link_and_null_for_missing_nodes
+* test_get_svolink_from_voxel_morton_returns_parent_offset_and_requested_subgrid
+* test_get_center_and_get_node_center_use_correct_resolution_for_voxels_and_nodes
+* test_get_voxels_and_nodes_on_face_for_leaf_returns_face_voxels
+* test_get_voxels_and_nodes_on_face_returns_node_when_branch_has_no_children
+* test_get_voxels_and_nodes_on_face_recurses_into_children_on_requested_face
+* test_get_neighbors_of_leaf_voxel_returns_adjacent_voxels_within_same_parent
+* test_get_neighbors_of_leaf_voxel_crosses_to_neighbor_node_at_subgrid_boundary
+* test_get_offsets_of_head_nodes_in_x_direction_treats_missing_and_coarser_neighbors_as_heads
+* test_get_solid_bit_counts_by_subgrid_counts_bits_for_each_layer_zero_node
+* test_is_solid_supports_voxel_queries_node_queries_and_branch_nodes
+* test_deep_compare_requires_identical_structure_and_content
+[1m12/12 passed.
+[0m[4m
+
+res://tests/test_triangle_box_overlap_check.gd
+[0m* test_interface_overlap_voxel_requires_every_projection_to_pass
+* test_direct_overlap_implementations_agree_on_overlapping_and_separated_voxels
+* test_plane_projection_helpers_return_points_on_shared_plane_for_both_precisions
+* test_factories_create_expected_checker_types_with_observable_equivalent_behavior
+[1m4/4 passed.
+[0m[4m
+
+res://tests/test_svo_voxelizer.gd
+[0m* test_parallel_yz_plane_rasterization_f32_matches_f64_for_boundary_triangle
+[1m1/1 passed.
+[0m
+
+
+
+[33m==============================================
+[0m[33m= Run Summary
+[0m[33m==============================================
+[0m
+Totals
+------
+Warnings              1
+
+Scripts               6
+Tests                31
+Passing Tests        31
+Asserts             234
+Time              0.393s
+
+
+[32m---- All tests passed! ----
+[0m

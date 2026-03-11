@@ -3,7 +3,6 @@ extends FlightPathfinder
 class_name GreedyAStar
 
 enum EndpointMode {
-	FACE_CENTERS,
 	VOXEL_CENTERS,
 }
 
@@ -12,13 +11,15 @@ enum DistanceMode {
 	MANHATTAN,
 }
 
-## [b]TODO:[/b] Support Face Centers in the future.[br]
 ## A Callable that determines which endpoints are used to calculate distance
-## between two voxels/nodes 
-@export_enum("Face Centers", "Voxel Centers") var endpoints: String = "Voxel Centers":
+## between two voxels/nodes.[br]
+##
+## Only Voxel Centers is currently supported. This property stays exported so
+## older resources that serialized Face Centers can safely fall back.
+@export_enum("Voxel Centers") var endpoints: String = "Voxel Centers":
 	set(value):
-		endpoints = value
 		_endpoint_mode = _parse_endpoint_mode(value)
+		endpoints = _stringify_endpoint_mode(_endpoint_mode)
 		_get_endpoints = _resolve_endpoint_callable(_endpoint_mode)
 
 # Signature: func(svolink1, svolink2, svo) -> [Vector3, Vector3].
@@ -30,8 +31,8 @@ var _endpoint_mode: EndpointMode = EndpointMode.VOXEL_CENTERS
 ## And used to calculate adjacent voxels cost, if [member use_unit_cost] is disabled
 @export_enum("Euclidean", "Manhattan") var distance_function: String = "Euclidean":
 	set(value):
-		distance_function = value
 		_distance_mode = _parse_distance_mode(value)
+		distance_function = _stringify_distance_mode(_distance_mode)
 		_get_distance = _resolve_distance_callable(_distance_mode)
 
 # Signature: func(Vector3, Vector3) -> float
@@ -39,9 +40,8 @@ var _get_distance: Callable = FlightPathfinder.euclidean
 var _distance_mode: DistanceMode = DistanceMode.EUCLIDEAN
 
 
-## Bias weight. The higher it is, the more A* is biased toward estimation,
-## prefers exploring nodes it thinks are closer to the goal
-## BUG: Setting w=2 makes the game freeze
+## Bias weight. The higher it is, the more A* is biased toward estimation
+## and prefers exploring nodes it thinks are closer to the goal.
 @export var w: float = 1.0
 
 ## The bigger the node, the less it costs to move through it.[br]
@@ -52,7 +52,6 @@ var _distance_mode: DistanceMode = DistanceMode.EUCLIDEAN
 
 ## If true, the cost between two voxels is [member unit_cost] no matter their sizes.
 ## Otherwise, use [member distance_function] to calculate.
-## TODO: Actually make it works
 @export var use_unit_cost: bool = true
 
 ## Unit cost used when [member use_unit_cost] is true.
@@ -188,19 +187,15 @@ func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
 
 
 func _parse_endpoint_mode(value: String) -> EndpointMode:
-	match value:
-		"Face Centers":
-			return EndpointMode.FACE_CENTERS
-		_:
-			return EndpointMode.VOXEL_CENTERS
+	return EndpointMode.VOXEL_CENTERS
+
+
+func _stringify_endpoint_mode(_mode: EndpointMode) -> String:
+	return "Voxel Centers"
 
 
 func _resolve_endpoint_callable(mode: EndpointMode) -> Callable:
 	match mode:
-		EndpointMode.FACE_CENTERS:
-			# TODO path in FlightPathfinder.get_closest_faces() is intentionally
-			# gated there and falls back to get_centers() safely.
-			return FlightPathfinder.get_closest_faces
 		EndpointMode.VOXEL_CENTERS:
 			return FlightPathfinder.get_centers
 		_:
@@ -213,6 +208,16 @@ func _parse_distance_mode(value: String) -> DistanceMode:
 			return DistanceMode.MANHATTAN
 		_:
 			return DistanceMode.EUCLIDEAN
+
+
+func _stringify_distance_mode(mode: DistanceMode) -> String:
+	match mode:
+		DistanceMode.MANHATTAN:
+			return "Manhattan"
+		DistanceMode.EUCLIDEAN:
+			return "Euclidean"
+		_:
+			return "Euclidean"
 
 
 func _resolve_distance_callable(mode: DistanceMode) -> Callable:

@@ -25,6 +25,9 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	if from_svolink == SvoLink64.singleton.null_link() \
 		or to_svolink == SvoLink64.singleton.null_link():
 		return []
+	if sparse_voxel_octree.is_solid(from_svolink) \
+		or sparse_voxel_octree.is_solid(to_svolink):
+		return []
 
 	var svolink_path: PackedInt64Array = pathfinder.find_path(
 		from_svolink,
