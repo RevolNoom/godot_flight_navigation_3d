@@ -2,8 +2,6 @@ extends GutTest
 
 
 const EDGE_EPSILON: float = 0.00001
-
-
 func test_parallel_yz_plane_rasterization_f32_matches_f64_for_boundary_triangle() -> void:
 	var triangles := PackedVector3Array([
 		Vector3(0.0, 0.0, 0.0),
