@@ -94,7 +94,6 @@ transform = Transform3D(-0.738699, -0.3229852, 0.5916117, 0.009951619, 0.8723942
 script = ExtResource("2_c6xj6")
 
 [node name="SvoLinkProbe" parent="Camera3D" node_paths=PackedStringArray("flight_navigation") instance=ExtResource("3_gxmxl")]
-probe_distance = 0.4
 flight_navigation = NodePath("../../FlightNavigation3D")
 sphere_radius = 0.005
 
@@ -116,22 +115,41 @@ pathfinder = SubResource("Resource_kem5a")
 
 [node name="SvoVoxelizer" type="Node" parent="FlightNavigation3D"]
 script = ExtResource("7_n4w22")
+layer_count = 4
+debug_delete_csg = false
 
 [node name="SvoVisualizerLink" parent="FlightNavigation3D" instance=ExtResource("8_884kg")]
 visible = false
-svo_nodes = {
+svo_nodes = Dictionary[int, String]({
 0: "Svolink 0
  Layer 0
  offset 0
  subgrid 0
  subgrid vec3 (0, 0, 0)
 "
-}
+})
 
 [node name="SvoVisualizerLayer" parent="FlightNavigation3D" instance=ExtResource("9_gdsc3")]
+layer_enabled_by_index = Dictionary[int, bool]({
+0: false,
+1: true,
+2: true,
+3: true,
+4: true,
+5: true,
+6: true,
+7: true,
+8: true,
+9: true,
+10: true,
+11: true,
+12: true,
+13: true,
+14: true,
+15: true
+})
 
 [node name="SvoVisualizerSubgrid" parent="FlightNavigation3D" instance=ExtResource("10_svejp")]
-visible = false
 
 [node name="VoxelizationTargets" type="Node3D" parent="."]
 

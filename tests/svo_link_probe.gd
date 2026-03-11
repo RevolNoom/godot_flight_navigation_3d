@@ -13,6 +13,15 @@ class_name SVOLinkProbe
 		probe_distance = value
 		_update_probe_position()
 
+## Keyboard binding to increase probe distance.
+@export var increase_probe_distance_key: Key = KEY_Z
+
+## Keyboard binding to decrease probe distance.
+@export var decrease_probe_distance_key: Key = KEY_X
+
+## Step applied when adjusting probe distance from the keyboard.
+@export_range(0.001, 100.0, 0.001, "or_greater") var probe_distance_step: float = 0.1
+
 ## Reference to the FlightNavigation3D to query
 @export var flight_navigation: FlightNavigation3D:
 	set(value):
@@ -41,17 +50,16 @@ class_name SVOLinkProbe
 
 # Internal nodes
 var _camera: Camera3D
-var _sphere_mesh: MeshInstance3D
+@onready var _sphere_mesh: MeshInstance3D = $SphereMesh
 var _box_mesh: MeshInstance3D
-var _label_3d: Label3D
+@onready var _label_3d: Label3D = $Label3D
 var _current_svolink: int = SvoLink64.singleton.null_link()
 var _mouse_position: Vector2 = Vector2.ZERO
 var _is_mouse_pressed: bool = false
 
 func _ready() -> void:
 	
-	# Create sphere mesh for probe visualization
-	_sphere_mesh = MeshInstance3D.new()
+	# Configure scene-instantiated sphere mesh for probe visualization
 	var sphere: SphereMesh = SphereMesh.new()
 	sphere.radius = sphere_radius
 	sphere.height = sphere_radius * 2
@@ -63,7 +71,6 @@ func _ready() -> void:
 	material.albedo_color.a = 0.7
 	_sphere_mesh.material_override = material
 	_sphere_mesh.visible = show_probe
-	add_child(_sphere_mesh)
 	
 	# Create box mesh for voxel visualization
 	_box_mesh = MeshInstance3D.new()
@@ -79,8 +86,7 @@ func _ready() -> void:
 	_box_mesh.visible = false
 	add_child(_box_mesh)
 	
-	# Create 3D label for displaying SVOLink
-	_label_3d = Label3D.new()
+	# Configure scene-instantiated 3D label for displaying SVOLink
 	_label_3d.text = ""
 	_label_3d.font_size = label_font_size
 	_label_3d.modulate = Color.WHITE
@@ -89,7 +95,6 @@ func _ready() -> void:
 	_label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label_3d.visible = false
 	_label_3d.pixel_size = 0.001
-	add_child(_label_3d)
 
 	# Get parent camera
 	_camera = get_parent() as Camera3D
@@ -97,11 +102,13 @@ func _ready() -> void:
 		push_error("SVOLinkProbe must be a child of Camera3D")
 		set_process(false)
 		set_process_input(false)
+		set_process_unhandled_input(false)
 		return
 
 	if OS.has_feature("headless"):
 		set_process(false)
 		set_process_input(false)
+		set_process_unhandled_input(false)
 
 
 func _get_configuration_warnings() -> PackedStringArray:
@@ -134,6 +141,17 @@ func _input(event: InputEvent) -> void:
 			else:
 				_is_mouse_pressed = false
 				_label_3d.visible = false
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint() or not _camera:
+		return
+
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == increase_probe_distance_key:
+			probe_distance = maxf(0.0, probe_distance + probe_distance_step)
+		elif event.keycode == decrease_probe_distance_key:
+			probe_distance = maxf(0.0, probe_distance - probe_distance_step)
 
 
 func _process(_delta: float) -> void:
@@ -233,12 +251,10 @@ func _update_box_visualization() -> void:
 	var layer = SvoLink64.singleton.get_layer(_current_svolink)
 	var svo = flight_navigation.sparse_voxel_octree
 	var box_size: Vector3
-	_label_3d.visible = true
 	if layer == 0:
 		box_size = FlightNavigation3D.calculate_node_size(flight_navigation.size, -2, svo.depth)
 	else:
 		box_size = FlightNavigation3D.calculate_node_size(flight_navigation.size, layer, svo.depth)
-	_label_3d.text = str(box_size)
 	
 	# Get the center position of the voxel/node
 	var center_position: Vector3 = flight_navigation.get_global_position_of(_current_svolink)
