@@ -110,8 +110,7 @@ func _run() -> void:
 			voxel_size,
 			Fn3dLookupTable.x_column_flip_bitmask_by_subgrid_index,
 			flight_navigation.size,
-			voxelizer.solid_voxelization_top_left_edge_epsilon,
-			voxelizer.solid_voxelization_float_error_margin
+			voxelizer.solid_voxelization_top_left_edge_epsilon
 		)
 		var event := _capture_mask_delta_event(
 			triangle_index,

@@ -117,8 +117,7 @@ func _run() -> void:
 					voxel_size,
 					Fn3dLookupTable.x_column_flip_bitmask_by_subgrid_index,
 					flight_navigation.size,
-					voxelizer.solid_voxelization_top_left_edge_epsilon,
-					voxelizer.solid_voxelization_float_error_margin
+					voxelizer.solid_voxelization_top_left_edge_epsilon
 				)
 			else:
 				SvoVoxelizer._parallel_yz_plane_rasterization_f32(
@@ -128,8 +127,7 @@ func _run() -> void:
 					voxel_size,
 					Fn3dLookupTable.x_column_flip_bitmask_by_subgrid_index,
 					flight_navigation.size,
-					voxelizer.solid_voxelization_top_left_edge_epsilon,
-					voxelizer.solid_voxelization_float_error_margin
+					voxelizer.solid_voxelization_top_left_edge_epsilon
 				)
 
 		var rasterization_target_report := _build_target_bit_report(

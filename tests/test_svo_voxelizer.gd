@@ -23,7 +23,6 @@ func test_parallel_yz_plane_rasterization_f32_matches_f64_for_boundary_triangle(
 		Vector3.ONE,
 		flip_masks,
 		Vector3(4.0, 4.0, 4.0),
-		EDGE_EPSILON,
 		EDGE_EPSILON
 	)
 	SvoVoxelizer._parallel_yz_plane_rasterization_f64(
@@ -33,14 +32,132 @@ func test_parallel_yz_plane_rasterization_f32_matches_f64_for_boundary_triangle(
 		Vector3.ONE,
 		flip_masks,
 		Vector3(4.0, 4.0, 4.0),
-		EDGE_EPSILON,
 		EDGE_EPSILON
 	)
 
-	var expected_subgrid_bit: int = 1 << Morton3.encode64(1, 0, 0)
-	assert_eq(svo_f32.subgrid[0], expected_subgrid_bit)
-	assert_eq(svo_f64.subgrid[0], expected_subgrid_bit)
+	assert_eq(svo_f32.subgrid[0], 0)
+	assert_eq(svo_f64.subgrid[0], 0)
 	assert_eq(svo_f32.subgrid, svo_f64.subgrid)
+
+
+func test_parallel_yz_plane_rasterization_applies_top_left_tie_break_once_for_shared_diagonal() -> void:
+	var triangles := PackedVector3Array([
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(1.0, 1.0, 0.0),
+		Vector3(1.0, 0.0, 1.0),
+		Vector3(2.0, 1.0, 1.0),
+		Vector3(1.0, 0.0, 1.0),
+		Vector3(1.0, 1.0, 0.0),
+	])
+	var expected_subgrid_bit: int = 1 << Morton3.encode64(1, 0, 0)
+
+	var f32_single_bits := _rasterize_triangle_pair_bits_f32(triangles)
+	assert_eq(f32_single_bits[0] | f32_single_bits[1], expected_subgrid_bit)
+	assert_eq(f32_single_bits[2], expected_subgrid_bit)
+
+	var f64_single_bits := _rasterize_triangle_pair_bits_f64(triangles)
+	assert_eq(f64_single_bits[0] | f64_single_bits[1], expected_subgrid_bit)
+	assert_eq(f64_single_bits[2], expected_subgrid_bit)
+
+
+func _rasterize_triangle_pair_bits_f32(triangles: PackedVector3Array) -> Array[int]:
+	var first := _create_single_leaf_svo()
+	var second := _create_single_leaf_svo()
+	var pair := _create_single_leaf_svo()
+	var flip_masks := _create_identity_flip_masks()
+
+	SvoVoxelizer._parallel_yz_plane_rasterization_f32(
+		0,
+		first,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+	SvoVoxelizer._parallel_yz_plane_rasterization_f32(
+		1,
+		second,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+	SvoVoxelizer._parallel_yz_plane_rasterization_f32(
+		0,
+		pair,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+	SvoVoxelizer._parallel_yz_plane_rasterization_f32(
+		1,
+		pair,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+
+	return [first.subgrid[0], second.subgrid[0], pair.subgrid[0]]
+
+
+func _rasterize_triangle_pair_bits_f64(triangles: PackedVector3Array) -> Array[int]:
+	var first := _create_single_leaf_svo()
+	var second := _create_single_leaf_svo()
+	var pair := _create_single_leaf_svo()
+	var flip_masks := _create_identity_flip_masks()
+
+	SvoVoxelizer._parallel_yz_plane_rasterization_f64(
+		0,
+		first,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+	SvoVoxelizer._parallel_yz_plane_rasterization_f64(
+		1,
+		second,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+	SvoVoxelizer._parallel_yz_plane_rasterization_f64(
+		0,
+		pair,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+	SvoVoxelizer._parallel_yz_plane_rasterization_f64(
+		1,
+		pair,
+		triangles,
+		Vector3.ONE,
+		flip_masks,
+		Vector3(4.0, 4.0, 4.0),
+		EDGE_EPSILON
+	)
+
+	return [first.subgrid[0], second.subgrid[0], pair.subgrid[0]]
+
+
+func _create_identity_flip_masks() -> PackedInt64Array:
+	var flip_masks := PackedInt64Array()
+	flip_masks.resize(64)
+	for subgrid_index in range(64):
+		flip_masks[subgrid_index] = 1 << subgrid_index
+	return flip_masks
 
 
 func _create_single_leaf_svo() -> SVO:

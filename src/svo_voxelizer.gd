@@ -33,8 +33,6 @@ func _voxelize_from_fn3d_logic(fn3d: FlightNavigation3D) -> SVO:
 		solid_voxelization_calculate_coverage_factor
 	var cfg_solid_voxelization_top_left_edge_epsilon: float = \
 		solid_voxelization_top_left_edge_epsilon
-	var cfg_solid_voxelization_float_error_margin: float = \
-		solid_voxelization_float_error_margin
 
 	# Surface Voxelization
 	var cfg_surface_voxelization_enabled: bool = surface_voxelization_enabled
@@ -134,7 +132,6 @@ func _voxelize_from_fn3d_logic(fn3d: FlightNavigation3D) -> SVO:
 			flight_navigation_size,
 			cfg_support_float64,
 			cfg_solid_voxelization_top_left_edge_epsilon,
-			cfg_solid_voxelization_float_error_margin,
 			cfg_debug_delete_flip_flag,
 			cfg_multi_threading_enabled,
 			cfg_multi_threading_priority,
@@ -651,7 +648,6 @@ func _run_solid_voxelization(
 	flight_navigation_size: Vector3,
 	support_float64: bool,
 	solid_voxelization_top_left_edge_epsilon: float,
-	solid_voxelization_float_error_margin: float,
 	debug_delete_flip_flag: bool,
 	multi_threading_enabled: bool,
 	multi_threading_priority: Thread.Priority,
@@ -684,8 +680,7 @@ func _run_solid_voxelization(
 				voxel_size,
 				x_column_flip_bitmask_by_subgrid_index,
 				flight_navigation_size,
-				solid_voxelization_top_left_edge_epsilon,
-				solid_voxelization_float_error_margin
+				solid_voxelization_top_left_edge_epsilon
 				))
 	else:
 		for i in range(triangles.size()/3):
@@ -696,8 +691,7 @@ func _run_solid_voxelization(
 				voxel_size,
 				x_column_flip_bitmask_by_subgrid_index,
 				flight_navigation_size,
-				solid_voxelization_top_left_edge_epsilon,
-				solid_voxelization_float_error_margin
+				solid_voxelization_top_left_edge_epsilon
 				)
 
 	progress.emit(
@@ -1938,8 +1932,7 @@ static func _parallel_yz_plane_rasterization_f64(
 	voxel_size: Vector3,
 	x_column_flip_bitmask_by_subgrid_index: PackedInt64Array,
 	flight_navigation_size: Vector3,
-	solid_voxelization_top_left_edge_epsilon: float,
-	solid_voxelization_float_error_margin: float
+	solid_voxelization_top_left_edge_epsilon: float
 	):
 	var triangle_start_idx: int = triangle_index * 3
 	
@@ -2000,9 +1993,9 @@ static func _parallel_yz_plane_rasterization_f64(
 	var is_left_edge_e1: bool = n_yz_e1[0] > 0
 	var is_left_edge_e2: bool = n_yz_e2[0] > 0
 
-	var is_top_edge_e0: bool = absf(n_yz_e0[0]) < solid_voxelization_float_error_margin and n_yz_e0[1] < 0
-	var is_top_edge_e1: bool = absf(n_yz_e1[0]) < solid_voxelization_float_error_margin and n_yz_e1[1] < 0
-	var is_top_edge_e2: bool = absf(n_yz_e2[0]) < solid_voxelization_float_error_margin and n_yz_e2[1] < 0
+	var is_top_edge_e0: bool = n_yz_e0[0] == 0.0 and n_yz_e0[1] < 0
+	var is_top_edge_e1: bool = n_yz_e1[0] == 0.0 and n_yz_e1[1] < 0
+	var is_top_edge_e2: bool = n_yz_e2[0] == 0.0 and n_yz_e2[1] < 0
 
 	var f_yz_e0: float = 0
 	var f_yz_e1: float = 0
@@ -2043,11 +2036,14 @@ static func _parallel_yz_plane_rasterization_f64(
 			#var t0 = Dvector.dot(n_yz_e0, voxel_center_yz) + d_yz_e0 + f_yz_e0
 			#var t1 = Dvector.dot(n_yz_e1, voxel_center_yz) + d_yz_e1 + f_yz_e1
 			#var t2 = Dvector.dot(n_yz_e2, voxel_center_yz) + d_yz_e2 + f_yz_e2
+			var edge_value_e0: float = Dvector.dot(n_yz_e0, voxel_center_yz) + d_yz_e0 + f_yz_e0
+			var edge_value_e1: float = Dvector.dot(n_yz_e1, voxel_center_yz) + d_yz_e1 + f_yz_e1
+			var edge_value_e2: float = Dvector.dot(n_yz_e2, voxel_center_yz) + d_yz_e2 + f_yz_e2
 			
 			var triangle_overlap_voxel_center =\
-				(Dvector.dot(n_yz_e0, voxel_center_yz) + d_yz_e0 + f_yz_e0 + solid_voxelization_float_error_margin > 0)\
-				and (Dvector.dot(n_yz_e1, voxel_center_yz) + d_yz_e1 + f_yz_e1 + solid_voxelization_float_error_margin > 0)\
-				and (Dvector.dot(n_yz_e2, voxel_center_yz) + d_yz_e2 + f_yz_e2 + solid_voxelization_float_error_margin > 0)
+				edge_value_e0 > 0.0\
+				and edge_value_e1 > 0.0\
+				and edge_value_e2 > 0.0
 					
 			var rect2: Rect2 = Rect2()
 			rect2.position = Vector2(voxel_y * voxel_size_yz[0], voxel_z * voxel_size_yz[1])
@@ -2101,8 +2097,7 @@ static func _parallel_yz_plane_rasterization_f32(
 	voxel_size: Vector3,
 	x_column_flip_bitmask_by_subgrid_index: PackedInt64Array,
 	flight_navigation_size: Vector3,
-	solid_voxelization_top_left_edge_epsilon: float,
-	solid_voxelization_float_error_margin: float):
+	solid_voxelization_top_left_edge_epsilon: float):
 	var triangle_start_idx: int = triangle_index * 3
 	
 	var voxel_size_yz: Vector2 = Vector2(voxel_size[1], voxel_size[2])
@@ -2157,9 +2152,9 @@ static func _parallel_yz_plane_rasterization_f32(
 	var is_left_edge_e1: bool = n_yz_e1[0] > 0
 	var is_left_edge_e2: bool = n_yz_e2[0] > 0
 
-	var is_top_edge_e0: bool = absf(n_yz_e0[0]) < solid_voxelization_float_error_margin and n_yz_e0[1] < 0
-	var is_top_edge_e1: bool = absf(n_yz_e1[0]) < solid_voxelization_float_error_margin and n_yz_e1[1] < 0
-	var is_top_edge_e2: bool = absf(n_yz_e2[0]) < solid_voxelization_float_error_margin and n_yz_e2[1] < 0
+	var is_top_edge_e0: bool = n_yz_e0[0] == 0.0 and n_yz_e0[1] < 0
+	var is_top_edge_e1: bool = n_yz_e1[0] == 0.0 and n_yz_e1[1] < 0
+	var is_top_edge_e2: bool = n_yz_e2[0] == 0.0 and n_yz_e2[1] < 0
 
 	var f_yz_e0: float = 0
 	var f_yz_e1: float = 0
@@ -2196,11 +2191,14 @@ static func _parallel_yz_plane_rasterization_f32(
 		voxel_center_yz[0] = (voxel_y+0.5) * voxel_size_yz[0]
 		for voxel_z in range(rect2i.position[1], rect2i.end[1]):
 			voxel_center_yz[1] = (voxel_z+0.5) * voxel_size_yz[1]
+			var edge_value_e0: float = n_yz_e0.dot(voxel_center_yz) + d_yz_e0 + f_yz_e0
+			var edge_value_e1: float = n_yz_e1.dot(voxel_center_yz) + d_yz_e1 + f_yz_e1
+			var edge_value_e2: float = n_yz_e2.dot(voxel_center_yz) + d_yz_e2 + f_yz_e2
 			
 			var triangle_overlap_voxel_center =\
-				(n_yz_e0.dot(voxel_center_yz) + d_yz_e0 + f_yz_e0 + solid_voxelization_float_error_margin > 0)\
-				and (n_yz_e1.dot(voxel_center_yz) + d_yz_e1 + f_yz_e1 + solid_voxelization_float_error_margin > 0)\
-				and (n_yz_e2.dot(voxel_center_yz) + d_yz_e2 + f_yz_e2 + solid_voxelization_float_error_margin > 0)
+				edge_value_e0 > 0.0\
+				and edge_value_e1 > 0.0\
+				and edge_value_e2 > 0.0
 			
 			if not triangle_overlap_voxel_center:
 				continue

@@ -115,7 +115,6 @@ pathfinder = SubResource("Resource_kem5a")
 
 [node name="SvoVoxelizer" type="Node" parent="FlightNavigation3D"]
 script = ExtResource("7_n4w22")
-layer_count = 4
 debug_delete_csg = false
 
 [node name="SvoVisualizerLink" parent="FlightNavigation3D" instance=ExtResource("8_884kg")]
