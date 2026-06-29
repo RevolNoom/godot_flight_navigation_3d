@@ -157,6 +157,10 @@ static func execute(
 			if WorkerThreadPool.is_task_completed(task_id):
 				WorkerThreadPool.wait_for_task_completion(task_id)
 				break
+			
+			if not _is_async_context_valid(async_context):
+				printerr("Async context for parallel processing is invalid. Stopping execution", get_stack())
+				break
 			await async_context
 
 
@@ -202,7 +206,17 @@ static func execute_batched(
 			if WorkerThreadPool.is_task_completed(task_id):
 				WorkerThreadPool.wait_for_task_completion(task_id)
 				break
+			
+			if not _is_async_context_valid(async_context):
+				break
 			await async_context
+
+
+## Make sure the asynchronous context is valid,
+## so that parallel functions are not await-ing forever.
+static func _is_async_context_valid(async_context: Signal) -> bool:
+	return is_instance_id_valid(async_context.get_object_id()) 
+
 
 static func _parallel_for(task: Callable, start: int, end: int):
 	for i in range(start, end):

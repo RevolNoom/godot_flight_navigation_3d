@@ -10,10 +10,6 @@ func voxelize(fn3d: FlightNavigation3D) -> SVO:
 		printerr("SvoVoxelizer.voxelize(): fn3d is null.")
 		return null
 
-	var result: SVO = await _voxelize_from_fn3d_logic(fn3d)
-	return result
-
-func _voxelize_from_fn3d_logic(fn3d: FlightNavigation3D) -> SVO:
 	#region Copy variables to make voxelize() reentrant
 	# Multi-threading
 	var cfg_multi_threading_enabled: bool = multi_threading_enabled
@@ -2252,9 +2248,10 @@ static func _parallel_propagate_bit_flip(
 		if neighbor_svolink == SvoLink64.singleton.null_link():
 			break
 		var neighbor_layer = SvoLink64.singleton.get_layer(neighbor_svolink)
+		# Stop bit propagation when reaching a coarser layer
 		if neighbor_layer != 0:
 			break
-		
+
 		var flip_buffer: int = 0
 		for subgrid_index in subgrid_voxel_indexes_on_face_direction:
 			var last_bit_in_the_column_is_solid = \

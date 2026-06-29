@@ -1,0 +1,34 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+LEAF CHAIN DETAILS
+TARGET3811chain=[466, 467, 474, 475, 3610, 3611, 3618, 3619, 3674, 3675, 3682, 3683, 3810, 3811]
+ node466parent=110xn=2305843009213695872xp=29888masked_xp=0
+ node467parent=110xn=29824xp=30336masked_xp=0
+ node474parent=111xn=29888xp=30400masked_xp=0
+ node475parent=111xn=30336xp=231040masked_xp=0
+ node3610parent=870xn=30400xp=231104masked_xp=2305994741818327040
+ node3611parent=870xn=231040xp=231552masked_xp=-9079256848778911744
+ node3618parent=871xn=231104xp=231616masked_xp=32768
+ node3619parent=871xn=231552xp=235136masked_xp=0
+ node3674parent=878xn=231616xp=235200masked_xp=-9079256848778878976
+ node3675parent=878xn=235136xp=235648masked_xp=2305994741818327040
+ node3682parent=879xn=235200xp=235712masked_xp=35184372088832
+ node3683parent=879xn=235648xp=243840masked_xp=0
+ node3810parent=910xn=235712xp=243904masked_xp=0
+ node3811parent=910xn=243840xp=1152921504606905280masked_xp=0
+TARGET4811chain=[4802, 4803, 4810, 4811]
+ node4802parent=1162xn=1152921504606917824xp=307392masked_xp=0
+ node4803parent=1162xn=307328xp=307840masked_xp=-6917353105780637696
+ node4810parent=1163xn=307392xp=307904masked_xp=720586938347727360
+ node4811parent=1163xn=307840xp=2305843009213710400masked_xp=0
+TARGET4841chain=[4832, 4833, 4840, 4841]
+ node4832parent=1168xn=1152921504606918720xp=309312masked_xp=0
+ node4833parent=1168xn=309248xp=309760masked_xp=-6196909106796691456
+ node4840parent=1169xn=309312xp=309824masked_xp=2201875425792
+ node4841parent=1169xn=309760xp=2305843009213710528masked_xp=0
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 5 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)
+
+EXIT_CODE:0

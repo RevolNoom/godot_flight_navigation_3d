@@ -1,0 +1,36 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+---  GUT  ---
+[1m[INFO]:  [0musing [/home/rev/snap/code/219/.local/share/godot/app_userdata/FlightNavigation3D] for temporary output.
+Godot version:  4.5.0
+GUT version:  9.5.0
+[4m
+
+res://tests/test_svo_voxelizer.gd
+[0m* test_parallel_yz_plane_rasterization_f32_matches_f64_for_boundary_triangle
+* test_parallel_yz_plane_rasterization_applies_top_left_tie_break_once_for_shared_diagonal
+* test_parallel_propagate_bit_flip_propagates_across_same_layer_leaf_neighbors
+* test_parallel_propagate_bit_flip_skips_leaf_tail_adjacent_to_coarser_x_neighbor
+* test_demo_reported_solid_propagation_links_remain_free_after_rebuild
+Done
+Path:
+[1m5/5 passed.
+[0m
+
+
+
+[33m==============================================
+[0m[33m= Run Summary
+[0m[33m==============================================
+[0m
+Totals
+------
+Scripts               1
+Tests                 5
+Passing Tests         5
+Asserts              17
+Time              4.387s
+
+
+[32m---- All tests passed! ----
+[0m

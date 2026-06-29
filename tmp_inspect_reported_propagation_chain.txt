@@ -1,0 +1,743 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+LAYER1 DETAILS
+TARGET L1_1789_0 chain=[1508, 1509, 1764, 1765, 1772, 1773, 1788, 1789]
+ node 1508 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '6184' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6177 xp_full=true child_end=false xp=395776 xn=395264
+SCRIPT ERROR: Invalid access of index '6186' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6179 xp_full=false child_end=false xp=395904 xn=395392
+SCRIPT ERROR: Invalid access of index '6188' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6181 xp_full=true child_end=false xp=396032 xn=395520
+SCRIPT ERROR: Invalid access of index '6190' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6183 xp_full=false child_end=false xp=396160 xn=395648
+ node 1509 has_children=true end=true
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '1764' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6185 xp_full=true child_end=false xp=1152921504606959872 xn=395776
+SCRIPT ERROR: Invalid access of index '1764' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6187 xp_full=false child_end=false xp=1152921504606959872 xn=395904
+SCRIPT ERROR: Invalid access of index '1764' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6189 xp_full=true child_end=false xp=1152921504606959872 xn=396032
+SCRIPT ERROR: Invalid access of index '1764' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6191 xp_full=false child_end=false xp=1152921504606959872 xn=396160
+ node 1764 has_children=false end=true
+ node 1765 has_children=false end=true
+ node 1772 has_children=false end=false
+ node 1773 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '7264' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7217 xp_full=false child_end=false xp=464896 xn=461824
+SCRIPT ERROR: Invalid access of index '7266' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7219 xp_full=false child_end=false xp=465024 xn=461952
+SCRIPT ERROR: Invalid access of index '7268' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7221 xp_full=false child_end=false xp=465152 xn=462080
+SCRIPT ERROR: Invalid access of index '7270' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7223 xp_full=false child_end=false xp=465280 xn=462208
+ node 1788 has_children=true end=true
+   flip_from_children=1
+SCRIPT ERROR: Invalid access of index '1789' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7265 xp_full=true child_end=false xp=1152921504606961472 xn=464896
+SCRIPT ERROR: Invalid access of index '1789' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7267 xp_full=true child_end=false xp=1152921504606961472 xn=465024
+SCRIPT ERROR: Invalid access of index '1789' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7269 xp_full=true child_end=false xp=1152921504606961472 xn=465152
+SCRIPT ERROR: Invalid access of index '1789' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7271 xp_full=true child_end=false xp=1152921504606961472 xn=465280
+ node 1789 has_children=false end=true
+TARGET L1_1785_0 chain=[1504, 1505, 1760, 1761, 1768, 1769, 1784, 1785]
+ node 1504 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '6160' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6153 xp_full=true child_end=false xp=394240 xn=393728
+SCRIPT ERROR: Invalid access of index '6162' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6155 xp_full=false child_end=false xp=394368 xn=393856
+SCRIPT ERROR: Invalid access of index '6164' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6157 xp_full=true child_end=false xp=394496 xn=393984
+SCRIPT ERROR: Invalid access of index '6166' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6159 xp_full=false child_end=false xp=394624 xn=394112
+ node 1505 has_children=true end=true
+   flip_from_children=1
+SCRIPT ERROR: Invalid access of index '1760' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6161 xp_full=true child_end=false xp=1152921504606959616 xn=394240
+SCRIPT ERROR: Invalid access of index '1760' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6163 xp_full=true child_end=false xp=1152921504606959616 xn=394368
+SCRIPT ERROR: Invalid access of index '1760' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6165 xp_full=true child_end=false xp=1152921504606959616 xn=394496
+SCRIPT ERROR: Invalid access of index '1760' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6167 xp_full=true child_end=false xp=1152921504606959616 xn=394624
+ node 1760 has_children=false end=true
+ node 1761 has_children=false end=true
+ node 1768 has_children=false end=false
+ node 1769 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '7256' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7193 xp_full=false child_end=false xp=464384 xn=460288
+SCRIPT ERROR: Invalid access of index '7258' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7195 xp_full=false child_end=false xp=464512 xn=460416
+SCRIPT ERROR: Invalid access of index '7260' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7197 xp_full=false child_end=false xp=464640 xn=460544
+SCRIPT ERROR: Invalid access of index '7262' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7199 xp_full=false child_end=false xp=464768 xn=460672
+ node 1784 has_children=true end=true
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '1785' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7257 xp_full=true child_end=false xp=1152921504606961216 xn=464384
+SCRIPT ERROR: Invalid access of index '1785' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7259 xp_full=false child_end=false xp=1152921504606961216 xn=464512
+SCRIPT ERROR: Invalid access of index '1785' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7261 xp_full=true child_end=false xp=1152921504606961216 xn=464640
+SCRIPT ERROR: Invalid access of index '1785' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 7263 xp_full=true child_end=false xp=1152921504606961216 xn=464768
+ node 1785 has_children=false end=true
+TARGET L1_1459_0 chain=[346, 347, 354, 355, 410, 411, 418, 419, 1250, 1251, 1258, 1259, 1314, 1315, 1322, 1323, 1402, 1403, 1410, 1411, 1458, 1459]
+ node 346 has_children=false end=true
+ node 347 has_children=false end=true
+ node 354 has_children=false end=true
+ node 355 has_children=false end=true
+ node 410 has_children=false end=false
+ node 411 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '1632' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1609 xp_full=false child_end=false xp=104448 xn=102912
+SCRIPT ERROR: Invalid access of index '1634' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1611 xp_full=false child_end=false xp=104576 xn=103040
+SCRIPT ERROR: Invalid access of index '1636' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1613 xp_full=false child_end=false xp=104704 xn=103168
+SCRIPT ERROR: Invalid access of index '1638' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1615 xp_full=false child_end=false xp=104832 xn=103296
+ node 418 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '1640' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1633 xp_full=false child_end=false xp=104960 xn=104448
+SCRIPT ERROR: Invalid access of index '1642' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1635 xp_full=false child_end=false xp=105088 xn=104576
+SCRIPT ERROR: Invalid access of index '1644' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1637 xp_full=false child_end=false xp=105216 xn=104704
+SCRIPT ERROR: Invalid access of index '1646' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1639 xp_full=false child_end=false xp=105344 xn=104832
+ node 419 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '5104' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1641 xp_full=false child_end=false xp=326656 xn=104960
+SCRIPT ERROR: Invalid access of index '5106' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1643 xp_full=false child_end=false xp=326784 xn=105088
+SCRIPT ERROR: Invalid access of index '5108' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1645 xp_full=false child_end=false xp=326912 xn=105216
+SCRIPT ERROR: Invalid access of index '5110' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 1647 xp_full=false child_end=false xp=327040 xn=105344
+ node 1250 has_children=true end=true
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '1251' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5105 xp_full=false child_end=false xp=1152921504606927040 xn=326656
+SCRIPT ERROR: Invalid access of index '1251' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5107 xp_full=false child_end=false xp=1152921504606927040 xn=326784
+SCRIPT ERROR: Invalid access of index '1251' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5109 xp_full=false child_end=false xp=1152921504606927040 xn=326912
+SCRIPT ERROR: Invalid access of index '1251' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5111 xp_full=false child_end=false xp=1152921504606927040 xn=327040
+ node 1251 has_children=false end=true
+ node 1258 has_children=false end=false
+ node 1259 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '5432' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5145 xp_full=false child_end=false xp=347648 xn=329216
+SCRIPT ERROR: Invalid access of index '5434' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5147 xp_full=false child_end=false xp=347776 xn=329344
+SCRIPT ERROR: Invalid access of index '5436' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5149 xp_full=false child_end=false xp=347904 xn=329472
+SCRIPT ERROR: Invalid access of index '5438' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5151 xp_full=true child_end=false xp=348032 xn=329600
+ node 1314 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '5440' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5433 xp_full=true child_end=false xp=348160 xn=347648
+SCRIPT ERROR: Invalid access of index '5442' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5435 xp_full=false child_end=false xp=348288 xn=347776
+SCRIPT ERROR: Invalid access of index '5444' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5437 xp_full=true child_end=false xp=348416 xn=347904
+SCRIPT ERROR: Invalid access of index '5446' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5439 xp_full=true child_end=false xp=348544 xn=348032
+ node 1315 has_children=true end=false
+   flip_from_children=1
+SCRIPT ERROR: Invalid access of index '5488' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5441 xp_full=true child_end=false xp=351232 xn=348160
+SCRIPT ERROR: Invalid access of index '5490' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5443 xp_full=true child_end=false xp=351360 xn=348288
+SCRIPT ERROR: Invalid access of index '5492' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5445 xp_full=true child_end=false xp=351488 xn=348416
+SCRIPT ERROR: Invalid access of index '5494' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5447 xp_full=true child_end=false xp=351616 xn=348544
+ node 1322 has_children=true end=true
+   flip_from_children=1
+SCRIPT ERROR: Invalid access of index '1323' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5489 xp_full=true child_end=false xp=1152921504606931648 xn=351232
+SCRIPT ERROR: Invalid access of index '1323' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5491 xp_full=true child_end=false xp=1152921504606931648 xn=351360
+SCRIPT ERROR: Invalid access of index '1323' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5493 xp_full=true child_end=false xp=1152921504606931648 xn=351488
+SCRIPT ERROR: Invalid access of index '1323' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5495 xp_full=true child_end=false xp=1152921504606931648 xn=351616
+ node 1323 has_children=false end=false
+ node 1402 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '5760' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5753 xp_full=false child_end=false xp=368640 xn=368128
+SCRIPT ERROR: Invalid access of index '5762' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5755 xp_full=false child_end=false xp=368768 xn=368256
+SCRIPT ERROR: Invalid access of index '5764' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5757 xp_full=false child_end=false xp=368896 xn=368384
+SCRIPT ERROR: Invalid access of index '5766' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5759 xp_full=false child_end=false xp=369024 xn=368512
+ node 1403 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '5792' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5761 xp_full=false child_end=false xp=370688 xn=368640
+SCRIPT ERROR: Invalid access of index '5794' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5763 xp_full=false child_end=false xp=370816 xn=368768
+SCRIPT ERROR: Invalid access of index '5796' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5765 xp_full=false child_end=false xp=370944 xn=368896
+SCRIPT ERROR: Invalid access of index '5798' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5767 xp_full=false child_end=false xp=371072 xn=369024
+ node 1410 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '5800' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5793 xp_full=true child_end=false xp=371200 xn=370688
+SCRIPT ERROR: Invalid access of index '5802' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5795 xp_full=false child_end=false xp=371328 xn=370816
+SCRIPT ERROR: Invalid access of index '5804' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5797 xp_full=true child_end=false xp=371456 xn=370944
+SCRIPT ERROR: Invalid access of index '5806' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5799 xp_full=false child_end=false xp=371584 xn=371072
+ node 1411 has_children=true end=false
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '6032' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5801 xp_full=true child_end=false xp=386048 xn=371200
+SCRIPT ERROR: Invalid access of index '6034' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5803 xp_full=false child_end=false xp=386176 xn=371328
+SCRIPT ERROR: Invalid access of index '6036' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5805 xp_full=true child_end=false xp=386304 xn=371456
+SCRIPT ERROR: Invalid access of index '6038' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 5807 xp_full=false child_end=false xp=386432 xn=371584
+ node 1458 has_children=true end=true
+   flip_from_children=0
+SCRIPT ERROR: Invalid access of index '1459' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6033 xp_full=true child_end=false xp=1152921504606940352 xn=386048
+SCRIPT ERROR: Invalid access of index '1459' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6035 xp_full=false child_end=false xp=1152921504606940352 xn=386176
+SCRIPT ERROR: Invalid access of index '1459' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6037 xp_full=true child_end=false xp=1152921504606940352 xn=386304
+SCRIPT ERROR: Invalid access of index '1459' on a base object of type: 'PackedInt64Array'.
+          at: _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+          GDScript backtrace (most recent call first):
+              [0] _is_end_of_x_linked_node_string (res://src/svo_voxelizer.gd:1194)
+              [1] _run (/tmp/inspect_reported_propagation_chain.gd:103)
+              [2] _construct_svo (res://src/svo_voxelizer.gd:640)
+              [3] execute (res://utility/parallel.gd:159)
+     child 6039 xp_full=true child_end=false xp=1152921504606940352 xn=386432
+ node 1459 has_children=false end=true
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)
+ERROR: 5 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)
+
+EXIT_CODE:0

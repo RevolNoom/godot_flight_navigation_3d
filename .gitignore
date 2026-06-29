@@ -8,3 +8,4 @@ theory
 godot-cpp
 **/*.uid
 .env
+.gitnexus
