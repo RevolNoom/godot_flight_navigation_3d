@@ -1,7 +1,7 @@
 ## 64-bit packed SVO link.
 ## Layout: 4 layer bits, 54 offset bits, 6 subgrid bits.
 @tool
-extends ISvoLink
+extends ASvoLink
 class_name SvoLink64
 
 const _NULL: int = ~0

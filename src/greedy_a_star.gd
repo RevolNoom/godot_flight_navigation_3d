@@ -2,15 +2,6 @@
 extends FlightPathfinder
 class_name GreedyAStar
 
-enum EndpointMode {
-	VOXEL_CENTERS,
-}
-
-enum DistanceMode {
-	EUCLIDEAN,
-	MANHATTAN,
-}
-
 ## A Callable that determines which endpoints are used to calculate distance
 ## between two voxels/nodes.[br]
 ##
@@ -24,7 +15,7 @@ enum DistanceMode {
 
 # Signature: func(svolink1, svolink2, svo) -> [Vector3, Vector3].
 var _get_endpoints: Callable = FlightPathfinder.get_centers
-var _endpoint_mode: EndpointMode = EndpointMode.VOXEL_CENTERS
+var _endpoint_mode: EndpointMode.Enum = EndpointMode.Enum.VOXEL_CENTERS
 
 
 ## Function used to estimate cost between a voxel and destination
@@ -37,7 +28,7 @@ var _endpoint_mode: EndpointMode = EndpointMode.VOXEL_CENTERS
 
 # Signature: func(Vector3, Vector3) -> float
 var _get_distance: Callable = FlightPathfinder.euclidean
-var _distance_mode: DistanceMode = DistanceMode.EUCLIDEAN
+var _distance_mode: DistanceMode.Enum = DistanceMode.Enum.EUCLIDEAN
 
 
 ## Bias weight. The higher it is, the more A* is biased toward estimation
@@ -186,45 +177,45 @@ func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
 			#* compute_size_compensation_factor(SvoLink64.singleton.get_layer(start), svo.depth)
 
 
-func _parse_endpoint_mode(value: String) -> EndpointMode:
-	return EndpointMode.VOXEL_CENTERS
+func _parse_endpoint_mode(value: String) -> EndpointMode.Enum:
+	return EndpointMode.Enum.VOXEL_CENTERS
 
 
-func _stringify_endpoint_mode(_mode: EndpointMode) -> String:
+func _stringify_endpoint_mode(_mode: EndpointMode.Enum) -> String:
 	return "Voxel Centers"
 
 
-func _resolve_endpoint_callable(mode: EndpointMode) -> Callable:
+func _resolve_endpoint_callable(mode: EndpointMode.Enum) -> Callable:
 	match mode:
-		EndpointMode.VOXEL_CENTERS:
+		EndpointMode.Enum.VOXEL_CENTERS:
 			return FlightPathfinder.get_centers
 		_:
 			return FlightPathfinder.get_centers
 
 
-func _parse_distance_mode(value: String) -> DistanceMode:
+func _parse_distance_mode(value: String) -> DistanceMode.Enum:
 	match value:
 		"Manhattan":
-			return DistanceMode.MANHATTAN
+			return DistanceMode.Enum.MANHATTAN
 		_:
-			return DistanceMode.EUCLIDEAN
+			return DistanceMode.Enum.EUCLIDEAN
 
 
-func _stringify_distance_mode(mode: DistanceMode) -> String:
+func _stringify_distance_mode(mode: DistanceMode.Enum) -> String:
 	match mode:
-		DistanceMode.MANHATTAN:
+		DistanceMode.Enum.MANHATTAN:
 			return "Manhattan"
-		DistanceMode.EUCLIDEAN:
+		DistanceMode.Enum.EUCLIDEAN:
 			return "Euclidean"
 		_:
 			return "Euclidean"
 
 
-func _resolve_distance_callable(mode: DistanceMode) -> Callable:
+func _resolve_distance_callable(mode: DistanceMode.Enum) -> Callable:
 	match mode:
-		DistanceMode.MANHATTAN:
+		DistanceMode.Enum.MANHATTAN:
 			return FlightPathfinder.manhattan
-		DistanceMode.EUCLIDEAN:
+		DistanceMode.Enum.EUCLIDEAN:
 			return FlightPathfinder.euclidean
 		_:
 			return FlightPathfinder.euclidean

@@ -1,7 +1,7 @@
 ## Draw only subgrid voxels of an [SVO].
 @tool
 @warning_ignore_start("integer_division")
-extends ISvoVisualizer
+extends ASvoVisualizer
 class_name SvoVisualizerSubgrid
 
 @export var multi_threading_enabled: bool = true

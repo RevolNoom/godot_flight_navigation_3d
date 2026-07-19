@@ -3,7 +3,7 @@
 ## This triangle-box test uses float32. 
 ## Since Vector in Godot also uses float32, it helps the test runs faster 
 ## and consumes less memory
-extends ITriangleBoxOverlapCheck
+extends ATriangleBoxOverlapCheck
 class_name TriangleBoxOverlapCheckF32
 
 var epsilon: float
@@ -69,7 +69,7 @@ func _init(
 	v1_f32: Vector3, 
 	v2_f32: Vector3, 
 	dp_f32: Vector3, 
-	separability: ITriangleBoxOverlapCheck.Separability,
+	separability: Separability.Enum,
 	epsilon_value: float):
 	epsilon = epsilon_value
 		
@@ -127,7 +127,7 @@ func _init(
 	
 	# Distance factors
 	match separability:
-		ITriangleBoxOverlapCheck.Separability.SEPARATING_6:
+		Separability.Enum.SEPARATING_6:
 			var dp_n: float = 0
 			
 			var an: Vector3 = n.abs()
@@ -276,7 +276,7 @@ func _init(
 			#endregion
 			#endregion
 	
-		ITriangleBoxOverlapCheck.Separability.SEPARATING_26:
+		Separability.Enum.SEPARATING_26:
 			# Critical point
 			var c: Vector3 = Vector3(
 				0.0 if n.x <= 0 else dp.x,

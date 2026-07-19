@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="FlightNavigation3D"
 run/main_scene="uid://dgo7fj4tmihlq"
-config/features=PackedStringArray("4.5", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="uid://bipgchee54e5e"
 
 [editor_plugins]

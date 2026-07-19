@@ -22,7 +22,7 @@ class RecordingPathfinder:
 
 
 class StubVoxelizer:
-	extends ISvoVoxelizer
+	extends ASvoVoxelizer
 
 	var built_svo: SVO
 

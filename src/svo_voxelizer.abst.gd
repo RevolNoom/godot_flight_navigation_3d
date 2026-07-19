@@ -2,42 +2,15 @@
 ## Concrete implementations should build and return an [SVO].
 @tool
 extends Node
-class_name ISvoVoxelizer
+class_name ASvoVoxelizer
 
 
 signal progress(
-	step: ProgressStep,
+	step: ProgressStep.Enum,
 	svo: SVO,
 	work_completed: int,
 	total_work: int
 )
-
-
-## Enum used in tandem with [member progress] signal.
-enum ProgressStep {
-	GET_ALL_VOXELIZATION_TARGET,
-	BUILD_MESH,
-	REMOVE_THIN_TRIANGLES,
-	OFFSET_VERTICES_TO_LOCAL_COORDINATE,
-	DETERMINE_ACTIVE_LAYER_1_NODES,
-	CONSTRUCT_SVO,
-	SOLID_VOXELIZATION,
-	HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION,
-	YZ_PLANE_RASTERIZATION,
-	PREPARE_FLAGS_AND_HEAD_NODES,
-	XP_BIT_FLIP_PROPAGATION,
-	PREPARE_FLIP_FLAG_LAYER_1,
-	FLIP_BOTTOM_UP_LAYER_1,
-	PROPAGATE_FLIP_INFORMATION_LAYER_1,
-	PREPARE_FLIP_FLAG_FROM_LAYER_2,
-	FLIP_BOTTOM_UP_FROM_LAYER_2,
-	PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2,
-	PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES,
-	PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS,
-	SURFACE_VOXELIZATION,
-	CALCULATE_COVERAGE_FACTOR,
-	MAX_STEP,
-}
 
 
 @export_subgroup("Multi-threading", "multi_threading_")
@@ -69,8 +42,8 @@ enum ProgressStep {
 @export_subgroup("Surface voxelization", "surface_voxelization_")
 @export var surface_voxelization_enabled: bool = true
 @export var surface_voxelization_separability: \
-	ITriangleBoxOverlapCheck.Separability = \
-	ITriangleBoxOverlapCheck.Separability.SEPARATING_26
+	Separability.Enum = \
+	Separability.Enum.SEPARATING_26
 @export_range(0, 0.1, 0.000_000_1) var \
 	surface_voxelization_float_error_margin: float = 0.000_1
 @export_subgroup("", "")
@@ -79,12 +52,6 @@ enum ProgressStep {
 @export var debug_delete_csg: bool = true
 @export var debug_delete_flip_flag: bool = true
 @export_subgroup("", "")
-
-
-func _abstract_fail(method_name: String) -> void:
-	var message: String = "ISvoVoxelizer.%s() is abstract. Override in subclass." % method_name
-	push_error(message)
-	assert(false, message)
 
 
 func get_is_multithreading_enabled() -> bool:
@@ -179,12 +146,12 @@ func set_surface_voxelization_enabled(enable: bool) -> void:
 	surface_voxelization_enabled = enable
 
 
-func get_surface_voxelization_separability() -> ITriangleBoxOverlapCheck.Separability:
+func get_surface_voxelization_separability() -> Separability.Enum:
 	return surface_voxelization_separability
 
 
 func set_surface_voxelization_separability(
-	separability: ITriangleBoxOverlapCheck.Separability
+	separability: Separability.Enum
 ) -> void:
 	surface_voxelization_separability = separability
 
@@ -206,5 +173,5 @@ func set_debug_delete_flip_flag(enable: bool) -> void:
 
 
 func voxelize(_fn3d: FlightNavigation3D) -> SVO:
-	_abstract_fail("voxelize")
+	assert(false, "Not implemented")
 	return null

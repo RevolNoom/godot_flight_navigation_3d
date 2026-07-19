@@ -32,7 +32,7 @@
 ##
 ## Side note: This class is @tool to enable working in editor without crashing.
 @tool
-extends ISvo
+extends ASvo
 class_name SVO
 
 ## [b]NOTE:[/b] This value is read-only. Used for editor convenience.

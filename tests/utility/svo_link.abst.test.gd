@@ -1,10 +1,10 @@
 extends GutTest
 
-class_name ISvoLinkTest
+class_name ASvoLinkTest
 
 
-func _case_singleton(case_data: Dictionary) -> ISvoLink:
-	return case_data["singleton"] as ISvoLink
+func _case_singleton(case_data: Dictionary) -> ASvoLink:
+	return case_data["singleton"] as ASvoLink
 
 
 func _case_name(case_data: Dictionary) -> String:
@@ -12,7 +12,7 @@ func _case_name(case_data: Dictionary) -> String:
 
 
 func _create_case_link(case_data: Dictionary) -> int:
-	var singleton: ISvoLink = _case_singleton(case_data)
+	var singleton: ASvoLink = _case_singleton(case_data)
 	return singleton.create(
 		int(case_data["layer"]),
 		int(case_data["offset"]),
@@ -34,7 +34,7 @@ func test_svo_link_null(
 		},
 	])
 ) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	assert_eq(singleton.null_link(), int(p["expected"]), _case_name(p))
 
 
@@ -56,7 +56,7 @@ func test_svo_link_masks(
 		},
 	])
 ) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	assert_eq(
 		singleton.get_subgrid_mask(),
 		int(p["expected_subgrid"]),
@@ -120,7 +120,7 @@ func test_svo_link_create_and_getters(
 		},
 	])
 ) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	var result: int = _create_case_link(p)
 	assert_eq(singleton.get_layer(result), int(p["layer"]), _case_name(p))
 	assert_eq(singleton.get_offset(result), int(p["offset"]), _case_name(p))
@@ -163,7 +163,7 @@ func test_svo_link_set_layer(
 		},
 	])
 	) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	var input: int = singleton.create(
 		int(p["input_layer"]),
 		int(p["input_offset"]),
@@ -211,7 +211,7 @@ func test_svo_link_set_offset(
 		},
 	])
 	) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	var input: int = singleton.create(
 		int(p["input_layer"]),
 		int(p["input_offset"]),
@@ -259,7 +259,7 @@ func test_svo_link_set_subgrid(
 		},
 	])
 	) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	var input: int = singleton.create(
 		int(p["input_layer"]),
 		int(p["input_offset"]),
@@ -315,7 +315,7 @@ func test_svo_link_create_truncates_out_of_range_values(
 		},
 	])
 	) -> void:
-	var singleton: ISvoLink = _case_singleton(p)
+	var singleton: ASvoLink = _case_singleton(p)
 	var result: int = singleton.create(
 		int(p["layer"]),
 		int(p["offset"]),

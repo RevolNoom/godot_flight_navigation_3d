@@ -1,6 +1,6 @@
 ## Draw selected SVO links as individual debug boxes.
 @tool
-extends ISvoVisualizer
+extends ASvoVisualizer
 class_name SvoVisualizerLink
 
 ## [svolink:int] -> [label_text:String]

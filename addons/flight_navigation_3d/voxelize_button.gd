@@ -2,7 +2,7 @@
 extends Control
 
 @onready var progress_dialog = $ProgressDialog/ScrollContainer/Log
-var _voxelizer: ISvoVoxelizer = null
+var _voxelizer: ASvoVoxelizer = null
 var _flight_navigation_3d_scene: FlightNavigation3D = null
 
 func _ready() -> void:
@@ -11,7 +11,7 @@ func _ready() -> void:
 		$ProgressDialog.exclusive = false
 		
 
-var svo_voxelizer: ISvoVoxelizer = null:
+var svo_voxelizer: ASvoVoxelizer = null:
 	set(value):
 		if _voxelizer != null:
 			if _voxelizer.progress.is_connected(_on_progress):
@@ -47,28 +47,28 @@ var step_message: PackedStringArray = _generate_step_message()
 
 func _generate_step_message() -> PackedStringArray:
 	var result: PackedStringArray = []
-	result.resize(ISvoVoxelizer.ProgressStep.MAX_STEP)
-	result[ISvoVoxelizer.ProgressStep.GET_ALL_VOXELIZATION_TARGET] = "GET_ALL_VOXELIZATION_TARGET"
-	result[ISvoVoxelizer.ProgressStep.BUILD_MESH] = "BUILD_MESH"
-	result[ISvoVoxelizer.ProgressStep.REMOVE_THIN_TRIANGLES] = "REMOVE_THIN_TRIANGLES"
-	result[ISvoVoxelizer.ProgressStep.OFFSET_VERTICES_TO_LOCAL_COORDINATE] = "OFFSET_VERTICES_TO_LOCAL_COORDINATE"
-	result[ISvoVoxelizer.ProgressStep.DETERMINE_ACTIVE_LAYER_1_NODES] = "DETERMINE_ACTIVE_LAYER_1_NODES"
-	result[ISvoVoxelizer.ProgressStep.CONSTRUCT_SVO] = "CONSTRUCT_SVO"
-	result[ISvoVoxelizer.ProgressStep.SOLID_VOXELIZATION] = "SOLID_VOXELIZATION"
-	result[ISvoVoxelizer.ProgressStep.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION] = "HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION"
-	result[ISvoVoxelizer.ProgressStep.YZ_PLANE_RASTERIZATION] = "YZ_PLANE_RASTERIZATION"
-	result[ISvoVoxelizer.ProgressStep.PREPARE_FLAGS_AND_HEAD_NODES] = "PREPARE_FLAGS_AND_HEAD_NODES"
-	result[ISvoVoxelizer.ProgressStep.XP_BIT_FLIP_PROPAGATION] = "XP_BIT_FLIP_PROPAGATION"
-	result[ISvoVoxelizer.ProgressStep.PREPARE_FLIP_FLAG_LAYER_1] = "PREPARE_FLIP_FLAG_LAYER_1"
-	result[ISvoVoxelizer.ProgressStep.FLIP_BOTTOM_UP_LAYER_1] = "FLIP_BOTTOM_UP_LAYER_1"
-	result[ISvoVoxelizer.ProgressStep.PROPAGATE_FLIP_INFORMATION_LAYER_1] = "PROPAGATE_FLIP_INFORMATION_LAYER_1"
-	result[ISvoVoxelizer.ProgressStep.PREPARE_FLIP_FLAG_FROM_LAYER_2] = "PREPARE_FLIP_FLAG_FROM_LAYER_2"
-	result[ISvoVoxelizer.ProgressStep.FLIP_BOTTOM_UP_FROM_LAYER_2] = "FLIP_BOTTOM_UP_FROM_LAYER_2"
-	result[ISvoVoxelizer.ProgressStep.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2] = "PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2"
-	result[ISvoVoxelizer.ProgressStep.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES] = "PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES"
-	result[ISvoVoxelizer.ProgressStep.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS] = "PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS"
-	result[ISvoVoxelizer.ProgressStep.SURFACE_VOXELIZATION] = "SURFACE_VOXELIZATION"
-	result[ISvoVoxelizer.ProgressStep.CALCULATE_COVERAGE_FACTOR] = "CALCULATE_COVERAGE_FACTOR"
+	result.resize(ProgressStep.Enum.MAX_STEP)
+	result[ProgressStep.Enum.GET_ALL_VOXELIZATION_TARGET] = "GET_ALL_VOXELIZATION_TARGET"
+	result[ProgressStep.Enum.BUILD_MESH] = "BUILD_MESH"
+	result[ProgressStep.Enum.REMOVE_THIN_TRIANGLES] = "REMOVE_THIN_TRIANGLES"
+	result[ProgressStep.Enum.OFFSET_VERTICES_TO_LOCAL_COORDINATE] = "OFFSET_VERTICES_TO_LOCAL_COORDINATE"
+	result[ProgressStep.Enum.DETERMINE_ACTIVE_LAYER_1_NODES] = "DETERMINE_ACTIVE_LAYER_1_NODES"
+	result[ProgressStep.Enum.CONSTRUCT_SVO] = "CONSTRUCT_SVO"
+	result[ProgressStep.Enum.SOLID_VOXELIZATION] = "SOLID_VOXELIZATION"
+	result[ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION] = "HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION"
+	result[ProgressStep.Enum.YZ_PLANE_RASTERIZATION] = "YZ_PLANE_RASTERIZATION"
+	result[ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES] = "PREPARE_FLAGS_AND_HEAD_NODES"
+	result[ProgressStep.Enum.XP_BIT_FLIP_PROPAGATION] = "XP_BIT_FLIP_PROPAGATION"
+	result[ProgressStep.Enum.PREPARE_FLIP_FLAG_LAYER_1] = "PREPARE_FLIP_FLAG_LAYER_1"
+	result[ProgressStep.Enum.FLIP_BOTTOM_UP_LAYER_1] = "FLIP_BOTTOM_UP_LAYER_1"
+	result[ProgressStep.Enum.PROPAGATE_FLIP_INFORMATION_LAYER_1] = "PROPAGATE_FLIP_INFORMATION_LAYER_1"
+	result[ProgressStep.Enum.PREPARE_FLIP_FLAG_FROM_LAYER_2] = "PREPARE_FLIP_FLAG_FROM_LAYER_2"
+	result[ProgressStep.Enum.FLIP_BOTTOM_UP_FROM_LAYER_2] = "FLIP_BOTTOM_UP_FROM_LAYER_2"
+	result[ProgressStep.Enum.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2] = "PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2"
+	result[ProgressStep.Enum.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES] = "PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES"
+	result[ProgressStep.Enum.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS] = "PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS"
+	result[ProgressStep.Enum.SURFACE_VOXELIZATION] = "SURFACE_VOXELIZATION"
+	result[ProgressStep.Enum.CALCULATE_COVERAGE_FACTOR] = "CALCULATE_COVERAGE_FACTOR"
 	return result
 	
 
@@ -79,10 +79,10 @@ func _on_pressed() -> void:
 	step_work_completed.resize(0)
 	step_total_work.resize(0)
 	
-	step_start_time.resize(ISvoVoxelizer.ProgressStep.MAX_STEP)
-	step_end_time.resize(ISvoVoxelizer.ProgressStep.MAX_STEP)
-	step_work_completed.resize(ISvoVoxelizer.ProgressStep.MAX_STEP)
-	step_total_work.resize(ISvoVoxelizer.ProgressStep.MAX_STEP)
+	step_start_time.resize(ProgressStep.Enum.MAX_STEP)
+	step_end_time.resize(ProgressStep.Enum.MAX_STEP)
+	step_work_completed.resize(ProgressStep.Enum.MAX_STEP)
+	step_total_work.resize(ProgressStep.Enum.MAX_STEP)
 	
 	step_work_completed.fill(-1)
 	step_total_work.fill(-1)
@@ -132,7 +132,7 @@ func _on_pressed() -> void:
 
 
 func _on_progress(
-	step: ISvoVoxelizer.ProgressStep, 
+	step: ProgressStep.Enum, 
 	svo: SVO, 
 	work_completed: int, 
 	total_work: int):
@@ -148,7 +148,7 @@ func _on_progress(
 
 func _update_dialog_text():
 	var message = ""
-	for step in range(ISvoVoxelizer.ProgressStep.MAX_STEP):
+	for step in range(ProgressStep.Enum.MAX_STEP):
 		var start_time = ""
 		if step_start_time[step].is_empty():
 			start_time = "[--:--:--]"

@@ -4,7 +4,7 @@ extends Node3D
 
 func _ready() -> void:
 	#TriangleBoxOverlapCheck_ReferenceCode._automated_test()
-	#ITriangleBoxOverlapCheck._automated_test()
+	#ATriangleBoxOverlapCheck._automated_test()
 	await flight_nav.build_navigation()
 	#flight_nav.draw()
 	print("Done")

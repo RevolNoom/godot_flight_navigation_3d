@@ -1,7 +1,7 @@
 ## Fast triangle-box test as described by Michael Schwarz and Hans-Peter Seidel.
 ##
 ## Godot Vector uses float32. At 
-extends ITriangleBoxOverlapCheck
+extends ATriangleBoxOverlapCheck
 class_name TriangleBoxOverlapCheckF64
 
 var epsilon: float
@@ -72,7 +72,7 @@ func _init(
 	v1_f32: Vector3, 
 	v2_f32: Vector3, 
 	dp_f32: Vector3, 
-	separability: Separability,
+	separability: Separability.Enum,
 	epsilon_value: float):
 	epsilon = epsilon_value
 		
@@ -152,7 +152,7 @@ func _init(
 	
 	# Distance factors
 	match separability:
-		Separability.SEPARATING_6:
+		Separability.Enum.SEPARATING_6:
 			var dp_n: float = 0
 			
 			var an: PackedFloat64Array = [absf(n[0]), absf(n[1]), absf(n[2])]
@@ -363,7 +363,7 @@ func _init(
 			#endregion
 			#endregion
 	
-		Separability.SEPARATING_26:
+		Separability.Enum.SEPARATING_26:
 			# Critical point
 			var c: PackedFloat64Array = [
 				0.0 if n[0] <= 0 else dp[0],

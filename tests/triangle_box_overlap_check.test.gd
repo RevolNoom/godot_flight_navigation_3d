@@ -2,7 +2,7 @@ extends GutTest
 
 
 class ProjectionStub:
-	extends ITriangleBoxOverlapCheck
+	extends ATriangleBoxOverlapCheck
 
 	var plane_result: bool = true
 	var xy_result: bool = true
@@ -41,10 +41,10 @@ func test_interface_overlap_voxel_requires_every_projection_to_pass() -> void:
 
 func test_direct_overlap_implementations_agree_on_overlapping_and_separated_voxels() -> void:
 	for separability in [
-		ITriangleBoxOverlapCheck.Separability.SEPARATING_6,
-		ITriangleBoxOverlapCheck.Separability.SEPARATING_26,
+		Separability.Enum.SEPARATING_6,
+		Separability.Enum.SEPARATING_26,
 	]:
-		var checkers: Array[ITriangleBoxOverlapCheck] = [
+		var checkers: Array[ATriangleBoxOverlapCheck] = [
 			TriangleBoxOverlapCheckF32.new(
 				Vector3(1, 0, 0),
 				Vector3(0, 1, 0),
@@ -69,13 +69,13 @@ func test_direct_overlap_implementations_agree_on_overlapping_and_separated_voxe
 
 
 func test_plane_projection_helpers_return_points_on_shared_plane_for_both_precisions() -> void:
-	var checkers: Array[ITriangleBoxOverlapCheck] = [
+	var checkers: Array[ATriangleBoxOverlapCheck] = [
 		TriangleBoxOverlapCheckF32.new(
 			Vector3(1, 0, 0),
 			Vector3(0, 1, 0),
 			Vector3(0, 0, 1),
 			Vector3.ONE,
-			ITriangleBoxOverlapCheck.Separability.SEPARATING_26,
+			Separability.Enum.SEPARATING_26,
 			EPSILON
 		),
 		TriangleBoxOverlapCheckF64.new(
@@ -83,7 +83,7 @@ func test_plane_projection_helpers_return_points_on_shared_plane_for_both_precis
 			Vector3(0, 1, 0),
 			Vector3(0, 0, 1),
 			Vector3.ONE,
-			ITriangleBoxOverlapCheck.Separability.SEPARATING_26,
+			Separability.Enum.SEPARATING_26,
 			EPSILON
 		),
 	]
@@ -102,7 +102,7 @@ func test_factories_create_expected_checker_types_with_observable_equivalent_beh
 		Vector3(0, 1, 0),
 		Vector3(0, 0, 1),
 		Vector3.ONE,
-		ITriangleBoxOverlapCheck.Separability.SEPARATING_26,
+		Separability.Enum.SEPARATING_26,
 		EPSILON
 	)
 	var checker_f64 := factory_f64.create(
@@ -110,7 +110,7 @@ func test_factories_create_expected_checker_types_with_observable_equivalent_beh
 		Vector3(0, 1, 0),
 		Vector3(0, 0, 1),
 		Vector3.ONE,
-		ITriangleBoxOverlapCheck.Separability.SEPARATING_26,
+		Separability.Enum.SEPARATING_26,
 		EPSILON
 	)
 

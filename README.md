@@ -57,7 +57,7 @@ For best results, keep the volume cubic.
 
 ### 3. Add exactly one voxelizer child
 
-`FlightNavigation3D.build_navigation()` expects exactly one child implementing `ISvoVoxelizer`.
+`FlightNavigation3D.build_navigation()` expects exactly one child implementing `ASvoVoxelizer`.
 The stock choice is `SvoVoxelizer`.
 
 Important configuration options on the voxelizer include:
@@ -178,14 +178,14 @@ See `docs/API_REFERENCE.md` for the public contract and helper methods.
 | Class | Role |
 | --- | --- |
 | `FlightNavigation3D` | Scene node that owns the navigation volume, baked SVO resource, and pathfinder resource |
-| `ISvoVoxelizer` / `SvoVoxelizer` | Baking pipeline that converts scene geometry into an `SVO` |
-| `ISvo` / `SVO` | Packed sparse voxel octree storage and query API |
+| `ASvoVoxelizer` / `SvoVoxelizer` | Baking pipeline that converts scene geometry into an `SVO` |
+| `ASvo` / `SVO` | Packed sparse voxel octree storage and query API |
 | `FlightPathfinder` / `GreedyAStar` | Pathfinding resource abstraction and default implementation |
 | `VoxelizationTarget` | Marks scene geometry that should be converted into CSG for voxelization |
 | `Fn3dLookupTable` | Shared lookup tables for faces, child ordering, and bit operations |
 | `SvoLink32` / `SvoLink64` | Packed link encodings for nodes and subgrid voxels |
-| `ITriangleBoxOverlapCheck` family | Surface/solid voxelization triangle-box overlap tests |
-| `ISvoVisualizer` family | Optional debug drawing helpers |
+| `ATriangleBoxOverlapCheck` family | Surface/solid voxelization triangle-box overlap tests |
+| `ASvoVisualizer` family | Optional debug drawing helpers |
 
 For class-by-class details, see `docs/API_REFERENCE.md`.
 

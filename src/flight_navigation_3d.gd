@@ -46,10 +46,10 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 ## Construct an SVO that can be assigned to [member sparse_voxel_octree] later.[br]
 ## [b]NOTE:[/b] Many build processes can be run at a time.
 func build_navigation():
-	var list_child_voxelizers: Array[ISvoVoxelizer] = _get_child_voxelizers()
+	var list_child_voxelizers: Array[ASvoVoxelizer] = _get_child_voxelizers()
 	if list_child_voxelizers.size() != 1:
 		printerr(
-			"build_navigation() requires exactly 1 child ISvoVoxelizer. Found: %d" %
+			"build_navigation() requires exactly 1 child ASvoVoxelizer. Found: %d" %
 			list_child_voxelizers.size()
 		)
 		return
@@ -58,7 +58,7 @@ func build_navigation():
 	sparse_voxel_octree = voxelized_svo
 
 
-## Draw all child [ISvoVisualizer] using [member sparse_voxel_octree].
+## Draw all child [ASvoVisualizer] using [member sparse_voxel_octree].
 func draw():
 	if sparse_voxel_octree == null:
 		printerr(str(get_path()) + ".sparse_voxel_octree is null")
@@ -66,7 +66,7 @@ func draw():
 
 	var list_child_visualizers: Array[Node] = _get_child_visualizers()
 	if list_child_visualizers.is_empty():
-		printerr("No child ISvoVisualizer found under " + str(get_path()))
+		printerr("No child ASvoVisualizer found under " + str(get_path()))
 		return
 
 	for visualizer in list_child_visualizers:
@@ -186,10 +186,10 @@ func get_svolink_of(gposition: Vector3) -> int:
 
 #region Helper functions
 
-func _get_child_voxelizers() -> Array[ISvoVoxelizer]:
-	var list_child_voxelizers: Array[ISvoVoxelizer] = []
+func _get_child_voxelizers() -> Array[ASvoVoxelizer]:
+	var list_child_voxelizers: Array[ASvoVoxelizer] = []
 	for child in get_children():
-		if child is ISvoVoxelizer:
+		if child is ASvoVoxelizer:
 			list_child_voxelizers.push_back(child)
 	return list_child_voxelizers
 
@@ -197,7 +197,7 @@ func _get_child_voxelizers() -> Array[ISvoVoxelizer]:
 func _get_child_visualizers() -> Array[Node]:
 	var list_child_visualizers: Array[Node] = []
 	for child in get_children():
-		if child is ISvoVisualizer:
+		if child is ASvoVisualizer:
 			list_child_visualizers.push_back(child)
 	return list_child_visualizers
 
@@ -229,22 +229,22 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 	var child_voxelizer_count := 0
 	for child in get_children():
-		if child is ISvoVoxelizer:
+		if child is ASvoVoxelizer:
 			child_voxelizer_count += 1
 	if child_voxelizer_count > 1:
 		warnings.push_back(
-			"More than one child ISvoVoxelizer found. build_navigation() will not work due to ambiguity. If this is intended, you must manually call ISvoVoxelizer.voxelize() of one of the child and reassign the result."
+			"More than one child ASvoVoxelizer found. build_navigation() will not work due to ambiguity. If this is intended, you must manually call ASvoVoxelizer.voxelize() of one of the child and reassign the result."
 		)
 
 	var child_visualizer_count := 0
 	for child in get_children():
-		if child is ISvoVisualizer:
+		if child is ASvoVisualizer:
 			child_visualizer_count += 1
 	if child_visualizer_count == 0:
-		warnings.push_back("No child ISvoVisualizer found. draw() will do nothing.")
+		warnings.push_back("No child ASvoVisualizer found. draw() will do nothing.")
 	if child_visualizer_count > 1:
 		warnings.push_back(
-			"More than one child ISvoVisualizer found. draw() will call all visualizers."
+			"More than one child ASvoVisualizer found. draw() will call all visualizers."
 		)
 
 	return warnings
