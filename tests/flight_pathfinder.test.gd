@@ -2,7 +2,7 @@ extends GutTest
 
 
 class StubPathfinder:
-	extends FlightPathfinder
+	extends AFlightPathFinder
 
 	var received_from: int = SvoLink64.singleton.null_link()
 	var received_to: int = SvoLink64.singleton.null_link()
@@ -65,8 +65,8 @@ func test_distance_helpers_match_expected_metrics() -> void:
 	var from := Vector3(1.0, 2.0, 3.0)
 	var to := Vector3(4.0, -2.0, 5.0)
 
-	assert_almost_eq(FlightPathfinder.euclidean(from, to), sqrt(29.0), FLOAT_TOLERANCE)
-	assert_almost_eq(FlightPathfinder.manhattan(from, to), 9.0, FLOAT_TOLERANCE)
+	assert_almost_eq(AFlightPathFinder.euclidean(from, to), sqrt(29.0), FLOAT_TOLERANCE)
+	assert_almost_eq(AFlightPathFinder.manhattan(from, to), 9.0, FLOAT_TOLERANCE)
 
 
 func test_get_centers_and_closest_faces_fallback_return_node_centers() -> void:
@@ -78,8 +78,8 @@ func test_get_centers_and_closest_faces_fallback_return_node_centers() -> void:
 		svo.get_center(goal_link),
 	])
 
-	assert_eq(FlightPathfinder.get_centers(start_link, goal_link, svo), expected_centers)
-	assert_eq(FlightPathfinder.get_closest_faces(start_link, goal_link, svo), expected_centers)
+	assert_eq(AFlightPathFinder.get_centers(start_link, goal_link, svo), expected_centers)
+	assert_eq(AFlightPathFinder.get_closest_faces(start_link, goal_link, svo), expected_centers)
 	assert_engine_error("not implemented yet")
 
 

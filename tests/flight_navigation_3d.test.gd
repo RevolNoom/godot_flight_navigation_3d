@@ -4,7 +4,7 @@ class_name FlightNavigation3DTest
 
 
 class RecordingPathfinder:
-	extends FlightPathfinder
+	extends AFlightPathFinder
 
 	var next_path: PackedInt64Array = []
 	var last_from: int = SvoLink64.singleton.null_link()

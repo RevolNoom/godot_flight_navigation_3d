@@ -1,5 +1,5 @@
 @tool
-extends FlightPathfinder
+extends AFlightPathFinder
 class_name GreedyAStar
 
 ## A Callable that determines which endpoints are used to calculate distance
@@ -14,7 +14,7 @@ class_name GreedyAStar
 		_get_endpoints = _resolve_endpoint_callable(_endpoint_mode)
 
 # Signature: func(svolink1, svolink2, svo) -> [Vector3, Vector3].
-var _get_endpoints: Callable = FlightPathfinder.get_centers
+var _get_endpoints: Callable = AFlightPathFinder.get_centers
 var _endpoint_mode: EndpointMode.Enum = EndpointMode.Enum.VOXEL_CENTERS
 
 
@@ -27,7 +27,7 @@ var _endpoint_mode: EndpointMode.Enum = EndpointMode.Enum.VOXEL_CENTERS
 		_get_distance = _resolve_distance_callable(_distance_mode)
 
 # Signature: func(Vector3, Vector3) -> float
-var _get_distance: Callable = FlightPathfinder.euclidean
+var _get_distance: Callable = AFlightPathFinder.euclidean
 var _distance_mode: DistanceMode.Enum = DistanceMode.Enum.EUCLIDEAN
 
 
@@ -188,9 +188,9 @@ func _stringify_endpoint_mode(_mode: EndpointMode.Enum) -> String:
 func _resolve_endpoint_callable(mode: EndpointMode.Enum) -> Callable:
 	match mode:
 		EndpointMode.Enum.VOXEL_CENTERS:
-			return FlightPathfinder.get_centers
+			return AFlightPathFinder.get_centers
 		_:
-			return FlightPathfinder.get_centers
+			return AFlightPathFinder.get_centers
 
 
 func _parse_distance_mode(value: String) -> DistanceMode.Enum:
@@ -214,8 +214,8 @@ func _stringify_distance_mode(mode: DistanceMode.Enum) -> String:
 func _resolve_distance_callable(mode: DistanceMode.Enum) -> Callable:
 	match mode:
 		DistanceMode.Enum.MANHATTAN:
-			return FlightPathfinder.manhattan
+			return AFlightPathFinder.manhattan
 		DistanceMode.Enum.EUCLIDEAN:
-			return FlightPathfinder.euclidean
+			return AFlightPathFinder.euclidean
 		_:
-			return FlightPathfinder.euclidean
+			return AFlightPathFinder.euclidean

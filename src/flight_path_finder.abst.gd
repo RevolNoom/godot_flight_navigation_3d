@@ -1,13 +1,11 @@
 ## Interface for various path finding algorithms.
 ##
 ## 
+@abstract
 extends Resource
-class_name FlightPathfinder
+class_name AFlightPathFinder
 
 static var _did_warn_closest_faces_unimplemented: bool = false
-
-func _init() -> void:
-	printerr("FlightPathfinder is abstract. Instantiate a derived class instead.")
 
 ## Return a path of [SVOLink]s connecting [param from] and [param to] through [param svo].[br]
 ##
@@ -35,19 +33,19 @@ func estimate_cost(start: int, destination: int, svo: SVO) -> float:
 
 ## [b]OVERRIDE ME![/b][br]
 func _find_path(_from: int, _to: int, _svo: SVO) -> PackedInt64Array:
-	printerr("_find_path() not overridden in class ", get_class())
+	assert(false, "Not implemented")
 	return []
 
 
 ## [b]OVERRIDE ME![/b][br]
 ## Default to Euclidean distance.[br]
 func _compute_cost(start: int, destination: int, svo: SVO) -> float:
-	return FlightPathfinder.euclidean(svo.get_center(start), svo.get_center(destination))
+	return AFlightPathFinder.euclidean(svo.get_center(start), svo.get_center(destination))
 
 
 ## [b]OVERRIDE ME![/b][br]
 func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
-	return FlightPathfinder.euclidean(svo.get_center(start), svo.get_center(destination))
+	return AFlightPathFinder.euclidean(svo.get_center(start), svo.get_center(destination))
 
 
 #### UTILITY FUNCTIONS ####
@@ -88,7 +86,7 @@ static func manhattan(pos1: Vector3, pos2: Vector3) -> float:
 static func get_closest_faces(svolink1: int, svolink2: int, svo: SVO) -> PackedVector3Array:
 	if not _did_warn_closest_faces_unimplemented:
 		push_warning(
-			"FlightPathfinder.get_closest_faces() is not implemented yet; falling back to centers."
+			"AFlightPathFinder.get_closest_faces() is not implemented yet; falling back to centers."
 		)
 		_did_warn_closest_faces_unimplemented = true
 	return get_centers(svolink1, svolink2, svo)

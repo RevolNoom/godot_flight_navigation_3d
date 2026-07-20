@@ -7,7 +7,7 @@ class_name FlightNavigation3D
 @export var sparse_voxel_octree: SVO
 
 ## Pathfinding algorithm used for [method find_path]
-@export var pathfinder: FlightPathfinder
+@export var pathfinder: AFlightPathFinder
 
 
 ## Return a path that connects [param from] and [param to].[br]
