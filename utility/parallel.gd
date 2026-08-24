@@ -52,7 +52,7 @@ static func count_by_batch(
 	var batch_count: int = _calculate_batch_count(task_size, max_batch_size)
 	if batch_count == 0:
 		return {}
-	var batch_size: int = task_size/batch_count
+	var batch_size: int = ceil(float(task_size) / float(batch_count))
 	var list_count_by_batch: PackedInt64Array = []
 	list_count_by_batch.resize(batch_count)
 	list_count_by_batch.fill(0)
@@ -157,6 +157,10 @@ static func execute(
 			if WorkerThreadPool.is_task_completed(task_id):
 				WorkerThreadPool.wait_for_task_completion(task_id)
 				break
+			
+			if not _is_async_context_valid(async_context):
+				printerr("Async context for parallel processing is invalid. Stopping execution", get_stack())
+				break
 			await async_context
 
 
@@ -202,7 +206,17 @@ static func execute_batched(
 			if WorkerThreadPool.is_task_completed(task_id):
 				WorkerThreadPool.wait_for_task_completion(task_id)
 				break
+			
+			if not _is_async_context_valid(async_context):
+				break
 			await async_context
+
+
+## Make sure the asynchronous context is valid,
+## so that parallel functions are not await-ing forever.
+static func _is_async_context_valid(async_context: Signal) -> bool:
+	return is_instance_id_valid(async_context.get_object_id()) 
+
 
 static func _parallel_for(task: Callable, start: int, end: int):
 	for i in range(start, end):

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c1lt1bxvrb6bb"]
+
+[ext_resource type="Script" uid="uid://bvfb4qcksqbd0" path="res://src/visualizer/svo_visualizer_subgrid.gd" id="1_subgrid"]
+
+[node name="SvoVisualizerSubgrid" type="Node3D"]
+script = ExtResource("1_subgrid")
+
+[node name="Voxels" type="MultiMeshInstance3D" parent="."]

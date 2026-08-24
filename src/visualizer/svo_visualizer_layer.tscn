@@ -1,0 +1,38 @@
+[gd_scene load_steps=2 format=3 uid="uid://ddmyey078ydbx"]
+
+[ext_resource type="Script" uid="uid://1ybxtp0voil2" path="res://src/visualizer/svo_visualizer_layer.gd" id="1_layer"]
+
+[node name="SvoVisualizerLayer" type="Node3D"]
+script = ExtResource("1_layer")
+
+[node name="Layer_0" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_1" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_2" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_3" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_4" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_5" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_6" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_7" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_8" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_9" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_10" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_11" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_12" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_13" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_14" type="MultiMeshInstance3D" parent="."]
+
+[node name="Layer_15" type="MultiMeshInstance3D" parent="."]

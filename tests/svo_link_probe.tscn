@@ -6,3 +6,7 @@
 script = ExtResource("1_0i4iw")
 sphere_radius = 0.01
 label_font_size = 16
+
+[node name="SphereMesh" type="MeshInstance3D" parent="."]
+
+[node name="Label3D" type="Label3D" parent="."]

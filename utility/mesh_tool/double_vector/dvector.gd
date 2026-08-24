@@ -5,11 +5,11 @@
 class_name Dvector
 
 
-static func _new_v2(a: Vector3) -> PackedFloat64Array:
+static func create_v2(a: Vector2) -> PackedFloat64Array:
 	return [a[0], a[1]]
 
 
-static func _new_array_v2(a: Array[Vector2]) -> PackedFloat64Array:
+static func create_array_v2(a: Array[Vector2]) -> PackedFloat64Array:
 	var result: PackedFloat64Array = []
 	result.resize(a.size()*2)
 	var i2 = 0
@@ -20,7 +20,7 @@ static func _new_array_v2(a: Array[Vector2]) -> PackedFloat64Array:
 	return result
 
 
-static func _new_array_pv2(a: PackedVector2Array) -> PackedFloat64Array:
+static func create_array_pv2(a: PackedVector2Array) -> PackedFloat64Array:
 	var result: PackedFloat64Array = []
 	result.resize(a.size()*2)
 	var i2 = 0
@@ -31,11 +31,11 @@ static func _new_array_pv2(a: PackedVector2Array) -> PackedFloat64Array:
 	return result
 
 
-static func _new_v3(a: Vector3) -> PackedFloat64Array:
+static func create_v3(a: Vector3) -> PackedFloat64Array:
 	return [a[0], a[1], a[2]]
 
 
-static func _new_array_v3(a: Array[Vector3]) -> PackedFloat64Array:
+static func create_array_v3(a: Array[Vector3]) -> PackedFloat64Array:
 	var result: PackedFloat64Array = []
 	result.resize(a.size()*3)
 	var i3 = 0
@@ -47,7 +47,7 @@ static func _new_array_v3(a: Array[Vector3]) -> PackedFloat64Array:
 	return result
 
 
-static func _new_array_pv3(a: PackedVector3Array) -> PackedFloat64Array:
+static func create_array_pv3(a: PackedVector3Array) -> PackedFloat64Array:
 	var result: PackedFloat64Array = []
 	result.resize(a.size()*3)
 	var i3 = 0
@@ -137,7 +137,13 @@ static func normalize(
 		var a1_squared: float = a[1] * a[1]
 		var a2_squared: float = a[2] * a[2]
 		var sum_squared: float = a0_squared + a1_squared + a2_squared
-		
-		out[0] = sqrt(a0_squared / sum_squared)
-		out[1] = sqrt(a1_squared / sum_squared)
-		out[2] = sqrt(a2_squared / sum_squared)
+		if is_zero_approx(sum_squared):
+			out[0] = 0.0
+			out[1] = 0.0
+			out[2] = 0.0
+			return
+
+		var length = sqrt(sum_squared)
+		out[0] = a[0] / length
+		out[1] = a[1] / length
+		out[2] = a[2] / length

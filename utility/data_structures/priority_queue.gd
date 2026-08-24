@@ -15,9 +15,9 @@ class_name PriorityQueue
 ## [param comp]: a Callable of signature: 
 ## [code]func(a, b) -> bool[/code]
 ## that returns the order of two elements in the queue.  
-## Default to [method Comparator.LESS] 
+## Default to [method Comparator.less] 
 ## ([method pop] and [method peek] returns the greatest element)
-func _init(initial_values: Array = [], comp := Comparator.LESS):
+func _init(initial_values: Array = [], comp := Comparator.less):
 	_comp = comp
 	_heap = initial_values.duplicate()
 	_size = _heap.size()
@@ -65,7 +65,6 @@ func push(obj: Variant):
 ## [b]WARNING:[/b] If PriorityQueue [method is_empty], [method pop] will crash
 func pop() -> Variant:
 	var result = _heap[0]
-	_heap[0] = null
 	_size -= 1
 	_swap(0, _size)
 	_slide_down(0)
@@ -119,16 +118,15 @@ func _slide_down(idx: int):
 		return
 
 
-# TODO: Loop instead of recursing[br]
 # Put the element at idx to its proper place in the PriorityQueue[br]
 # The element starts from bottom
 func _bubble_up(idx: int):
-	var parent := _parent(idx)
-	if idx == 0 or _comp.call(_heap[idx], _heap[parent]):
-		return
-		
-	_swap(idx, parent)
-	_bubble_up(parent)
+	while idx > 0:
+		var parent := _parent(idx)
+		if _comp.call(_heap[idx], _heap[parent]):
+			return
+		_swap(idx, parent)
+		idx = parent
 
 
 var _heap: Array = []

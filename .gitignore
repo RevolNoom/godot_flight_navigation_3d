@@ -1,5 +1,11 @@
+.*
+skills
+theory
+
 # Godot 4+ specific ignores
 .godot/
 **/*.import
 godot-cpp
 **/*.uid
+.env
+.gitnexus
