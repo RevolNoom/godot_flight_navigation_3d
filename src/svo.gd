@@ -398,21 +398,24 @@ func _parallel_count_solid_bit_by_subgrid(
 				_count_bit_1(svo_subgrid[layer0_offset])
 
 
-#TODO: Speed up by breaking int64 into 8 int8,
-# and create a look up table 
-# of solid bits for integers from 0 to 255
 func _count_bit_1(number: int) -> int:
 	var bit_1_count: int = 0
-	while number != 0:
-		if number & 1:
-			bit_1_count += 1
-		number = (number >> 1) & 0x7FFF_FFFF_FFFF_FFFF
+	bit_1_count += bit_count_lut[number & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 8) & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 16) & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 24) & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 32) & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 40) & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 48) & 0xFF]
+	bit_1_count += bit_count_lut[(number >> 56) & 0xFF]
 	return bit_1_count
 
 
 #region Lookup Tables
 # Lookup tables are not marked 'static'
 # because static vars don't work when used in editor mode.
+
+var bit_count_lut: PackedByteArray = generate_lut_bit_count()
 
 ## Indexes of subgrid voxel that makes up a face of a layer-0 node
 var subgrid_voxel_indexes_on_face: Dictionary[StringName, PackedInt32Array] =\
@@ -426,6 +429,19 @@ var children_node_by_face: Dictionary[StringName, PackedInt64Array] =\
 #endregion
 
 #region Generate Lookup Tables
+
+static func generate_lut_bit_count() -> PackedByteArray:
+	var table: PackedByteArray = []
+	table.resize(256)
+	for i in range(256):
+		var count = 0
+		var num = i
+		while num > 0:
+			if num & 1:
+				count += 1
+			num >>= 1
+		table[i] = count
+	return table
 
 ## Indexes of subgrid voxel that makes up a face of a layer-0 node
 static func generate_lut_subgrid_voxel_indexes_on_face() -> Dictionary[StringName, PackedInt32Array]:
