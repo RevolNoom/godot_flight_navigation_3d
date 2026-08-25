@@ -410,18 +410,20 @@ func get_offsets_of_head_nodes_in_x_direction_of_layer(
 			
 	var list_head_node_offset: PackedInt64Array = []
 	list_head_node_offset.resize(list_size)
-	list_head_node_offset.resize(0)
 	
 	# Identify head nodes
+	var insert_index = 0
 	for i in range(0, xn_layer.size(), 2):
 		var xn_layer_neighbor_svolink = xn_layer[i]
 		if xn_layer_neighbor_svolink == SvoLink64.singleton.null_link():
-			list_head_node_offset.push_back(i)
+			list_head_node_offset[insert_index] = i
+			insert_index += 1
 			continue
 		var xn_layer_neighbor_layer = SvoLink64.singleton.get_layer(
 			xn_layer_neighbor_svolink)
 		if xn_layer_neighbor_layer > layer:
-			list_head_node_offset.push_back(i)
+			list_head_node_offset[insert_index] = i
+			insert_index += 1
 			continue
 	return list_head_node_offset
 
