@@ -72,8 +72,8 @@ static func euclidean(pos1: Vector3, pos2: Vector3) -> float:
 
 ## Return the Manhattan distance between [param pos1] and [param pos2][br]
 static func manhattan(pos1: Vector3, pos2: Vector3) -> float:
-	var manhattan_diff = (pos1-pos2).abs()#
-	return manhattan_diff.x + manhattan_diff.y + manhattan_diff.z
+	var diff: Vector3 = (pos1 - pos2).abs()
+	return diff.x + diff.y + diff.z
 
 
 ## [b]TODO:[/b]

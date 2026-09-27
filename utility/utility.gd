@@ -90,7 +90,6 @@ static func filter_in_place(array_type: Variant, predicate: Callable) -> void:
 		if predicate.call(array_type[read_index], read_index):
 			array_type[write_index] = array_type[read_index]
 			write_index += 1
-		read_index += 1
 	array_type.resize(write_index)
 
 

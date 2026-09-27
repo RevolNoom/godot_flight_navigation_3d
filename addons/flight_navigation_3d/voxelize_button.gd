@@ -74,19 +74,7 @@ func _generate_step_message() -> PackedStringArray:
 
 func _on_pressed() -> void:
 	$ProgressDialog.show()
-	step_start_time.resize(0)
-	step_end_time.resize(0)
-	step_work_completed.resize(0)
-	step_total_work.resize(0)
-	
-	step_start_time.resize(ProgressStep.Enum.MAX_STEP)
-	step_end_time.resize(ProgressStep.Enum.MAX_STEP)
-	step_work_completed.resize(ProgressStep.Enum.MAX_STEP)
-	step_total_work.resize(ProgressStep.Enum.MAX_STEP)
-	
-	step_work_completed.fill(-1)
-	step_total_work.fill(-1)
-	
+	_reset_progress_state()
 	_update_dialog_text()
 
 	if _flight_navigation_3d_scene == null:
@@ -102,7 +90,29 @@ func _on_pressed() -> void:
 			"Voxelization did not produce a valid SVO."
 		return
 
-	var resource_path = ""
+	var resource_path = _resolve_resource_path()
+	_save_svo_resource(svo, existing_svo, resource_path)
+		
+	_flight_navigation_3d_scene.sparse_voxel_octree = svo
+	progress_dialog.text += "Done building navigation data.\nResource saved to %s." % resource_path
+
+
+func _reset_progress_state() -> void:
+	step_start_time.resize(0)
+	step_end_time.resize(0)
+	step_work_completed.resize(0)
+	step_total_work.resize(0)
+	
+	step_start_time.resize(ProgressStep.Enum.MAX_STEP)
+	step_end_time.resize(ProgressStep.Enum.MAX_STEP)
+	step_work_completed.resize(ProgressStep.Enum.MAX_STEP)
+	step_total_work.resize(ProgressStep.Enum.MAX_STEP)
+	
+	step_work_completed.fill(-1)
+	step_total_work.fill(-1)
+
+
+func _resolve_resource_path() -> String:
 	# Determine active scene folder to save the SVO next to the scene file
 	var edited_scene_root = get_tree().edited_scene_root
 	var edited_scene_path = ""
@@ -116,7 +126,10 @@ func _on_pressed() -> void:
 	if not edited_scene_dir.ends_with("/"):
 		edited_scene_dir += "/"
 	# Use format: <scene_name>_<flight_navigation_node_name>.res
-	resource_path = "%s%s_%s.res" % [edited_scene_dir, scene_name, _flight_navigation_3d_scene.name]
+	return "%s%s_%s.res" % [edited_scene_dir, scene_name, _flight_navigation_3d_scene.name]
+
+
+func _save_svo_resource(svo: SVO, existing_svo: SVO, resource_path: String) -> void:
 	if existing_svo == null:
 		svo.resource_path = resource_path
 		ResourceSaver.save(svo, resource_path,
@@ -126,9 +139,6 @@ func _on_pressed() -> void:
 	else:
 		svo.take_over_path(resource_path)
 		ResourceSaver.save(svo, resource_path, ResourceSaver.FLAG_NONE)
-		
-	_flight_navigation_3d_scene.sparse_voxel_octree = svo
-	progress_dialog.text += "Done building navigation data.\nResource saved to %s." % resource_path
 
 
 func _on_progress(

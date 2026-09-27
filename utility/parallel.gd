@@ -30,12 +30,9 @@ static func count(
 		thread_priority,
 		array_type,
 		value)
-	var list_count_by_batch = result.list_count_by_batch
-	
-	var count_sum: int = 0
-	for count_amount in list_count_by_batch:
-		count_sum += count_amount
-	return count_sum
+	if result.is_empty():
+		return 0
+	return int(Fn3dUtility.sum_number_array(result.list_count_by_batch))
 
 
 ## Divide tasks into batches.
@@ -49,7 +46,7 @@ static func count_by_batch(
 	) -> Dictionary:
 	var task_size = array_type.size()
 	var max_batch_size = 200000
-	var batch_count: int = _calculate_batch_count(task_size, max_batch_size)
+	var batch_count: int = ceili(float(task_size) / float(max_batch_size))
 	if batch_count == 0:
 		return {}
 	var batch_size: int = ceil(float(task_size) / float(batch_count))
@@ -89,12 +86,9 @@ static func count_if(
 		thread_priority,
 		max_batch_size,
 		predicate)
-	var list_count_if_by_batch = result.list_count_if_by_batch
-	
-	var count_sum: int = 0
-	for count_amount in list_count_if_by_batch:
-		count_sum += count_amount
-	return count_sum
+	if result.is_empty():
+		return 0
+	return int(Fn3dUtility.sum_number_array(result.list_count_if_by_batch))
 
 
 ## Divide tasks into batches.
@@ -106,7 +100,7 @@ static func count_if_by_batch(
 	max_batch_size: int,
 	predicate: Callable
 	) -> Dictionary:
-	var batch_count: int = _calculate_batch_count(task_size, max_batch_size)
+	var batch_count: int = ceili(float(task_size) / float(max_batch_size))
 	if batch_count == 0:
 		return {}
 	var batch_size: int = task_size/batch_count
@@ -149,19 +143,7 @@ static func execute(
 		list_task_id[task_index] = WorkerThreadPool.add_task(
 				task.bind(task_index), is_high_priority)
 	
-	for i in range(list_task_id.size()):
-		var task_id = list_task_id[i]
-		while true:
-			# In case the owner is removed,
-			# block the main thread until everything is resolved
-			if WorkerThreadPool.is_task_completed(task_id):
-				WorkerThreadPool.wait_for_task_completion(task_id)
-				break
-			
-			if not _is_async_context_valid(async_context):
-				printerr("Async context for parallel processing is invalid. Stopping execution", get_stack())
-				break
-			await async_context
+	await _wait_for_tasks_completion(list_task_id, async_context)
 
 
 ## Each thread will execute tasks in batch.
@@ -181,7 +163,7 @@ static func execute_batched(
 	## Task id returned by [WorkerThreadPool]. 
 	var list_task_id: PackedInt64Array = []
 	list_task_id.resize(0)
-	var batch_count = _calculate_batch_count(task_size, max_batch_size)
+	var batch_count: int = ceili(float(task_size) / float(max_batch_size))
 	if batch_count == 0:
 		return
 	list_task_id.resize(batch_count)
@@ -198,24 +180,25 @@ static func execute_batched(
 					batch_end),
 					is_high_priority)
 	
+	await _wait_for_tasks_completion(list_task_id, async_context)
+
+
+## Awaits completion for all tasks in [param list_task_id], yielding on [param async_context].[br]
+## [param list_task_id]: WorkerThreadPool task IDs to wait on[br]
+## [param async_context]: Signal context to yield on between poll intervals[br]
+static func _wait_for_tasks_completion(list_task_id: PackedInt64Array, async_context: Signal) -> void:
 	for i in range(list_task_id.size()):
-		var task_id = list_task_id[i]
+		var task_id: int = list_task_id[i]
 		while true:
-			# In case the owner is removed,
-			# block the main thread until everything is resolved
 			if WorkerThreadPool.is_task_completed(task_id):
 				WorkerThreadPool.wait_for_task_completion(task_id)
 				break
 			
-			if not _is_async_context_valid(async_context):
-				break
+			if not is_instance_id_valid(async_context.get_object_id()):
+				printerr("Async context for parallel processing is invalid. Stopping execution", get_stack())
+				return
 			await async_context
 
-
-## Make sure the asynchronous context is valid,
-## so that parallel functions are not await-ing forever.
-static func _is_async_context_valid(async_context: Signal) -> bool:
-	return is_instance_id_valid(async_context.get_object_id()) 
 
 
 static func _parallel_for(task: Callable, start: int, end: int):
@@ -244,6 +227,3 @@ static func _parallel_count_if_by_batch(
 			var predicate_result = int(predicate.call(array_index))
 			list_count_if_by_batch[batch_index] += predicate_result
 
-
-static func _calculate_batch_count(task_size: int, max_batch_size: int) -> int:
-	return ceili(float(task_size)/max_batch_size)

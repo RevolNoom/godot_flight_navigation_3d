@@ -78,54 +78,13 @@ func _get_csg_collision_shape_3d(collision_shape: CollisionShape3D) -> Array[CSG
 		csg.mesh = MeshTool.create_array_mesh_from_faces(concave_shape.get_faces())
 	elif shape is SphereShape3D:
 		var sphere_shape := shape as SphereShape3D
-		csg = CSGSphere3D.new()
-		csg.radial_segments = radial_segments
-		csg.radius = sphere_shape.radius
-		csg.rings = rings
-		csg.smooth_faces = false
+		csg = _create_csg_sphere(sphere_shape.radius)
 	elif shape is CapsuleShape3D:
 		var capsule_shape := shape as CapsuleShape3D
-		csg = CSGCombiner3D.new()
-		
-		var cylinder = CSGCylinder3D.new()
-		cylinder.radius = capsule_shape.radius
-		# A capsule height is the total height of the shape.
-		# Formula: Capsule height = 2 * shape.radius + Cylinder height.
-		# Constraint: Capsule height >= 2 * shape.radius.
-		# If the constraint is violated:
-		# either the radius will be shortened,
-		# or the height will be lengthened,
-		# whichever happens is based on which attribute the user edit on the editors.
-		# Rest assured that CapsuleShape3D has validated this constraint for us.
-		cylinder.height = max(0.0, capsule_shape.height - 2.0 * capsule_shape.radius)
-		cylinder.sides = radial_segments
-		cylinder.smooth_faces = false
-		
-		var sphere_begin = CSGSphere3D.new()
-		sphere_begin.radius = capsule_shape.radius
-		sphere_begin.radial_segments = radial_segments
-		sphere_begin.rings = rings
-		sphere_begin.smooth_faces = false
-		sphere_begin.position.y = -cylinder.height/2
-		
-		var sphere_end = CSGSphere3D.new()
-		sphere_end.radius = capsule_shape.radius
-		sphere_end.radial_segments = radial_segments
-		sphere_end.rings = rings
-		sphere_end.smooth_faces = false
-		sphere_end.position.y = +cylinder.height/2
-		
-		csg.add_child(cylinder)
-		csg.add_child(sphere_begin)
-		csg.add_child(sphere_end)
-		
+		csg = _create_csg_capsule(capsule_shape.radius, capsule_shape.height)
 	elif shape is CylinderShape3D:
 		var cylinder_shape := shape as CylinderShape3D
-		csg = CSGCylinder3D.new()
-		csg.height = cylinder_shape.height
-		csg.radius = cylinder_shape.radius
-		csg.sides = radial_segments
-		csg.smooth_faces = false
+		csg = _create_csg_cylinder(cylinder_shape.radius, cylinder_shape.height)
 
 	if csg == null:
 		return []
@@ -158,54 +117,13 @@ func _get_csg_from_mesh(mesh: Mesh) -> Array[CSGShape3D]:
 		csg.size = box_mesh.size
 	elif mesh is SphereMesh:
 		var sphere_mesh := mesh as SphereMesh
-		csg = CSGSphere3D.new()
-		csg.radial_segments = radial_segments
-		csg.radius = sphere_mesh.radius
-		csg.rings = rings
-		csg.smooth_faces = false
+		csg = _create_csg_sphere(sphere_mesh.radius)
 	elif mesh is CapsuleMesh:
 		var capsule_mesh := mesh as CapsuleMesh
-		csg = CSGCombiner3D.new()
-		
-		var cylinder = CSGCylinder3D.new()
-		cylinder.radius = capsule_mesh.radius
-		# A capsule height is the total height of the shape.
-		# Formula: Capsule height = 2 * shape.radius + Cylinder height.
-		# Constraint: Capsule height >= 2 * shape.radius.
-		# If the constraint is violated:
-		# either the radius will be shortened,
-		# or the height will be lengthened,
-		# whichever happens is based on which attribute the user edit on the editors.
-		# Rest assured that CapsuleShape3D has validated this constraint for us.
-		cylinder.height = max(0.0, capsule_mesh.height - 2.0 * capsule_mesh.radius)
-		cylinder.sides = radial_segments
-		cylinder.smooth_faces = false
-		
-		var sphere_begin = CSGSphere3D.new()
-		sphere_begin.radius = capsule_mesh.radius
-		sphere_begin.radial_segments = radial_segments
-		sphere_begin.rings = rings
-		sphere_begin.smooth_faces = false
-		sphere_begin.position.y = -cylinder.height/2
-		
-		var sphere_end = CSGSphere3D.new()
-		sphere_end.radius = capsule_mesh.radius
-		sphere_end.radial_segments = radial_segments
-		sphere_end.rings = rings
-		sphere_end.smooth_faces = false
-		sphere_end.position.y = +cylinder.height/2
-		
-		csg.add_child(cylinder)
-		csg.add_child(sphere_begin)
-		csg.add_child(sphere_end)
-		
+		csg = _create_csg_capsule(capsule_mesh.radius, capsule_mesh.height)
 	elif mesh is CylinderMesh:
 		var cylinder_mesh := mesh as CylinderMesh
-		csg = CSGCylinder3D.new()
-		csg.height = cylinder_mesh.height
-		csg.radius = cylinder_mesh.radius
-		csg.sides = radial_segments
-		csg.smooth_faces = false
+		csg = _create_csg_cylinder(cylinder_mesh.radius, cylinder_mesh.height)
 	elif mesh is ArrayMesh:
 		csg = CSGMesh3D.new()
 		csg.mesh = mesh
@@ -238,6 +156,61 @@ func _get_csg_from_mesh(mesh: Mesh) -> Array[CSGShape3D]:
 	if csg == null:
 		return []
 	return [csg]
+
+
+## Create a [CSGSphere3D] with configured radial segments and rings.[br]
+## [param radius]: Radius of the sphere.[br]
+## Return: Configured [CSGSphere3D].[br]
+func _create_csg_sphere(radius: float) -> CSGSphere3D:
+	var sphere: CSGSphere3D = CSGSphere3D.new()
+	sphere.radial_segments = radial_segments
+	sphere.radius = radius
+	sphere.rings = rings
+	sphere.smooth_faces = false
+	return sphere
+
+
+## Create a [CSGCylinder3D] with configured radial segments.[br]
+## [param radius]: Radius of the cylinder.[br]
+## [param height]: Height of the cylinder.[br]
+## Return: Configured [CSGCylinder3D].[br]
+func _create_csg_cylinder(radius: float, height: float) -> CSGCylinder3D:
+	var cylinder: CSGCylinder3D = CSGCylinder3D.new()
+	cylinder.height = height
+	cylinder.radius = radius
+	cylinder.sides = radial_segments
+	cylinder.smooth_faces = false
+	return cylinder
+
+
+## Create a [CSGCombiner3D] representing a capsule shape composed of a cylinder and two spheres.[br]
+## [param radius]: Radius of the capsule.[br]
+## [param height]: Total height of the capsule.[br]
+## Return: [CSGCombiner3D] containing the capsule geometry.[br]
+func _create_csg_capsule(radius: float, height: float) -> CSGCombiner3D:
+	var csg: CSGCombiner3D = CSGCombiner3D.new()
+	
+	# A capsule height is the total height of the shape.
+	# Formula: Capsule height = 2 * shape.radius + Cylinder height.
+	# Constraint: Capsule height >= 2 * shape.radius.
+	# If the constraint is violated:
+	# either the radius will be shortened,
+	# or the height will be lengthened,
+	# whichever happens is based on which attribute the user edit on the editors.
+	# Rest assured that CapsuleShape3D has validated this constraint for us.
+	var cylinder_height: float = max(0.0, height - 2.0 * radius)
+	var cylinder: CSGCylinder3D = _create_csg_cylinder(radius, cylinder_height)
+	
+	var sphere_begin: CSGSphere3D = _create_csg_sphere(radius)
+	sphere_begin.position.y = -cylinder.height / 2.0
+	
+	var sphere_end: CSGSphere3D = _create_csg_sphere(radius)
+	sphere_end.position.y = +cylinder.height / 2.0
+	
+	csg.add_child(cylinder)
+	csg.add_child(sphere_begin)
+	csg.add_child(sphere_end)
+	return csg
 
 
 static func _is_supported_parent_node(parent_node: Node) -> bool:

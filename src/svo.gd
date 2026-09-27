@@ -270,12 +270,11 @@ func set_coverage(layer: int, index: int, coverage_value: float):
 
 
 func get_node_center(svolink: int) -> Vector3:
-	var layer = SvoLink64.singleton.get_layer(svolink)
-	var offset = SvoLink64.singleton.get_offset(svolink)
-	var node_size = 1 << (layer + 2)
-	var node_corner_position = Morton3.decode_vec3(morton[layer][offset])
-	var half_a_node = Vector3(0.5, 0.5, 0.5)
-	return (node_corner_position + half_a_node) * node_size
+	var layer: int = SvoLink64.singleton.get_layer(svolink)
+	var offset: int = SvoLink64.singleton.get_offset(svolink)
+	var node_size: int = 1 << (layer + 2)
+	var node_corner_position: Vector3 = Morton3.decode_vec3(morton[layer][offset])
+	return (node_corner_position + Vector3(0.5, 0.5, 0.5)) * node_size
 
 
 func get_voxel_center(svolink: int) -> Vector3:
@@ -335,94 +334,91 @@ func get_svolink_from_voxel_morton(morton3_value: int) -> int:
 ## [br]
 ## [param svolink]: The node whose neighbors need to be found.
 func get_neighbors_of(svolink: int) -> PackedInt64Array:
-	var neighbors: PackedInt64Array = []
-	var layer = SvoLink64.singleton.get_layer(svolink)
-	var offset = SvoLink64.singleton.get_offset(svolink)
-	#var linkstr = SvoLink64.singleton.get_format_string(svolink)
-	# Get neighbors of subgrid voxel
+	var layer: int = SvoLink64.singleton.get_layer(svolink)
 	if layer == 0:
-		var current_svolink_subgrid = SvoLink64.singleton.get_subgrid(svolink)
+		return _get_subgrid_voxel_neighbors(svolink)
+	return _get_node_neighbors(layer, SvoLink64.singleton.get_offset(svolink))
+
+
+## [param svolink]: The subgrid voxel link whose neighbors need to be found.[br]
+## Return: Array of neighbor [SVOLink]s for a layer 0 subgrid voxel.[br]
+func _get_subgrid_voxel_neighbors(svolink: int) -> PackedInt64Array:
+	var neighbors: PackedInt64Array = []
+	var offset: int = SvoLink64.singleton.get_offset(svolink)
+	var current_svolink_subgrid: int = SvoLink64.singleton.get_subgrid(svolink)
+	
+	var promising_neighbors: Array = [
+		# neighbor_expected_subgrid, neighbor_direction, neighbor_actual_subgrid (in case neighbor is of different parent)
+		[Morton3.dec_x(current_svolink_subgrid), xn, Morton3.set_x(current_svolink_subgrid, 3)],
+		[Morton3.inc_x(current_svolink_subgrid), xp, Morton3.set_x(current_svolink_subgrid, 0)],
+		[Morton3.dec_y(current_svolink_subgrid), yn, Morton3.set_y(current_svolink_subgrid, 3)],
+		[Morton3.inc_y(current_svolink_subgrid), yp, Morton3.set_y(current_svolink_subgrid, 0)],
+		[Morton3.dec_z(current_svolink_subgrid), zn, Morton3.set_z(current_svolink_subgrid, 3)],
+		[Morton3.inc_z(current_svolink_subgrid), zp, Morton3.set_z(current_svolink_subgrid, 0)]
+	]
+	for neighbor_info: Array in promising_neighbors:
+		var neighbor_expected_subgrid: int = neighbor_info[0]
 		
-		var promising_neighbors = [
-			# neighbor_expected_subgrid, neighbor_direction, neighbor_actual_subgrid (in case neighbor is of different parent)
-			[Morton3.dec_x(current_svolink_subgrid), xn, Morton3.set_x(current_svolink_subgrid, 3)],
-			[Morton3.inc_x(current_svolink_subgrid), xp, Morton3.set_x(current_svolink_subgrid, 0)],
-			[Morton3.dec_y(current_svolink_subgrid), yn, Morton3.set_y(current_svolink_subgrid, 3)],
-			[Morton3.inc_y(current_svolink_subgrid), yp, Morton3.set_y(current_svolink_subgrid, 0)],
-			[Morton3.dec_z(current_svolink_subgrid), zn, Morton3.set_z(current_svolink_subgrid, 3)],
-			[Morton3.inc_z(current_svolink_subgrid), zp, Morton3.set_z(current_svolink_subgrid, 0)]
-		]
-		for neighbor_info in promising_neighbors:
-			var neighbor_expected_subgrid = neighbor_info[0]
+		var neighbor_is_a_leaf_voxel_of_same_parent: bool = (
+			Morton3.ge(neighbor_expected_subgrid, 0)
+			and Morton3.le(neighbor_expected_subgrid, 63)
+		)
 			
-			var neighbor_is_a_leaf_voxel_of_same_parent = \
-				Morton3.ge(neighbor_expected_subgrid, 0)\
-				and Morton3.le(neighbor_expected_subgrid, 63)
-				
-			if neighbor_is_a_leaf_voxel_of_same_parent:
-				neighbors.push_back(SvoLink64.singleton.set_subgrid(svolink, neighbor_expected_subgrid))
-				continue
-				
-			var neighbor_direction = neighbor_info[1]
-			var neighbor_svolink = neighbor_direction[layer][offset]
-			# There is no neighbor on this side
-			if neighbor_svolink == SvoLink64.singleton.null_link():
-				continue
+		if neighbor_is_a_leaf_voxel_of_same_parent:
+			neighbors.push_back(SvoLink64.singleton.set_subgrid(svolink, neighbor_expected_subgrid))
+			continue
 			
-			var neighbor_layer = SvoLink64.singleton.get_layer(neighbor_svolink)
-			var neighbor_is_not_subgrid_voxel = neighbor_layer > 0
-			if neighbor_is_not_subgrid_voxel:
-				neighbors.push_back(neighbor_svolink)
-				continue
-			
-			var neighbor_actual_subgrid = neighbor_info[2]
-			neighbors.push_back(SvoLink64.singleton.set_subgrid(neighbor_svolink, neighbor_actual_subgrid))
-	# Get neighbors of a node
-	else:
-		# Get voxels on face that is opposite to direction
-		# e.g. If neighbor is in positive direction,
-		# then get voxels on negative face of that neighbor
-		for neighbor in [[xp, xn], [xn, xp], [yp, yn], [yn, yp], [zp, zn], [zn, zp]]:
-			var neighbor_svolink = neighbor[0][layer][offset]
-			if neighbor_svolink == SvoLink64.singleton.null_link():
-				continue
-			var neighbor_face = neighbor[1]
-			var smos = _get_voxels_on_face(neighbor_face, neighbor_svolink)
-			neighbors.append_array(smos)
-			
+		var neighbor_direction: Array[PackedInt64Array] = neighbor_info[1]
+		var neighbor_svolink: int = neighbor_direction[0][offset]
+		# There is no neighbor on this side
+		if neighbor_svolink == SvoLink64.singleton.null_link():
+			continue
+		
+		var neighbor_layer: int = SvoLink64.singleton.get_layer(neighbor_svolink)
+		var neighbor_is_not_subgrid_voxel: bool = neighbor_layer > 0
+		if neighbor_is_not_subgrid_voxel:
+			neighbors.push_back(neighbor_svolink)
+			continue
+		
+		var neighbor_actual_subgrid: int = neighbor_info[2]
+		neighbors.push_back(SvoLink64.singleton.set_subgrid(neighbor_svolink, neighbor_actual_subgrid))
+		
 	return neighbors
+
+
+## [param layer]: The layer of the node.[br]
+## [param offset]: The offset of the node in the given layer.[br]
+## Return: Array of neighbor [SVOLink]s for a node above layer 0.[br]
+func _get_node_neighbors(layer: int, offset: int) -> PackedInt64Array:
+	var neighbors: PackedInt64Array = []
+	# Get voxels on face that is opposite to direction
+	# e.g. If neighbor is in positive direction,
+	# then get voxels on negative face of that neighbor
+	var opposite_pairs: Array = [[xp, xn], [xn, xp], [yp, yn], [yn, yp], [zp, zn], [zn, zp]]
+	for neighbor: Array in opposite_pairs:
+		var neighbor_svolink: int = neighbor[0][layer][offset]
+		if neighbor_svolink == SvoLink64.singleton.null_link():
+			continue
+		var neighbor_face: Array[PackedInt64Array] = neighbor[1]
+		var smos: PackedInt64Array = _get_voxels_on_face(neighbor_face, neighbor_svolink)
+		neighbors.append_array(smos)
+		
+	return neighbors
+
+
+static func _is_head_node_in_x(neighbor_svolink: int, layer: int) -> bool:
+	if neighbor_svolink == SvoLink64.singleton.null_link():
+		return true
+	return SvoLink64.singleton.get_layer(neighbor_svolink) > layer
 
 
 func get_offsets_of_head_nodes_in_x_direction_of_layer(
 	layer: int) -> PackedInt64Array:
-	var list_size = 0
-	var xn_layer = xn[layer]
-	for i in range(0, xn_layer.size(), 2):
-		var xn_layer_neighbor_svolink = xn_layer[i]
-		if xn_layer_neighbor_svolink == SvoLink64.singleton.null_link():
-			list_size += 1
-			continue
-		var xn_layer_neighbor_layer = SvoLink64.singleton.get_layer(
-			xn_layer_neighbor_svolink)
-		if xn_layer_neighbor_layer > layer:
-			list_size += 1
-			continue
-			
 	var list_head_node_offset: PackedInt64Array = []
-	list_head_node_offset.resize(list_size)
-	list_head_node_offset.resize(0)
-	
-	# Identify head nodes
+	var xn_layer: PackedInt64Array = xn[layer]
 	for i in range(0, xn_layer.size(), 2):
-		var xn_layer_neighbor_svolink = xn_layer[i]
-		if xn_layer_neighbor_svolink == SvoLink64.singleton.null_link():
+		if _is_head_node_in_x(xn_layer[i], layer):
 			list_head_node_offset.push_back(i)
-			continue
-		var xn_layer_neighbor_layer = SvoLink64.singleton.get_layer(
-			xn_layer_neighbor_svolink)
-		if xn_layer_neighbor_layer > layer:
-			list_head_node_offset.push_back(i)
-			continue
 	return list_head_node_offset
 
 
@@ -526,20 +522,34 @@ func is_solid(layer_or_svolink: int, index: int = -1) -> bool:
 ## Calculate the center of the voxel/node
 ## where 1 unit distance corresponds to side length of 1 subgrid voxel.
 func get_center(svolink: int) -> Vector3:
-	var layer = SvoLink64.singleton.get_layer(svolink)
-	var offset = SvoLink64.singleton.get_offset(svolink)
-	var node_size = 1 << (layer + 2)
-	var node_corner_position = Morton3.decode_vec3(morton[layer][offset])
+	var layer: int = SvoLink64.singleton.get_layer(svolink)
+	var offset: int = SvoLink64.singleton.get_offset(svolink)
+	var node_size: int = 1 << (layer + 2)
+	var node_corner_position: Vector3 = Morton3.decode_vec3(morton[layer][offset])
 	
 	# For layer 0, the center is the center of the subgrid voxel
 	if layer == 0:
 		var subgrid_index: int = SvoLink64.singleton.get_subgrid(svolink)
-		var voxel_corner_position = Morton3.decode_vec3(subgrid_index)
-		var half_a_voxel = Vector3(0.5, 0.5, 0.5)
-		return node_corner_position * node_size + voxel_corner_position + half_a_voxel
+		var voxel_corner_position: Vector3 = Morton3.decode_vec3(subgrid_index)
+		return node_corner_position * node_size + voxel_corner_position + Vector3(0.5, 0.5, 0.5)
 	
-	var half_a_node = Vector3(0.5, 0.5, 0.5)
-	return (node_corner_position + half_a_node) * node_size 
+	return (node_corner_position + Vector3(0.5, 0.5, 0.5)) * node_size 
+
+
+func _get_face_direction_name(face: Array[PackedInt64Array]) -> StringName:
+	if face == xn:
+		return &"xn"
+	elif face == xp:
+		return &"xp"
+	elif face == yn:
+		return &"yn"
+	elif face == yp:
+		return &"yp"
+	elif face == zn:
+		return &"zn"
+	elif face == zp:
+		return &"zp"
+	return &""
 
 
 ## Return all highest-resolution voxels that make up the face of node [param svolink][br]
@@ -549,55 +559,29 @@ func _get_voxels_on_face(
 	if svolink == SvoLink64.singleton.null_link():
 		return []
 	
-	var layer = SvoLink64.singleton.get_layer(svolink)
-	var offset = SvoLink64.singleton.get_offset(svolink)
+	var layer: int = SvoLink64.singleton.get_layer(svolink)
+	var offset: int = SvoLink64.singleton.get_offset(svolink)
+	var direction_name: StringName = _get_face_direction_name(face)
 	
 	if layer == 0:
-		var subgrid_voxels: PackedInt32Array
-		if face == xn:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"xn"]
-		elif face == xp:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"xp"]
-		elif face == yn:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"yn"]
-		elif face == yp:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"yp"]
-		elif face == zn:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"zn"]
-		elif face == zp:
-			subgrid_voxels = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"zp"]
+		var subgrid_voxels: PackedInt32Array = Fn3dLookupTable.subgrid_voxel_indexes_on_face[direction_name]
 		var subgrid_voxel_on_face: PackedInt64Array = []
 		subgrid_voxel_on_face.resize(subgrid_voxels.size())
 		for i in range(subgrid_voxels.size()):
 			subgrid_voxel_on_face[i] = SvoLink64.singleton.set_subgrid(svolink, subgrid_voxels[i]) 
 		return subgrid_voxel_on_face
 	
-	var first_child_svolink = first_child[layer][offset]
+	var first_child_svolink: int = first_child[layer][offset]
 	# If this node doesn't have any child
 	# Then it makes up the face itself
 	if first_child_svolink == SvoLink64.singleton.null_link():
 		return [svolink]
 
 	# This vector holds index of 4 children on [param face]
-	var children_on_face: PackedInt64Array = \
-		[first_child_svolink, first_child_svolink, first_child_svolink, first_child_svolink]
-	var children_indexes: PackedInt64Array
-	if face == xn:
-		children_indexes = Fn3dLookupTable.children_node_by_face[&"xn"]
-	elif face == xp:
-		children_indexes = Fn3dLookupTable.children_node_by_face[&"xp"]
-	elif face == yn:
-		children_indexes = Fn3dLookupTable.children_node_by_face[&"yn"]
-	elif face == yp:
-		children_indexes = Fn3dLookupTable.children_node_by_face[&"yp"]
-	elif face == zn:
-		children_indexes = Fn3dLookupTable.children_node_by_face[&"zn"]
-	elif face == zp:
-		children_indexes = Fn3dLookupTable.children_node_by_face[&"zp"]
-	
+	var children_indexes: PackedInt64Array = Fn3dLookupTable.children_node_by_face[direction_name]
 	var voxels_on_face: PackedInt64Array = []
 	for i in range(4):
-		var children_voxels_on_face = _get_voxels_on_face(face, children_on_face[i] + children_indexes[i])
+		var children_voxels_on_face: PackedInt64Array = _get_voxels_on_face(face, first_child_svolink + children_indexes[i])
 		voxels_on_face.append_array(children_voxels_on_face)
 	
 	return voxels_on_face

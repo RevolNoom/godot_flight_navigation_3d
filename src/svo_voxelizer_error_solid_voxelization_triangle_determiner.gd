@@ -29,14 +29,13 @@ func _run_solid_voxelization(
 	var inside_provenance: Array[Dictionary] = [] # layer -> {node_offset: triangle-set}
 
 	progress.emit(ProgressStep.Enum.SOLID_VOXELIZATION, svo, 0, 2)
-	var x_column_flip_bitmask_by_subgrid_index = Fn3dLookupTable.x_column_flip_bitmask_by_subgrid_index
-	var neighbor_node_x_column_bits_by_subgrid_index = Fn3dLookupTable.neighbor_node_x_column_bits_by_subgrid_index
-	var bitmask_of_subgrid_voxels_on_face_xp = Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_xp
+	var x_column_flip_bitmask_by_subgrid_index: PackedInt64Array = Fn3dLookupTable.x_column_flip_bitmask_by_subgrid_index
+	var neighbor_node_x_column_bits_by_subgrid_index: Dictionary = Fn3dLookupTable.neighbor_node_x_column_bits_by_subgrid_index
 	var subgrid_voxel_indexes_on_face_xp: PackedInt32Array = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"xp"]
 
 	#region YZ plane rasterization, and projection on x column
 	progress.emit(ProgressStep.Enum.YZ_PLANE_RASTERIZATION, svo, 0, triangles.size() / 3)
-	for triangle_index in range(triangles.size() / 3):
+	for triangle_index: int in range(triangles.size() / 3):
 		_apply_triangle_yz_rasterization_with_provenance(
 			triangle_index,
 			svo,
@@ -55,37 +54,17 @@ func _run_solid_voxelization(
 	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 0, 6)
 
 	#region Prepare flip flags, inside flags, list head nodes
-	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 0, 3)
-	var flip_flag: Array[PackedByteArray] = []
-	flip_flag.resize(svo.morton.size())
-	flip_provenance.resize(svo.morton.size())
-	inside_provenance.resize(svo.morton.size())
-	for i in range(1, svo.morton.size()):
-		flip_flag[i].resize(svo.morton[i].size())
-		flip_flag[i].fill(0)
-		flip_provenance[i] = {}
-	for i in range(0, svo.morton.size()):
-		inside_provenance[i] = {}
-	svo.flip = flip_flag
-
-	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 1, 3)
-	svo.inside.resize(svo.morton.size())
-	for i in range(0, svo.morton.size()):
-		svo.inside[i].resize(svo.morton[i].size())
-		svo.inside[i].fill(0)
-
-	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 2, 3)
-	var list_head_node_offset_of_layer: Array[PackedInt64Array] = []
-	list_head_node_offset_of_layer.resize(svo.morton.size())
-	for layer in range(0, svo.morton.size()):
-		list_head_node_offset_of_layer[layer] = svo.get_offsets_of_head_nodes_in_x_direction_of_layer(layer)
-	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 3, 3)
+	var list_head_node_offset_of_layer: Array[PackedInt64Array] = _prepare_flags_and_provenance(
+		svo,
+		flip_provenance,
+		inside_provenance)
+	var flip_flag: Array[PackedByteArray] = svo.flip
 	#endregion
 
 	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 1, 6)
 	#region Propagate bit flips in x+ direction (layer 0)
 	progress.emit(ProgressStep.Enum.XP_BIT_FLIP_PROPAGATION, svo, 0, list_head_node_offset_of_layer[0].size())
-	for i in range(list_head_node_offset_of_layer[0].size()):
+	for i: int in range(list_head_node_offset_of_layer[0].size()):
 		_propagate_bit_flip_with_provenance(
 			i,
 			list_head_node_offset_of_layer[0],
@@ -99,15 +78,107 @@ func _run_solid_voxelization(
 
 	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 2, 6)
 	#region Flip bottom up layer 1
+	_flip_bottom_up_layer_1_with_provenance(
+		svo,
+		flip_flag,
+		list_head_node_offset_of_layer,
+		bit_provenance,
+		flip_provenance,
+		inside_provenance)
+	#endregion
+
+	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 3, 6)
+	#region Flip bottom up from layer 2
+	_flip_bottom_up_from_layer_2_with_provenance(
+		svo,
+		flip_flag,
+		list_head_node_offset_of_layer,
+		flip_provenance,
+		inside_provenance)
+	#endregion
+
+	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 4, 6)
+	#region Propagate inside flags topdown for tree nodes
+	_propagate_inside_flags_topdown_with_provenance(svo, depth, inside_provenance)
+	#endregion
+
+	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 5, 6)
+	#region Propagate inside flag to subgrid voxels
+	_propagate_inside_flags_to_subgrid_voxels_with_provenance(svo, inside_provenance, bit_provenance)
+	#endregion
+
+	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 6, 6)
+	#endregion
+
+	progress.emit(ProgressStep.Enum.SOLID_VOXELIZATION, svo, 2, 2)
+	if debug_delete_flip_flag:
+		svo.flip.clear()
+
+	_report_tracked_solid_flips(tracked_pre_solid, svo, triangles, bit_provenance)
+
+
+## Prepares flip flags, inside flags, and head node offsets per layer while initializing provenance tracking.[br]
+## [param svo]: [SVO] being constructed.[br]
+## [param flip_provenance]: Flip flag provenance tracking array to resize and initialize per layer.[br]
+## [param inside_provenance]: Inside flag provenance tracking array to resize and initialize per layer.[br]
+## Return: Array of head node offsets for each layer in X direction.[br]
+func _prepare_flags_and_provenance(
+	svo: SVO,
+	flip_provenance: Array[Dictionary],
+	inside_provenance: Array[Dictionary]) -> Array[PackedInt64Array]:
+	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 0, 3)
+	var flip_flag: Array[PackedByteArray] = []
+	flip_flag.resize(svo.morton.size())
+	flip_provenance.resize(svo.morton.size())
+	inside_provenance.resize(svo.morton.size())
+	for i: int in range(1, svo.morton.size()):
+		flip_flag[i].resize(svo.morton[i].size())
+		flip_flag[i].fill(0)
+		flip_provenance[i] = {}
+	for i: int in range(0, svo.morton.size()):
+		inside_provenance[i] = {}
+	svo.flip = flip_flag
+
+	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 1, 3)
+	svo.inside.resize(svo.morton.size())
+	for i: int in range(0, svo.morton.size()):
+		svo.inside[i].resize(svo.morton[i].size())
+		svo.inside[i].fill(0)
+
+	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 2, 3)
+	var list_head_node_offset_of_layer: Array[PackedInt64Array] = []
+	list_head_node_offset_of_layer.resize(svo.morton.size())
+	for layer: int in range(0, svo.morton.size()):
+		list_head_node_offset_of_layer[layer] = svo.get_offsets_of_head_nodes_in_x_direction_of_layer(layer)
+	progress.emit(ProgressStep.Enum.PREPARE_FLAGS_AND_HEAD_NODES, svo, 3, 3)
+	return list_head_node_offset_of_layer
+
+
+## Evaluates layer-1 node flip flags and propagates flip and inside flags along X direction with provenance tracking.[br]
+## [param svo]: [SVO] being constructed.[br]
+## [param flip_flag]: Flip flags per layer.[br]
+## [param list_head_node_offset_of_layer]: Head node offsets per layer.[br]
+## [param bit_provenance]: Mapping of bit keys to triangle provenance sets.[br]
+## [param flip_provenance]: Flip flag provenance per layer.[br]
+## [param inside_provenance]: Inside flag provenance per layer.[br]
+func _flip_bottom_up_layer_1_with_provenance(
+	svo: SVO,
+	flip_flag: Array[PackedByteArray],
+	list_head_node_offset_of_layer: Array[PackedInt64Array],
+	bit_provenance: Dictionary,
+	flip_provenance: Array[Dictionary],
+	inside_provenance: Array[Dictionary]) -> void:
 	progress.emit(ProgressStep.Enum.FLIP_BOTTOM_UP_LAYER_1, svo, 0, 2)
 	progress.emit(ProgressStep.Enum.PREPARE_FLIP_FLAG_LAYER_1, svo, 0, flip_flag[1].size())
-	for i in range(0, flip_flag[1].size()):
-		var first_child_svolink = svo.first_child[1][i]
+	var bitmask_of_subgrid_voxels_on_face_xp: int = Fn3dLookupTable.bitmask_of_subgrid_voxels_on_face_xp
+	var subgrid_voxel_indexes_on_face_xp: PackedInt32Array = Fn3dLookupTable.subgrid_voxel_indexes_on_face[&"xp"]
+	for i: int in range(0, flip_flag[1].size()):
+		var first_child_svolink: int = svo.first_child[1][i]
 		if first_child_svolink == SvoLink64.singleton.null_link():
 			continue
 		if not _is_end_of_x_linked_node_string(1, i, svo.first_child, svo.xp):
 			continue
-		var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
+		var first_child_offset: int = SvoLink64.singleton.get_offset(first_child_svolink)
 		flip_flag[1][i] = _has_full_xp_face_in_all_children(
 			first_child_offset,
 			svo.subgrid,
@@ -118,7 +189,7 @@ func _run_solid_voxelization(
 
 	progress.emit(ProgressStep.Enum.FLIP_BOTTOM_UP_LAYER_1, svo, 1, 2)
 	progress.emit(ProgressStep.Enum.PROPAGATE_FLIP_INFORMATION_LAYER_1, svo, 0, list_head_node_offset_of_layer[1].size())
-	for head_node_index in range(list_head_node_offset_of_layer[1].size()):
+	for head_node_index: int in range(list_head_node_offset_of_layer[1].size()):
 		_propagate_flip_and_inside_with_provenance(
 			head_node_index,
 			1,
@@ -130,29 +201,39 @@ func _run_solid_voxelization(
 			inside_provenance)
 	progress.emit(ProgressStep.Enum.PROPAGATE_FLIP_INFORMATION_LAYER_1, svo, list_head_node_offset_of_layer[1].size(), list_head_node_offset_of_layer[1].size())
 	progress.emit(ProgressStep.Enum.FLIP_BOTTOM_UP_LAYER_1, svo, 2, 2)
-	#endregion
 
-	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 3, 6)
-	#region Flip bottom up from layer 2
+
+## Evaluates flip flags from layer 2 upward and propagates flip and inside flags with provenance tracking.[br]
+## [param svo]: [SVO] being constructed.[br]
+## [param flip_flag]: Flip flags per layer.[br]
+## [param list_head_node_offset_of_layer]: Head node offsets per layer.[br]
+## [param flip_provenance]: Flip flag provenance per layer.[br]
+## [param inside_provenance]: Inside flag provenance per layer.[br]
+func _flip_bottom_up_from_layer_2_with_provenance(
+	svo: SVO,
+	flip_flag: Array[PackedByteArray],
+	list_head_node_offset_of_layer: Array[PackedInt64Array],
+	flip_provenance: Array[Dictionary],
+	inside_provenance: Array[Dictionary]) -> void:
 	progress.emit(ProgressStep.Enum.FLIP_BOTTOM_UP_FROM_LAYER_2, svo, 0, flip_flag.size())
-	for layer in range(2, flip_flag.size()):
-		var flip_flag_layer = flip_flag[layer]
-		var flip_flag_child_layer = flip_flag[layer - 1]
+	for layer: int in range(2, flip_flag.size()):
+		var flip_flag_layer: PackedByteArray = flip_flag[layer]
+		var flip_flag_child_layer: PackedByteArray = flip_flag[layer - 1]
 		progress.emit(ProgressStep.Enum.PREPARE_FLIP_FLAG_FROM_LAYER_2, svo, 0, flip_flag_layer.size())
-		for i in range(0, flip_flag_layer.size()):
-			var first_child_svolink = svo.first_child[layer][i]
+		for i: int in range(0, flip_flag_layer.size()):
+			var first_child_svolink: int = svo.first_child[layer][i]
 			if first_child_svolink == SvoLink64.singleton.null_link():
 				continue
 			if not _is_end_of_x_linked_node_string(layer, i, svo.first_child, svo.xp):
 				continue
-			var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
+			var first_child_offset: int = SvoLink64.singleton.get_offset(first_child_svolink)
 			flip_flag_layer[i] = _all_xp_children_are_flipped(first_child_offset, flip_flag_child_layer)
 			if flip_flag_layer[i] != 0:
 				flip_provenance[layer][i] = _collect_upper_flip_provenance(layer - 1, first_child_offset, flip_provenance)
 		progress.emit(ProgressStep.Enum.PREPARE_FLIP_FLAG_FROM_LAYER_2, svo, flip_flag_layer.size(), flip_flag_layer.size())
 
 		progress.emit(ProgressStep.Enum.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2, svo, 0, list_head_node_offset_of_layer[layer].size())
-		for head_node_index in range(list_head_node_offset_of_layer[layer].size()):
+		for head_node_index: int in range(list_head_node_offset_of_layer[layer].size()):
 			_propagate_flip_and_inside_with_provenance(
 				head_node_index,
 				layer,
@@ -165,46 +246,48 @@ func _run_solid_voxelization(
 		progress.emit(ProgressStep.Enum.PROPAGATE_FLIP_INFORMATION_FROM_LAYER_2, svo, list_head_node_offset_of_layer[layer].size(), list_head_node_offset_of_layer[layer].size())
 		progress.emit(ProgressStep.Enum.FLIP_BOTTOM_UP_FROM_LAYER_2, svo, layer, flip_flag.size())
 	progress.emit(ProgressStep.Enum.FLIP_BOTTOM_UP_FROM_LAYER_2, svo, flip_flag.size(), flip_flag.size())
-	#endregion
 
-	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 4, 6)
-	#region Propagate inside flags topdown for tree nodes
+
+## Propagates inside flags top-down from parent nodes to child nodes with provenance tracking.[br]
+## [param svo]: [SVO] whose tree nodes' inside flags will be propagated top-down.[br]
+## [param depth]: Total tree depth (number of layers).[br]
+## [param inside_provenance]: Inside flag provenance per layer.[br]
+func _propagate_inside_flags_topdown_with_provenance(
+	svo: SVO,
+	depth: int,
+	inside_provenance: Array[Dictionary]) -> void:
 	progress.emit(ProgressStep.Enum.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES, svo, 0, depth - 1)
-	for layer in range(depth - 1, 0, -1):
-		for offset in range(svo.inside[layer].size()):
+	for layer: int in range(depth - 1, 0, -1):
+		for offset: int in range(svo.inside[layer].size()):
 			if svo.inside[layer][offset] == 0:
 				continue
-			var first_child_svolink = svo.first_child[layer][offset]
+			var first_child_svolink: int = svo.first_child[layer][offset]
 			if first_child_svolink == SvoLink64.singleton.null_link():
 				continue
-			var first_child_offset = SvoLink64.singleton.get_offset(first_child_svolink)
+			var first_child_offset: int = SvoLink64.singleton.get_offset(first_child_svolink)
 			var source_set: Dictionary = _get_node_provenance(inside_provenance[layer], offset)
-			for child in range(first_child_offset, first_child_offset + 8):
+			for child: int in range(first_child_offset, first_child_offset + 8):
 				svo.inside[layer - 1][child] = svo.inside[layer - 1][child] ^ 1
 				_toggle_node_provenance(inside_provenance[layer - 1], child, source_set)
 	progress.emit(ProgressStep.Enum.PROPAGATE_INSIDE_FLAGS_TOPDOWN_FOR_TREE_NODES, svo, depth - 1, depth - 1)
-	#endregion
 
-	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 5, 6)
-	#region Propagate inside flag to subgrid voxels
+
+## Inverts subgrid voxels for leaf nodes marked inside and records provenance.[br]
+## [param svo]: [SVO] whose leaf subgrid voxels will have inside flags applied.[br]
+## [param inside_provenance]: Inside flag provenance per layer.[br]
+## [param bit_provenance]: Mapping of bit keys to triangle provenance sets.[br]
+func _propagate_inside_flags_to_subgrid_voxels_with_provenance(
+	svo: SVO,
+	inside_provenance: Array[Dictionary],
+	bit_provenance: Dictionary) -> void:
 	progress.emit(ProgressStep.Enum.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS, svo, 0, svo.inside[0].size())
-	for node_offset in range(svo.inside[0].size()):
+	for node_offset: int in range(svo.inside[0].size()):
 		if svo.inside[0][node_offset] == 0:
 			continue
 		svo.subgrid[node_offset] = ~svo.subgrid[node_offset]
 		var source_set: Dictionary = _get_node_provenance(inside_provenance[0], node_offset)
 		_toggle_mask_with_source(bit_provenance, node_offset, ~0, source_set)
 	progress.emit(ProgressStep.Enum.PROPAGATE_INSIDE_FLAGS_TO_SUBGRID_VOXELS, svo, svo.inside[0].size(), svo.inside[0].size())
-	#endregion
-
-	progress.emit(ProgressStep.Enum.HIERARCHICAL_INSIDE_OUTSIDE_PROPAGATION, svo, 6, 6)
-	#endregion
-
-	progress.emit(ProgressStep.Enum.SOLID_VOXELIZATION, svo, 2, 2)
-	if debug_delete_flip_flag:
-		svo.flip.clear()
-
-	_report_tracked_solid_flips(tracked_pre_solid, svo, triangles, bit_provenance)
 
 
 func _capture_tracked_solid_state(svo: SVO) -> Dictionary:
@@ -291,7 +374,7 @@ func _apply_triangle_yz_rasterization_with_provenance(
 		return
 
 	var plane_equation_d: float = -n.dot(v0)
-	var source_set: Dictionary = _set_with_triangle(triangle_index)
+	var source_set: Dictionary = {triangle_index: true}
 	for voxel_y in range(rect2i.position.x, rect2i.end.x):
 		for voxel_z in range(rect2i.position.y, rect2i.end.y):
 			var voxel_center_yz: Vector2 = Vector2((voxel_y + 0.5) * voxel_size_yz.x, (voxel_z + 0.5) * voxel_size_yz.y)
@@ -463,10 +546,6 @@ func _report_tracked_solid_flips(
 
 static func _bit_key(node_offset: int, subgrid_index: int) -> int:
 	return (node_offset << 6) | subgrid_index
-
-
-static func _set_with_triangle(triangle_index: int) -> Dictionary:
-	return {triangle_index: true}
 
 
 static func _set_union_into(target: Dictionary, source: Dictionary) -> void:

@@ -3,14 +3,7 @@ class_name MeshTool
 
 
 static func convert_to_mesh(shape: Shape3D) -> Mesh:
-	var faces = get_faces(shape)
-	var array_mesh = ArrayMesh.new()
-	
-	var arrays = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = faces
-	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return array_mesh
+	return create_array_mesh_from_faces(get_faces(shape))
 
 
 ## Return an array of vertices, each 3 vertices represent a triangle face
@@ -33,88 +26,104 @@ static func get_faces(shape: Shape3D) -> PackedVector3Array:
 
 
 static func get_boxmesh_faces(shape: BoxShape3D) -> PackedVector3Array:
-	var box = BoxMesh.new()
+	var box: BoxMesh = BoxMesh.new()
 	box.size = shape.size
-	var arr_mesh = ArrayMesh.new()
-	var ma = box.get_mesh_arrays()
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ma)
-	return arr_mesh.get_faces()
+	return _extract_primitive_mesh_faces(box)
 
 
 # TODO: Maybe there should be a way to dynamically increase triangle counts for sphere?
 static func get_sphereshape_faces(shape: SphereShape3D) -> PackedVector3Array:
-	var sphere = SphereMesh.new()
-	sphere.height = shape.radius*2
+	var sphere: SphereMesh = SphereMesh.new()
+	sphere.height = shape.radius * 2
 	sphere.radius = shape.radius
-	var arr_mesh = ArrayMesh.new()
-	var ma = sphere.get_mesh_arrays()
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ma)
-	return arr_mesh.get_faces()
-	
+	return _extract_primitive_mesh_faces(sphere)
+
 
 # TODO: Maybe there should be a way to dynamically increase triangle counts for capsule?
 static func get_capsuleshape_faces(shape: CapsuleShape3D) -> PackedVector3Array:
-	var capsule = CapsuleMesh.new()
+	var capsule: CapsuleMesh = CapsuleMesh.new()
 	capsule.height = shape.height
 	capsule.radius = shape.radius
-	var arr_mesh = ArrayMesh.new()
-	var ma = capsule.get_mesh_arrays()
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ma)
-	return arr_mesh.get_faces()
+	return _extract_primitive_mesh_faces(capsule)
 
 
-	
 # TODO: Maybe there should be a way to dynamically increase triangle counts for cylinder?
 static func get_cylindershape_faces(shape: CylinderShape3D) -> PackedVector3Array:
-	var cylinder = CylinderMesh.new()
+	var cylinder: CylinderMesh = CylinderMesh.new()
 	cylinder.height = shape.height
 	cylinder.top_radius = shape.radius
 	cylinder.bottom_radius = shape.radius
-	var arr_mesh = ArrayMesh.new()
-	var ma = cylinder.get_mesh_arrays()
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, ma)
+	return _extract_primitive_mesh_faces(cylinder)
+
+
+## Extracts triangle faces from a primitive [Mesh] using [ArrayMesh].[br]
+## [param mesh]: Primitive mesh whose faces to extract[br]
+## Return: [PackedVector3Array] of triangle faces.[br]
+static func _extract_primitive_mesh_faces(mesh: PrimitiveMesh) -> PackedVector3Array:
+	var arr_mesh: ArrayMesh = ArrayMesh.new()
+	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh.get_mesh_arrays())
 	return arr_mesh.get_faces()
 	
 
 ## Generate triangle faces using incremental algorithm. O(N^2)
 static func get_convex_polygon_faces(shape: ConvexPolygonShape3D) -> PackedVector3Array:
-	var vertices = shape.points
-	var initial_vertices = MeshTool._get_random_tetrahedron(vertices)
+	var vertices: PackedVector3Array = shape.points
+	var initial_vertices: PackedVector3Array = MeshTool._get_random_tetrahedron(vertices)
 	if initial_vertices.size() == 0:
 		return []
 		
-	var faces = [
+	var faces: PackedVector3Array = MeshTool._create_tetrahedron_faces(initial_vertices)
+	
+	for i in range(vertices.size()):
+		var vertex_i: Vector3 = vertices[i]
+		var faces_can_see_vertex_i: PackedVector3Array = MeshTool._faces_can_see_vertex(faces, vertex_i)
+		# No face can see this point.
+		# It means this point is already inside the hull
+		if faces_can_see_vertex_i.size() == 0:
+			continue
+			
+		faces = MeshTool._expand_hull_to_vertex(faces, faces_can_see_vertex_i, vertex_i)
+	# TODO: There's some faces generated somewhere that's not in clockwise order
+	# I don't have time to debug it right now, so this have to do
+	MeshTool.set_vertices_in_clockwise_order(faces)
+	return faces
+
+
+## Expand the convex hull to include [param vertex] by replacing [param visible_faces]
+## with new faces connecting their perimeter to [param vertex].
+static func _expand_hull_to_vertex(faces: PackedVector3Array, visible_faces: PackedVector3Array, vertex: Vector3) -> PackedVector3Array:
+	var perimeter: PackedVector3Array = MeshTool._perimeter_of_faces(visible_faces)
+	var new_faces: PackedVector3Array = MeshTool._create_perimeter_faces(perimeter, vertex)
+	return MeshTool.subtract_faces(faces, visible_faces) + new_faces
+
+
+## Create initial tetrahedron faces from 4 points in [param initial_vertices].[br]
+## [param initial_vertices]: 4 points forming a tetrahedron[br]
+## Return: triangle faces in clockwise order.[br]
+static func _create_tetrahedron_faces(initial_vertices: PackedVector3Array) -> PackedVector3Array:
+	var faces: PackedVector3Array = [
 		initial_vertices[0], initial_vertices[1], initial_vertices[2], 
 		initial_vertices[0], initial_vertices[1], initial_vertices[3], 
 		initial_vertices[0], initial_vertices[2], initial_vertices[3], 
 		initial_vertices[1], initial_vertices[2], initial_vertices[3], 
 	]
 	MeshTool.set_vertices_in_clockwise_order(faces)
-	
-	for i in range(vertices.size()):
-		var vertex_i = vertices[i]
-		var faces_can_see_vertex_i = MeshTool._faces_can_see_vertex(faces, vertex_i)
-		# No face can see this point.
-		# It means this point is already inside the hull
-		if faces_can_see_vertex_i.size() == 0:
-			continue
-			
-		# Find the perimeter of the cross-section
-		var perimeter = MeshTool._perimeter_of_faces(faces_can_see_vertex_i)
-	
-		# Add new faces
-		var new_faces: PackedVector3Array = []
-		@warning_ignore("integer_division")
-		for j in range(perimeter.size()/2):
-			var v1 = perimeter[j*2]
-			var v2 = perimeter[j*2+1]
-			new_faces.append_array([v1, v2, vertex_i])
-		MeshTool.set_vertices_in_clockwise_order(new_faces)
-		faces = MeshTool.subtract_faces(faces, faces_can_see_vertex_i) + new_faces
-	# TODO: There's some faces generated somewhere that's not in clockwise order
-	# I don't have time to debug it right now, so this have to do
-	MeshTool.set_vertices_in_clockwise_order(faces)
 	return faces
+
+
+## Generate new faces connecting perimeter edges to [param vertex].[br]
+## [param perimeter]: Array of edge vertices (each 2 vertices make an edge)[br]
+## [param vertex]: Point to connect perimeter edges to[br]
+## Return: triangle faces in clockwise order.[br]
+static func _create_perimeter_faces(perimeter: PackedVector3Array, vertex: Vector3) -> PackedVector3Array:
+	var new_faces: PackedVector3Array = []
+	@warning_ignore("integer_division")
+	for j in range(perimeter.size() / 2):
+		var v1: Vector3 = perimeter[j * 2]
+		var v2: Vector3 = perimeter[j * 2 + 1]
+		new_faces.append_array([v1, v2, vertex])
+	MeshTool.set_vertices_in_clockwise_order(new_faces)
+	return new_faces
 
 
 ## Return 4 points in [param vertices] that makes a tetrahedron with positive volume.
@@ -278,17 +287,3 @@ static func create_array_mesh_from_faces(faces: PackedVector3Array) -> ArrayMesh
 	var array_mesh = ArrayMesh.new()
 	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return array_mesh
-
-## TODO: NOT YET TESTED
-## TODO: Need to be in tree for get_debug_mesh to work after SceneTree.process_frame signal
-#static func create_convex_mesh_from_points(points: PackedVector3Array) -> ArrayMesh:
-	#var convex_polygon_3d = ConvexPolygonShape3D.new()
-	#convex_polygon_3d.points = points
-	#convex_polygon_3d.get_debug_mesh().get_faces()
-	#var array_mesh = ArrayMesh.new()
-	## Initialize the mesh
-	#var arrays = []
-	#arrays.resize(Mesh.ARRAY_MAX)
-	#arrays[Mesh.ARRAY_VERTEX] = shape.get_debug_mesh().get_faces()
-	#array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	#pass

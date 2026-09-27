@@ -57,18 +57,11 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 		or destination == SvoLink64.singleton.null_link():
 		return []
 
-	#var linkstart=SvoLink64.singleton.get_format_string(start)
-	#var linkdes=SvoLink64.singleton.get_format_string(destination)
-	# The Priority Queue of nodes to search
-	# Element: [TOTAL_COST_ESTIMATED, SVOLink]
-	# Sorted by TCE. TCE = f(x) = g(x) + h(x).
-	# pop() returns element with smallest TCE
-	const TOTAL_COST_ESTIMATED = 0
-	const SVOLINK = 1
-	var frontier := PriorityQueue.new([], 
-		func (u1, u2) -> bool:
-			return u1[TOTAL_COST_ESTIMATED] > u2[TOTAL_COST_ESTIMATED])
-	frontier.push([INF, start])
+	# The Priority Queue of nodes to search, ordered by lowest estimated total cost
+	var frontier: PriorityQueue = PriorityQueue.new([], 
+		func (a: SearchNode, b: SearchNode) -> bool:
+			return a.estimated_total_cost > b.estimated_total_cost)
+	frontier.push(SearchNode.new(INF, start))
 	
 	# travel_cost[node] returns the current cost to travel
 	# from starting point to node
@@ -78,93 +71,119 @@ func _find_path(start: int, destination: int, svo: SVO) -> PackedInt64Array:
 	# breadcrumb[i] = j means j is the closest route found 
 	# from @start to @destination to i
 	var breadcrumb: Dictionary = {start: SvoLink64.singleton.null_link()}
+	var context := SearchContext.new(
+		destination,
+		svo,
+		travel_cost,
+		breadcrumb,
+		frontier
+	)
 	
-	
-	#var test:= PriorityQueue.new(
-	#[[21.4326663970947, 114], [21.9248672485352, 128], [22.7359443664551, 100], [22.070911026001, 102], [23.2495037078857, 70], [22.7359443664551, 82], [23.2936111450195, 96], [23.2936111450195, 80], [23.8808933258057, 66], [22.6454082489014, 98], [22.6454082489014, 84], [22.0242858886719, 112], [22.070911026001, 86], [23.8808933258057, 68], [21.9248672485352, 256], [21.4326663970947, 116], [24.4956069946289, 64]]
-		#
-		#,
-		#func (u1, u2) -> bool:
-			#return u1[TOTAL_COST_ESTIMATED] > u2[TOTAL_COST_ESTIMATED])
-	#
-	#while not test.is_empty():
-		#print(test.pop()[0])
-	#return []
 	while frontier.size() > 0:
 		# Get the next most promising node that we haven't visited to examine
-		var best_node: Array = frontier.pop()
-		var best_node_link: int = int(best_node[SVOLINK])
+		var best_node: SearchNode = frontier.pop()
+		var best_node_link: int = best_node.svolink
 		
-		#print("%s" % str(frontier.to_array()))
-		#print()
-		#if best_node_link in [3331, 3363]:
-			#print("best: %d, f: %f" % [best_node_link, best_node[TOTAL_COST_ESTIMATED]])
-		#print("best: %d, f: %f" % [best_node_link, best_node[TOTAL_COST_ESTIMATED]])
-		#OS.delay_msec(5)
-		
-		#get_parent().draw_svolink_box(best_node_link, Color.GREEN, Color.GREEN, "")
 		if best_node_link == destination:
 			break
 		
-		#print(best_node[TOTAL_COST_ESTIMATED])
-		#if best_node_link == 172096:
-			#breakpoint
 		var bn_neighbors: PackedInt64Array = svo.get_neighbors_of(best_node_link)
-		#var bnn_debug = Array(bn_neighbors).map(func (n):
-			#return SVOIteratorRandom._new(svo, n).get_debug_dict()
-			#)
 		
 		for neighbor in bn_neighbors:
-			# Ignore obstacles
-			if svo.is_solid(neighbor):
-				travel_cost[neighbor] = INF
-				continue
-			
-			var neighbor_cost_of_current_visit: float = travel_cost[best_node_link] \
-					+ compute_cost(best_node_link, neighbor, svo)
-			
-			if neighbor_cost_of_current_visit < travel_cost.get(neighbor, INF):
-				travel_cost[neighbor] = neighbor_cost_of_current_visit
-				breadcrumb[neighbor] = best_node_link
-				#get_parent().draw_svolink_box(neighbor, Color.GRAY, Color.GRAY, "")
-				frontier.push([neighbor_cost_of_current_visit \
-					+ estimate_cost(neighbor, destination, svo)\
-					, neighbor])
-			#print()
+			_relax_neighbor(
+				best_node_link,
+				neighbor,
+				context
+			)
 	
 	if not travel_cost.has(destination):
 		return []
 	
-	#for debug_link in [3335]:
-		#print("%d cost: %f" %[debug_link, travel_cost[debug_link]])
-		#get_parent().draw_svolink_box(debug_link, Color.PEACH_PUFF, Color.PEACH_PUFF, str(travel_cost[debug_link]))
-		#for neighbor in svo.get_neighbors_of(debug_link):
-			##print("Neighbor %d cost: %f" %[neighbor, travel_cost[neighbor]])
-			#var est = estimate_cost(neighbor, destination, svo)
-			#get_parent().draw_svolink_box(neighbor, Color.ORANGE_RED, Color.ORANGE_RED, 
-				#SvoLink64.singleton.get_format_string(neighbor, svo) + "\n" + str(travel_cost[neighbor]) + "\n" + str(est))
-		
-		
+	return _reconstruct_path(breadcrumb, start, destination)
+
+
+## A candidate node in the A* search frontier with its estimated total cost.
+class SearchNode:
+	var estimated_total_cost: float
+	var svolink: int
+
+	func _init(p_estimated_total_cost: float, p_svolink: int) -> void:
+		estimated_total_cost = p_estimated_total_cost
+		svolink = p_svolink
+
+
+class SearchContext:
+	var destination: int
+	var svo: SVO
+	var travel_cost: Dictionary
+	var breadcrumb: Dictionary
+	var frontier: PriorityQueue
+
+	func _init(
+		p_destination: int,
+		p_svo: SVO,
+		p_travel_cost: Dictionary,
+		p_breadcrumb: Dictionary,
+		p_frontier: PriorityQueue
+	) -> void:
+		destination = p_destination
+		svo = p_svo
+		travel_cost = p_travel_cost
+		breadcrumb = p_breadcrumb
+		frontier = p_frontier
+
+
+## [param best_node_link]: Current best node link being expanded[br]
+## [param neighbor]: Neighbor node link to evaluate[br]
+## [param context]: [SearchContext] holding search data structures[br]
+## Return: void.[br]
+func _relax_neighbor(
+	best_node_link: int,
+	neighbor: int,
+	context: SearchContext
+) -> void:
+	# Ignore obstacles
+	if context.svo.is_solid(neighbor):
+		context.travel_cost[neighbor] = INF
+		return
+	
+	var neighbor_cost_of_current_visit: float = context.travel_cost[best_node_link] \
+			+ compute_cost(best_node_link, neighbor, context.svo)
+	
+	if neighbor_cost_of_current_visit < context.travel_cost.get(neighbor, INF):
+		context.travel_cost[neighbor] = neighbor_cost_of_current_visit
+		context.breadcrumb[neighbor] = best_node_link
+		var total_estimated_cost: float = neighbor_cost_of_current_visit \
+			+ estimate_cost(neighbor, context.destination, context.svo)
+		context.frontier.push(SearchNode.new(total_estimated_cost, neighbor))
+
+
+## [param breadcrumb]: Predecessor map tracking the search path[br]
+## [param start]: Starting node link[br]
+## [param destination]: Destination node link[br]
+## Return: Path of node links from start to destination[br]
+func _reconstruct_path(breadcrumb: Dictionary, start: int, destination: int) -> PackedInt64Array:
 	var path: PackedInt64Array = [destination]
 	while path[-1] != start:
-		#if breadcrumb[path[-1]] == 172096:
-			#breakpoint
 		path.push_back(breadcrumb[path[-1]])
 	path.reverse()
-	
-	#for debug_link in travel_cost.keys():
-		#get_parent().draw_svolink_box(debug_link, Color.RED, Color.BLUE, str(travel_cost[debug_link]))
-		
 	return path
 
 
+## [param start]: Starting node link[br]
+## [param destination]: Destination node link[br]
+## [param svo]: Sparse Voxel Octree structure[br]
+## Return: Distance measured between the two nodes[br]
+func _distance_between_nodes(start: int, destination: int, svo: SVO) -> float:
+	return _get_distance.callv(_get_endpoints.call(start, destination, svo))
+
+
 func _compute_cost(start: int, destination: int, svo: SVO) -> float:
-	var cost := 0.0
+	var cost: float = 0.0
 	if use_unit_cost:
 		cost = unit_cost
 	else:
-		var endpoints_to_measure: PackedVector3Array = _get_endpoints.call(start, destination, svo)
-		cost = _get_distance.callv(endpoints_to_measure)
+		cost = _distance_between_nodes(start, destination, svo)
 	
 	if use_size_compensation_factor:
 		return cost * compute_size_compensation_factor(SvoLink64.singleton.get_layer(destination), svo.depth)
@@ -172,9 +191,7 @@ func _compute_cost(start: int, destination: int, svo: SVO) -> float:
 
 
 func _estimate_cost(start: int, destination: int, svo: SVO) -> float:
-	var endpoints_to_measure: PackedVector3Array = _get_endpoints.call(start, destination, svo)
-	return w * _get_distance.callv(endpoints_to_measure)# \
-			#* compute_size_compensation_factor(SvoLink64.singleton.get_layer(start), svo.depth)
+	return w * _distance_between_nodes(start, destination, svo)
 
 
 func _parse_endpoint_mode(value: String) -> EndpointMode.Enum:

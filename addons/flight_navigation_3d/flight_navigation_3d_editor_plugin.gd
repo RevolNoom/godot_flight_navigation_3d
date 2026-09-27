@@ -25,19 +25,18 @@ func _exit_tree():
 
 # Show the Voxelize button only if the editor is focusing on a [ASvoVoxelizer]
 func _on_selection_changed():
-	var selected_nodes = EditorInterface.get_selection().get_selected_nodes()
+	var selected_nodes: Array[Node] = EditorInterface.get_selection().get_selected_nodes()
 	
-	if selected_svo_voxelizer != null\
-	and (selected_nodes.size() != 1\
-	or not selected_nodes.front() is ASvoVoxelizer\
-	or selected_svo_voxelizer != selected_nodes.front()):
+	var is_single_node_selected: bool = selected_nodes.size() == 1
+	var is_node_asvo_voxelizer: bool = is_single_node_selected and selected_nodes.front() is ASvoVoxelizer
+	var is_current_voxelizer_selected: bool = is_node_asvo_voxelizer and selected_nodes.front() == selected_svo_voxelizer
+	
+	if selected_svo_voxelizer != null and not is_current_voxelizer_selected:
 		selected_svo_voxelizer = null
 		voxelize_button.svo_voxelizer = null
 		remove_control_from_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, voxelize_button)
 	
-	if selected_nodes.size() == 1\
-	and selected_nodes.front() is ASvoVoxelizer\
-	and selected_svo_voxelizer == null:
+	if is_node_asvo_voxelizer and selected_svo_voxelizer == null:
 		selected_svo_voxelizer = selected_nodes.front()
 		voxelize_button.svo_voxelizer = selected_svo_voxelizer
 		add_control_to_container(EditorPlugin.CONTAINER_SPATIAL_EDITOR_MENU, voxelize_button)
